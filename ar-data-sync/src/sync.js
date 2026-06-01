@@ -1,0 +1,82 @@
+import fs from 'fs';
+import { AR_ENDPOINTS, BATCH_SIZE } from './config.js';
+import { downloadToTemp, streamRecords } from './downloader.js';
+import { NORMALIZADORES } from './processor.js';
+import { upsertBatch, registarLog } from './database.js';
+
+async function sincronizar(recurso) {
+  const { url, path: nestedKey } = AR_ENDPOINTS[recurso];
+  const normalizar = NORMALIZADORES[recurso];
+  const inicio = Date.now();
+
+  console.log(`\n${'='.repeat(55)}`);
+  console.log(`  RECURSO : ${recurso.toUpperCase()}`);
+  console.log('='.repeat(55));
+
+  let tmpPath;
+  try {
+    tmpPath = await downloadToTemp(url);
+  } catch (err) {
+    console.error(`  ✗ Falha no download: ${err.message}`);
+    return false;
+  }
+
+  let batch = [], total = 0, inseridos = 0, atualizados = 0, erros = 0;
+
+  try {
+    for await (const raw of streamRecords(tmpPath, nestedKey)) {
+      try {
+        const reg = normalizar(raw);
+        if (!reg) { erros++; continue; }
+        batch.push(reg);
+        total++;
+
+        if (batch.length >= BATCH_SIZE) {
+          const r = await upsertBatch(recurso, batch);
+          inseridos += r.inseridos; atualizados += r.atualizados;
+          batch = [];
+          process.stdout.write(`  … ${total} processados\r`);
+        }
+      } catch (err) {
+        erros++;
+        if (erros <= 5) console.warn(`\n  ⚠ ${err.message}`);
+      }
+    }
+
+    if (batch.length) {
+      const r = await upsertBatch(recurso, batch);
+      inseridos += r.inseridos; atualizados += r.atualizados;
+    }
+
+    await registarLog(recurso, { total, inseridos, atualizados, erros });
+    const s = ((Date.now() - inicio) / 1000).toFixed(1);
+    console.log(`\n  ✓ ${s}s | Total: ${total} | Inseridos: ${inseridos} | Atualizados: ${atualizados} | Erros: ${erros}`);
+    return true;
+
+  } catch (err) {
+    console.error(`\n  ✗ Erro fatal: ${err.message}`);
+    return false;
+  } finally {
+    try { fs.unlinkSync(tmpPath); } catch {}
+  }
+}
+
+async function main() {
+  const args  = process.argv.slice(2);
+  const alvos = args.length ? args : Object.keys(AR_ENDPOINTS);
+  const falhas = [];
+
+  for (const r of alvos) {
+    if (!AR_ENDPOINTS[r]) {
+      console.error(`Recurso desconhecido: "${r}". Opções: ${Object.keys(AR_ENDPOINTS).join(', ')}`);
+      process.exit(1);
+    }
+    if (!await sincronizar(r)) falhas.push(r);
+  }
+
+  console.log(`\n${'='.repeat(55)}`);
+  if (falhas.length) { console.error(`  FALHAS: ${falhas.join(', ')}`); process.exit(1); }
+  else console.log('  TUDO SINCRONIZADO ✓');
+}
+
+main();

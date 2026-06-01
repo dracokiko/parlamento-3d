@@ -1,0 +1,43 @@
+name: AR Data Sync
+
+on:
+  schedule:
+    - cron: "0 3 * * *"   # todos os dias às 03:00 UTC (04:00 Lisboa)
+  workflow_dispatch:
+    inputs:
+      recurso:
+        description: "iniciativas | intervencoes | votacoes (vazio = todos)"
+        required: false
+        default: ""
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: ar-data-sync/package.json
+
+      - name: Instalar dependências
+        working-directory: ar-data-sync
+        run: npm install
+
+      - name: Correr sincronização
+        working-directory: ar-data-sync
+        env:
+          SUPABASE_URL:         ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: |
+          if [ -n "${{ github.event.inputs.recurso }}" ]; then
+            node src/sync.js ${{ github.event.inputs.recurso }}
+          else
+            node src/sync.js
+          fi

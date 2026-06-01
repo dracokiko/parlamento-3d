@@ -1,0 +1,17 @@
+{
+  "name": "ar-data-sync",
+  "version": "1.0.0",
+  "description": "Pipeline de sincronização dos Dados Abertos da Assembleia da República",
+  "type": "module",
+  "scripts": {
+    "sync":              "node src/sync.js",
+    "sync:iniciativas":  "node src/sync.js iniciativas",
+    "sync:intervencoes": "node src/sync.js intervencoes",
+    "sync:votacoes":     "node src/sync.js votacoes"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.39.0",
+    "dotenv":                "^16.4.1",
+    "stream-json":           "^1.8.0"
+  }
+}
