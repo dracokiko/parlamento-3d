@@ -63,24 +63,36 @@ export function normalizarDeputado(raw) {
 }
 
 // ── Debates ───────────────────────────────────────────────────────────────────
-// Campos reais: Artigo, Assunto, AutoresDeputados, AutoresGP,
-//               DataDebate, DataEntrada
+// Campos reais: DebateId, Artigo, Assunto, AutoresDeputados, AutoresGP,
+//               DataDebate, DataEntrada, Intervencoes, Publicacao, TipoDebateDesig
 export function normalizarDebate(raw) {
-  // Debates podem não ter ID próprio — usamos hash de campos únicos
-  const dataStr = safeDate(raw.DataDebate) || safeDate(raw.DataEntrada) || '';
-  const assunto = safeStr(raw.Assunto, 200) || '';
-  const id = `${dataStr}_${assunto.slice(0, 80)}`.replace(/\s+/g, '_');
+  // Usar DebateId oficial se existir, senão fallback para hash
+  let id = safeStr(raw.DebateId);
+  if (!id) {
+    const dataStr = safeDate(raw.DataDebate) || safeDate(raw.DataEntrada) || '';
+    const assunto = safeStr(raw.Assunto, 200) || '';
+    id = `${dataStr}_${assunto.slice(0, 80)}`.replace(/\s+/g, '_');
+  }
   if (!id || id === '_') return null;
+
+  // URL do Diário da AR para scraping de transcrição
+  const pub = Array.isArray(raw.Publicacao) ? raw.Publicacao[0] : null;
+  const urlDiario = pub?.URLDiario ?? null;
 
   return {
     id,
-    assunto:       safeStr(raw.Assunto, 500),
-    artigo:        safeStr(raw.Artigo, 500),
-    data_debate:   safeDate(raw.DataDebate),
-    data_entrada:  safeDate(raw.DataEntrada),
-    autores_dep:   raw.AutoresDeputados ?? null,
-    autores_gp:    raw.AutoresGP        ?? null,
-    json_raw:      raw,
+    assunto:          safeStr(raw.Assunto, 500),
+    artigo:           safeStr(raw.Artigo, 500),
+    tipo_debate:      safeStr(raw.TipoDebateDesig),
+    data_debate:      safeDate(raw.DataDebate),
+    data_entrada:     safeDate(raw.DataEntrada),
+    sessao:           safeStr(raw.Sessao),
+    legislatura:      safeStr(raw.Legislatura),
+    autores_dep:      raw.AutoresDeputados ?? null,
+    autores_gp:       raw.AutoresGP        ?? null,
+    intervencoes_ids: raw.Intervencoes      ?? null,
+    url_diario:       urlDiario,
+    json_raw:         raw,
   };
 }
 

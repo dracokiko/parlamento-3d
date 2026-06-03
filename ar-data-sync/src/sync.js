@@ -3,7 +3,7 @@ import { AR_ENDPOINTS, BATCH_SIZE } from './config.js';
 import { downloadToTemp, streamRecords } from './downloader.js';
 import { NORMALIZADORES } from './processor.js';
 import { upsertBatch, registarLog } from './database.js';
-import { resumirIniciativas, resumirDeputados } from './summarizer.js';
+import { resumirIniciativas, resumirDeputados, obterTranscricoesDebates } from './summarizer.js';
 
 async function sincronizar(recurso) {
   const { url, path: nestedKey } = AR_ENDPOINTS[recurso];
@@ -86,6 +86,7 @@ async function main() {
 
   if (resultados.iniciativas?.ok) await resumirIniciativas();
   if (resultados.deputados?.ok)   await resumirDeputados();
+  if (resultados.debates?.ok)     await obterTranscricoesDebates();
 
   // 3. Resultado final
   console.log(`\n${'='.repeat(55)}`);

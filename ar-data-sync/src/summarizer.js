@@ -11,6 +11,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { SUPABASE_URL, SUPABASE_KEY } from './config.js';
 import { resumir, promptIniciativa, promptDeputado } from './ai.js';
+import { obterTranscricao } from './scraper.js';
 
 let _client = null;
 const db = () => {
@@ -98,4 +99,40 @@ export async function resumirDeputados() {
   }
 
   console.log(`\n  [IA] Deputados concluído — ${total} processados, ${erros} erros`);
+}
+
+// ── Transcrições de Debates ───────────────────────────────────────────────────
+
+export async function obterTranscricoesDebates() {
+  console.log('\n  [DAR] A obter transcrições de debates...');
+  let total = 0, erros = 0, offset = 0;
+
+  while (true) {
+    // Debates com url_diario mas sem transcrição ainda
+    const { data: debates, error } = await db()
+      .from('ar_debates')
+      .select('id, assunto, url_diario')
+      .is('transcricao', null)
+      .not('url_diario', 'is', null)
+      .range(offset, offset + 9); // 10 por vez — cada um faz vários pedidos HTTP
+
+    if (error) { console.error('  ✗ Erro:', error.message); break; }
+    if (!debates?.length) break;
+
+    for (const debate of debates) {
+      process.stdout.write(`  [DAR] ${total + 1} — ${(debate.assunto ?? '').slice(0, 50)}...\r`);
+      const texto = await obterTranscricao(debate.url_diario);
+      if (texto) {
+        await db().from('ar_debates').update({ transcricao: texto }).eq('id', debate.id);
+        total++;
+      } else {
+        erros++;
+      }
+    }
+
+    if (debates.length < 10) break;
+    offset += 10;
+  }
+
+  console.log(`\n  [DAR] Transcrições concluídas — ${total} obtidas, ${erros} erros`);
 }
