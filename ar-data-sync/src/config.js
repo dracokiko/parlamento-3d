@@ -3,8 +3,14 @@ import 'dotenv/config';
 export const SUPABASE_URL = process.env.SUPABASE_URL;
 export const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY;
 
+export const GROQ_API_KEY = process.env.GROQ_API_KEY;
+
 if (!SUPABASE_URL || !SUPABASE_KEY) {
   console.error('❌  SUPABASE_URL e SUPABASE_SERVICE_KEY são obrigatórios no .env');
+  process.exit(1);
+}
+if (!GROQ_API_KEY) {
+  console.error('❌  GROQ_API_KEY é obrigatório no .env');
   process.exit(1);
 }
 

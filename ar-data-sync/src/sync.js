@@ -3,6 +3,7 @@ import { AR_ENDPOINTS, BATCH_SIZE } from './config.js';
 import { downloadToTemp, streamRecords } from './downloader.js';
 import { NORMALIZADORES } from './processor.js';
 import { upsertBatch, registarLog } from './database.js';
+import { resumirIniciativas, resumirDeputados } from './summarizer.js';
 
 async function sincronizar(recurso) {
   const { url, path: nestedKey } = AR_ENDPOINTS[recurso];
@@ -51,11 +52,11 @@ async function sincronizar(recurso) {
     await registarLog(recurso, { total, inseridos, atualizados, erros });
     const s = ((Date.now() - inicio) / 1000).toFixed(1);
     console.log(`\n  ✓ ${s}s | Total: ${total} | Inseridos: ${inseridos} | Atualizados: ${atualizados} | Erros: ${erros}`);
-    return true;
+    return { ok: true, inseridos };
 
   } catch (err) {
     console.error(`\n  ✗ Erro fatal: ${err.message}`);
-    return false;
+    return { ok: false, inseridos: 0 };
   } finally {
     try { fs.unlinkSync(tmpPath); } catch {}
   }
@@ -66,17 +67,34 @@ async function main() {
   const alvos = args.length ? args : Object.keys(AR_ENDPOINTS);
   const falhas = [];
 
+  // 1. Sincronizar todos os recursos
+  const resultados = {};
   for (const r of alvos) {
     if (!AR_ENDPOINTS[r]) {
       console.error(`Recurso desconhecido: "${r}". Opções: ${Object.keys(AR_ENDPOINTS).join(', ')}`);
       process.exit(1);
     }
-    if (!await sincronizar(r)) falhas.push(r);
+    const res = await sincronizar(r);
+    resultados[r] = res;
+    if (!res.ok) falhas.push(r);
   }
 
+  // 2. Resumir com IA — só os recursos que correram com sucesso
   console.log(`\n${'='.repeat(55)}`);
-  if (falhas.length) { console.error(`  FALHAS: ${falhas.join(', ')}`); process.exit(1); }
-  else console.log('  TUDO SINCRONIZADO ✓');
+  console.log('  FASE IA — RESUMOS AUTOMÁTICOS');
+  console.log('='.repeat(55));
+
+  if (resultados.iniciativas?.ok) await resumirIniciativas();
+  if (resultados.deputados?.ok)   await resumirDeputados();
+
+  // 3. Resultado final
+  console.log(`\n${'='.repeat(55)}`);
+  if (falhas.length) {
+    console.error(`  FALHAS NA SINCRONIZAÇÃO: ${falhas.join(', ')}`);
+    process.exit(1);
+  } else {
+    console.log('  PIPELINE COMPLETO ✓  (dados + resumos IA guardados)');
+  }
 }
 
 main();
