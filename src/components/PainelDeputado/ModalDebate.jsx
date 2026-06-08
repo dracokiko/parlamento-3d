@@ -1,4 +1,4 @@
-import { X, Sparkles, Users, Calendar, FileText } from 'lucide-react';
+import { X, Sparkles, Users, Calendar, ExternalLink } from 'lucide-react';
 
 export const ModalDebate = ({ debate, onFechar }) => {
   if (!debate) return null;
@@ -81,53 +81,24 @@ export const ModalDebate = ({ debate, onFechar }) => {
             <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
               <div className="flex items-center gap-1.5 mb-2">
                 <Sparkles size={13} className="text-amber-500" />
-                <span className="text-xs font-semibold text-amber-600 uppercase tracking-wide">Resumo IA</span>
+                <span className="text-xs font-semibold text-amber-600 uppercase tracking-wide">Resumo</span>
               </div>
               <p className="text-sm text-gray-700 leading-relaxed">{debate.resumo_ia}</p>
+              <p className="text-xs text-gray-400 mt-2">Gerado automaticamente · pode conter imprecisões</p>
             </div>
           )}
 
-          {/* Transcrição completa */}
-          {debate.transcricao ? (
-            <div>
-              <div className="flex items-center gap-1.5 mb-3">
-                <FileText size={13} className="text-gray-400" />
-                <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                  Transcrição completa
-                </span>
-              </div>
-              <div className="bg-gray-50 rounded-xl p-4 text-sm text-gray-700 leading-relaxed whitespace-pre-wrap font-mono text-xs max-h-96 overflow-y-auto">
-                {debate.transcricao}
-              </div>
-              {debate.url_diario && (
-                <a
-                  href={debate.url_diario}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-flex items-center gap-1 text-xs text-blue-500 hover:text-blue-700 mt-2"
-                >
-                  Ver no site oficial da AR ↗
-                </a>
-              )}
-            </div>
-          ) : (
-            <div className="bg-gray-50 rounded-xl p-4">
-              <p className="text-sm text-gray-400 italic">
-                {debate.url_diario
-                  ? 'Transcrição será obtida na próxima sincronização.'
-                  : 'Transcrição não disponível para este debate.'}
-              </p>
-              {debate.url_diario && (
-                <a
-                  href={debate.url_diario}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-flex items-center gap-1 text-xs text-blue-500 hover:text-blue-700 mt-2"
-                >
-                  Ver no site oficial da AR ↗
-                </a>
-              )}
-            </div>
+          {/* Link para a AR */}
+          {debate.url_diario && (
+            <a
+              href={debate.url_diario}
+              target="_blank"
+              rel="noreferrer"
+              className="flex items-center justify-center gap-2 w-full py-2.5 px-4 rounded-xl border border-gray-200 text-sm font-medium text-gray-600 hover:bg-gray-50 hover:border-gray-300 transition-colors"
+            >
+              <ExternalLink size={14} />
+              Ver debate no site da Assembleia da República
+            </a>
           )}
         </div>
       </div>

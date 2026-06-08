@@ -18,14 +18,35 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
 // PROMPTS — edita aqui para ajustar o estilo e foco dos resumos
 // ─────────────────────────────────────────────────────────────────────────────
 
+// Instruções comuns a todos os prompts
+const INSTRUCOES_BASE = `Escreve em português de Portugal. Sê objectivo e factual.
+Não uses frases introdutórias como "Este debate..." ou "Esta iniciativa...". Vai directo ao conteúdo.
+Siglas dos partidos: PS (Partido Socialista), PSD (Partido Social Democrata), CH (Chega), IL (Iniciativa Liberal), BE (Bloco de Esquerda), PCP (Partido Comunista Português), L (Livre), PAN (Pessoas-Animais-Natureza), CDS-PP (CDS - Partido Popular), JPP (Juntos pelo Povo).`;
+
+export function promptDebate(debate) {
+  const MAX_CHARS   = 4_000;
+  const transcricao = (debate.transcricao ?? '').slice(0, MAX_CHARS);
+  const assunto     = debate.assunto ?? debate.artigo ?? 'Sessão Plenária';
+
+  return `${INSTRUCOES_BASE}
+
+Resume este debate parlamentar em 4-5 frases. Identifica os temas principais, as posições dos partidos e os pontos de discórdia ou consenso.
+
+Data: ${debate.data_debate ?? '—'}
+Assunto: ${assunto}
+
+Transcrição (excerto):
+${transcricao}`;
+}
+
 export function promptIniciativa(ini) {
   const autores = (ini.autores_gp ?? []).map(a => a.GP).filter(Boolean).join(', ')
     || (ini.autores_dep ?? []).map(a => a.nome).filter(Boolean).slice(0, 3).join(', ')
     || 'desconhecido';
 
-  return `És um assistente especializado no parlamento português.
-Resumo esta iniciativa legislativa em 2-3 frases curtas e objectivas, em português de Portugal.
-Foca-te no que propõe e no impacto esperado. Sem jargão político. Sem introdução.
+  return `${INSTRUCOES_BASE}
+
+Resume esta iniciativa legislativa em 2-3 frases. Foca-te no que propõe e no impacto esperado. Sem jargão político.
 
 Tipo: ${ini.desc_tipo || ini.tipo || '—'}
 Título: ${ini.titulo || '—'}
@@ -39,9 +60,9 @@ export function promptDeputado(dep, iniciativas) {
     .map(i => `• ${i.titulo}`)
     .join('\n');
 
-  return `És um assistente especializado no parlamento português.
-Com base nas iniciativas abaixo, resume em 3-4 frases a actividade parlamentar do deputado ${dep.nome_parlamentar} (${dep.partido_sigla || '—'}, círculo de ${dep.circulo || '—'}), em português de Portugal.
-Identifica os principais temas, áreas de interesse e posicionamento. Sê objectivo e factual. Sem introdução.
+  return `${INSTRUCOES_BASE}
+
+Com base nas iniciativas abaixo, resume em 3-4 frases a actividade parlamentar do deputado ${dep.nome_parlamentar} (${dep.partido_sigla || '—'}, círculo de ${dep.circulo || '—'}). Identifica os principais temas e áreas de interesse.
 
 Iniciativas apresentadas:
 ${lista}`;

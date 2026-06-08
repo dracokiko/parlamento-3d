@@ -4,6 +4,13 @@
  */
 
 const safeStr  = (v, max = 5000) => v == null ? null : String(v).slice(0, max);
+
+// Data real de entrada da iniciativa — evento CodigoFase "10" ou Fase "Entrada"
+const dataEntrada = eventos => {
+  if (!Array.isArray(eventos)) return null;
+  const ev = eventos.find(e => e.CodigoFase === '10' || e.Fase === 'Entrada');
+  return safeDate(ev?.DataFase);
+};
 const safeDate = v => {
   if (!v) return null;
   const s = String(v).trim().slice(0, 10);
@@ -25,7 +32,7 @@ export function normalizarIniciativa(raw) {
     titulo:       safeStr(raw.IniTitulo, 1000),
     epigrafe:     safeStr(raw.IniEpigrafe, 1000),
     legislatura:  safeStr(raw.IniLeg),
-    data_inicio:  safeDate(raw.DataInicioleg),
+    data_inicio:  dataEntrada(raw.IniEventos) ?? safeDate(raw.DataInicioleg),
     data_fim:     safeDate(raw.DataFimleg),
     autores_dep:  raw.IniAutorDeputados   ?? null,
     autores_gp:   raw.IniAutorGruposParlamentares ?? null,

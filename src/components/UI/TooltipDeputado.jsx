@@ -1,6 +1,44 @@
 import { useParlamento } from '../../context/ParlamentoContext';
 import { getCorPartido, partidos } from '../../data/mockPartidos';
 
+const POSICAO = {
+  position: 'fixed',
+  top: '20px',
+  left: '50%',
+  transform: 'translateX(-20%)',
+  zIndex: 100,
+  pointerEvents: 'none',
+};
+
+export const CoatOfArmsAR = () => {
+  const { deputadoHover, deputadoSelecionado } = useParlamento();
+
+  // Só aparece quando o hemiciclo está completamente inativo
+  if (deputadoHover || deputadoSelecionado) return null;
+
+  return (
+    <div style={{
+      ...POSICAO,
+      width: '340px',
+      display: 'flex',
+      justifyContent: 'center',
+      zIndex: 1,          // abaixo de qualquer elemento UI
+      pointerEvents: 'none',
+    }}>
+      <img
+        src="/Coat_of_arms_of_the_Assembly_of_the_Portuguese_Republic.svg.png"
+        alt="Assembleia da República"
+        style={{
+          width: '160px',
+          height: 'auto',
+          opacity: 0.85,
+          filter: 'drop-shadow(0 4px 20px rgba(0,0,0,0.20))',
+        }}
+      />
+    </div>
+  );
+};
+
 export const TooltipDeputado = () => {
   const { deputadoHover } = useParlamento();
 

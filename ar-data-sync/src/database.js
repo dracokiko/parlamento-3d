@@ -5,6 +5,7 @@ const TABELAS = {
   iniciativas: 'ar_iniciativas',
   deputados:   'ar_deputados',
   debates:     'ar_debates',
+  votacoes:    'ar_votacoes',
 };
 
 let _client = null;

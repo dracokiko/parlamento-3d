@@ -1,16 +1,18 @@
 import { useState } from 'react';
-import { X, MapPin, FileText, MessageSquare } from 'lucide-react';
+import { X, MapPin, FileText, Mic, ExternalLink } from 'lucide-react';
+import { supabase } from '../../lib/supabase';
 import { useParlamento } from '../../context/ParlamentoContext';
 import { partidos } from '../../data/mockPartidos';
 import { obterIniciais } from '../../utils/formatters';
 import { useArDeputado } from '../../hooks/useArDeputado';
+import { useIntervencoesDeputado } from '../../hooks/useIntervencoesDeputado';
 import { ModalIniciativa } from './ModalIniciativa';
 import { ModalDebate } from './ModalDebate';
 
 // ── Aba activa ────────────────────────────────────────────────
 const ABAS = [
-  { id: 'iniciativas', label: 'Iniciativas',  icon: FileText      },
-  { id: 'debates',     label: 'Debates',      icon: MessageSquare },
+  { id: 'iniciativas',  label: 'Iniciativas',  icon: FileText },
+  { id: 'intervencoes', label: 'Intervenções', icon: Mic      },
 ];
 
 // ── Secção: Iniciativas ───────────────────────────────────────
@@ -41,6 +43,7 @@ const SecaoIniciativas = ({ iniciativas, carregando, onClickIniciativa }) => {
           {ini.resumo_ia && (
             <p className="text-xs text-gray-500 mt-1.5 leading-relaxed border-l-2 border-amber-300 pl-2">
               {ini.resumo_ia}
+              <span className="block text-gray-400 mt-0.5">Gerado automaticamente · pode conter imprecisões</span>
             </p>
           )}
         </button>
@@ -69,16 +72,108 @@ const SecaoDebates = ({ debates, carregando, onClickDebate }) => {
           )}
           <p className="text-sm font-medium text-gray-800">{deb.assunto ?? '—'}</p>
           {deb.artigo && <p className="text-xs text-gray-500 mt-0.5">{deb.artigo}</p>}
-          <div className="flex items-center gap-3 mt-1">
-            {deb.data_debate && <span className="text-xs text-gray-400">{deb.data_debate}</span>}
-            {deb.transcricao
-              ? <span className="text-xs text-green-600">✓ Transcrição disponível</span>
-              : deb.url_diario
-                ? <span className="text-xs text-gray-400">Transcrição pendente</span>
-                : null
-            }
-          </div>
+          {deb.data_debate && <span className="text-xs text-gray-400 mt-1 block">{deb.data_debate}</span>}
         </button>
+      ))}
+    </div>
+  );
+};
+
+// Intervenções com menos de N palavras são consideradas interjeições/aplausos
+const MIN_PALAVRAS = 40;
+
+// ── Secção: Intervenções ──────────────────────────────────────
+const SecaoIntervencoes = ({ intervencoes, carregando, corPartido }) => {
+  const [expandido, setExpandido]       = useState(null);
+  const [textos, setTextos]             = useState({});
+  const [mostrarTodas, setMostrarTodas] = useState(false);
+
+  const expandir = async (id) => {
+    if (expandido === id) { setExpandido(null); return; }
+    setExpandido(id);
+    if (textos[id] !== undefined) return;
+    setTextos(t => ({ ...t, [id]: null }));
+    const { data } = await supabase.from('ar_intervencoes').select('texto').eq('id', id).single();
+    setTextos(t => ({ ...t, [id]: data?.texto ?? '' }));
+  };
+
+  if (carregando) return <p className="text-sm text-gray-400 italic">A carregar intervenções...</p>;
+  if (!intervencoes.length) return <p className="text-sm text-gray-400 italic">Sem intervenções indexadas. Corre o sync para as obter.</p>;
+
+  const lista = mostrarTodas
+    ? intervencoes
+    : intervencoes.filter(iv => (iv.num_palavras ?? MIN_PALAVRAS) >= MIN_PALAVRAS);
+
+  const filtradas = intervencoes.length - lista.length;
+
+  // Agrupar por dia
+  const porDia = lista.reduce((acc, iv) => {
+    const dia = iv.data_debate ?? 'Sem data';
+    (acc[dia] ??= []).push(iv);
+    return acc;
+  }, {});
+  const dias = Object.keys(porDia).sort((a, b) => b.localeCompare(a));
+
+  return (
+    <div className="space-y-4">
+      {/* Toggle filtro */}
+      <div className="flex items-center justify-between text-xs text-gray-400 pb-1 border-b border-gray-100">
+        <span>{lista.length} intervenções{filtradas > 0 && !mostrarTodas ? ` (${filtradas} interjeições ocultas)` : ''}</span>
+        <button
+          onClick={() => setMostrarTodas(v => !v)}
+          className="text-blue-500 hover:text-blue-700 transition-colors font-medium"
+        >
+          {mostrarTodas ? 'Ocultar interjeições' : 'Ver todas'}
+        </button>
+      </div>
+      {dias.map(dia => (
+        <div key={dia}>
+          <p className="text-xs font-semibold uppercase tracking-wider mb-2 sticky top-0 bg-white py-1"
+             style={{ color: corPartido ?? '#9ca3af' }}>
+            {dia === 'Sem data' ? dia : dia.split('-').reverse().join('-')}
+          </p>
+          <div className="space-y-1.5">
+            {porDia[dia].map(iv => (
+              <div key={iv.id} className="border border-gray-100 rounded-xl overflow-hidden">
+                <button
+                  onClick={() => expandir(iv.id)}
+                  className="w-full text-left p-3 hover:bg-gray-50 transition-colors"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-xs text-gray-500 truncate flex-1 italic">
+                      {iv.assunto ?? 'Intervenção parlamentar'}
+                    </p>
+                    <span className="text-xs text-gray-300 flex-shrink-0">{expandido === iv.id ? '▲' : '▼'}</span>
+                  </div>
+                </button>
+
+                {expandido === iv.id && (
+                  <div className="px-3 pb-3 border-t border-gray-50">
+                    {textos[iv.id] === undefined && (
+                      <p className="text-xs text-gray-400 italic mt-2">A carregar...</p>
+                    )}
+                    {textos[iv.id] !== undefined && (
+                      <p className="text-xs text-gray-700 leading-relaxed whitespace-pre-wrap mt-2 max-h-64 overflow-y-auto">
+                        {textos[iv.id] || '—'}
+                      </p>
+                    )}
+                    {iv.url_diario && (
+                      <a
+                        href={iv.url_diario}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-1 text-xs text-blue-500 hover:text-blue-700 mt-2"
+                      >
+                        <ExternalLink size={10} />
+                        Ver no site da AR
+                      </a>
+                    )}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
       ))}
     </div>
   );
@@ -90,16 +185,19 @@ export const PainelDeputado = () => {
   const [abaAtiva, setAbaAtiva] = useState('iniciativas');
   const [iniciativaSelecionada, setIniciativaSelecionada] = useState(null);
   const [debateSelecionado, setDebateSelecionado] = useState(null);
-  const { perfil, iniciativas, debates, carregando } = useArDeputado(deputadoSelecionado);
+  const { perfil, iniciativas, carregando } = useArDeputado(deputadoSelecionado);
+  const nomeParlamentar = perfil?.nome_parlamentar ?? deputadoSelecionado?.nomeAbrev ?? '';
+  const { intervencoes, carregando: carregandoInt } = useIntervencoesDeputado(
+    abaAtiva === 'intervencoes' ? nomeParlamentar : null
+  );
 
   if (!deputadoSelecionado) return null;
 
   const partido = partidos[deputadoSelecionado.partido];
 
   const contagens = {
-    resumo:      perfil?.resumo_ia ? 1 : 0,
-    iniciativas: iniciativas.length,
-    debates:     debates.length,
+    iniciativas:  iniciativas.length,
+    intervencoes: intervencoes.length,
   };
 
   return (
@@ -164,8 +262,8 @@ export const PainelDeputado = () => {
               <span className="font-bold text-white">{iniciativas.length}</span>
             </div>
             <div className="flex justify-between text-xs text-white/70">
-              <span>Debates</span>
-              <span className="font-bold text-white">{debates.length}</span>
+              <span>Intervenções</span>
+              <span className="font-bold text-white">{intervencoes.length}</span>
             </div>
           </div>
         </div>
@@ -208,8 +306,8 @@ export const PainelDeputado = () => {
 
         {/* Conteúdo da aba */}
         <div className="flex-1 overflow-y-auto px-5 py-4">
-          {abaAtiva === 'iniciativas' && <SecaoIniciativas  iniciativas={iniciativas}  carregando={carregando} onClickIniciativa={setIniciativaSelecionada} />}
-          {abaAtiva === 'debates'     && <SecaoDebates      debates={debates}           carregando={carregando} onClickDebate={setDebateSelecionado} />}
+          {abaAtiva === 'iniciativas'  && <SecaoIniciativas  iniciativas={iniciativas}  carregando={carregando}    onClickIniciativa={setIniciativaSelecionada} />}
+          {abaAtiva === 'intervencoes' && <SecaoIntervencoes intervencoes={intervencoes} carregando={carregandoInt} corPartido={partido?.cor} />}
         </div>
       </div>
     </div>

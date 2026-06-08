@@ -10,8 +10,11 @@
  */
 import { createClient } from '@supabase/supabase-js';
 import { SUPABASE_URL, SUPABASE_KEY } from './config.js';
-import { resumir, promptIniciativa, promptDeputado } from './ai.js';
+import { resumir, promptIniciativa, promptDeputado, promptDebate } from './ai.js';
 import { obterTranscricao } from './scraper.js';
+import { parsearIntervencoes } from './interventionParser.js';
+
+const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 let _client = null;
 const db = () => {
@@ -101,6 +104,39 @@ export async function resumirDeputados() {
   console.log(`\n  [IA] Deputados concluído — ${total} processados, ${erros} erros`);
 }
 
+// ── Resumos de Debates ────────────────────────────────────────────────────────
+
+export async function resumirDebates() {
+  console.log('\n  [IA] A resumir debates novos...');
+
+  // Buscar todos os debates com transcrição mas sem resumo
+  const { data, error } = await db()
+    .from('ar_debates')
+    .select('id, assunto, artigo, tipo_debate, data_debate, transcricao')
+    .is('resumo_ia', null)
+    .not('transcricao', 'is', null)
+    .limit(200);
+
+  if (error) { console.error('  ✗ Erro:', error.message); return; }
+  if (!data?.length) { console.log('  [IA] Sem debates novos para resumir.'); return; }
+
+  console.log(`  [IA] ${data.length} debates para resumir...`);
+  let total = 0, erros = 0;
+
+  for (const debate of data) {
+    const resumo = await resumir(promptDebate(debate));
+    if (resumo) {
+      await db().from('ar_debates').update({ resumo_ia: resumo }).eq('id', debate.id);
+      total++;
+    } else {
+      erros++;
+    }
+    process.stdout.write(`  [IA] Debates: ${total}/${data.length} resumidos, ${erros} erros\r`);
+  }
+
+  console.log(`\n  [IA] Debates concluído — ${total} resumidos, ${erros} erros`);
+}
+
 // ── Transcrições de Debates ───────────────────────────────────────────────────
 
 export async function obterTranscricoesDebates() {
@@ -135,4 +171,62 @@ export async function obterTranscricoesDebates() {
   }
 
   console.log(`\n  [DAR] Transcrições concluídas — ${total} obtidas, ${erros} erros`);
+}
+
+// ── Intervenções individuais ──────────────────────────────────────────────────
+
+export async function indexarIntervencoes() {
+  console.log('\n  [INT] A indexar intervenções...');
+
+  // Buscar debates com transcrição que ainda não foram indexados
+  // (verifica se já existem intervenções para este debate)
+  const { data: debates, error } = await db()
+    .from('ar_debates')
+    .select('id, assunto, data_debate, url_diario, transcricao')
+    .not('transcricao', 'is', null)
+    .limit(500);
+
+  if (error) { console.error('  ✗ Erro:', error.message); return; }
+  if (!debates?.length) { console.log('  [INT] Sem debates para indexar.'); return; }
+
+  // Descobrir quais debates já foram indexados
+  const { data: jaIndexados } = await db()
+    .from('ar_intervencoes')
+    .select('debate_id')
+    .in('debate_id', debates.map(d => d.id));
+
+  const indexadosSet = new Set((jaIndexados ?? []).map(r => r.debate_id));
+  const porProcessar = debates.filter(d => !indexadosSet.has(d.id));
+
+  console.log(`  [INT] ${porProcessar.length} debates novos para indexar...`);
+  let totalInt = 0, totalDeb = 0;
+
+  for (const debate of porProcessar) {
+    const intervencoes = parsearIntervencoes(debate.transcricao);
+    if (!intervencoes.length) continue;
+
+    const registos = intervencoes.map((iv, i) => ({
+      id:          `${debate.id}_${i}`,
+      debate_id:   debate.id,
+      nome_dep:    iv.nome,
+      partido:     iv.partido,
+      texto:       iv.texto,
+      data_debate: debate.data_debate,
+      assunto:     debate.assunto,
+      url_diario:  debate.url_diario,
+      num_palavras: iv.texto.trim().split(/\s+/).filter(Boolean).length,
+    }));
+
+    const { error: upsertErr } = await db()
+      .from('ar_intervencoes')
+      .upsert(registos, { onConflict: 'id', ignoreDuplicates: true });
+
+    if (!upsertErr) {
+      totalInt += registos.length;
+      totalDeb++;
+    }
+    process.stdout.write(`  [INT] ${totalDeb} debates → ${totalInt} intervenções\r`);
+  }
+
+  console.log(`\n  [INT] Indexação concluída — ${totalDeb} debates, ${totalInt} intervenções`);
 }

@@ -27,6 +27,75 @@ export const ParlamentoProvider = ({ children }) => {
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro]             = useState(null);
 
+  // Pré-carregados no arranque para acesso instantâneo ao clicar num deputado
+  const [perfisMapa, setPerfisMapa]               = useState(new Map());
+  const [intervencoesMapa, setIntervencoesMapa]   = useState(new Map());
+  const [iniciativasMapa, setIniciativasMapa]     = useState(new Map());
+
+  // Flags individuais para saber quando cada recurso terminou
+  const [perfisProntos, setPerfisProntos]             = useState(false);
+  const [intervencoesProntas, setIntervencoesProntas] = useState(false);
+  const [iniciativasProntas, setIniciativasProntas]   = useState(false);
+  const [cena3DPronta, setCena3DPronta]               = useState(false);
+
+  useEffect(() => {
+    const LOTE = 1000;
+
+    const paginar = async (tabela, campos, ordenar) => {
+      const todos = [];
+      for (let i = 0; ; i += LOTE) {
+        const q = supabase.from(tabela).select(campos).range(i, i + LOTE - 1);
+        if (ordenar) q.order(ordenar, { ascending: false });
+        const { data } = await q;
+        if (!data?.length) break;
+        todos.push(...data);
+        if (data.length < LOTE) break;
+      }
+      return todos;
+    };
+
+    // Perfis AR
+    supabase
+      .from('ar_deputados')
+      .select('id, cad_id, nome_parlamentar, nome_completo, partido_sigla, circulo, resumo_ia')
+      .then(({ data }) => {
+        if (!data) return;
+        const mapa = new Map();
+        data.forEach(p => { if (p.nome_parlamentar) mapa.set(p.nome_parlamentar.toLowerCase(), p); });
+        setPerfisMapa(mapa);
+        setPerfisProntos(true);
+      });
+
+    // Intervenções (sem texto — carregado lazily ao expandir)
+    paginar('ar_intervencoes', 'id, debate_id, nome_dep, partido, data_debate, assunto, url_diario, num_palavras', 'data_debate')
+      .then(todas => {
+        const mapa = new Map();
+        todas.forEach(iv => {
+          const key = (iv.nome_dep ?? '').toLowerCase();
+          if (!mapa.has(key)) mapa.set(key, []);
+          mapa.get(key).push(iv);
+        });
+        setIntervencoesMapa(mapa);
+        setIntervencoesProntas(true);
+      });
+
+    // Iniciativas (sem eventos e autores_gp — campos pesados desnecessários para listagem)
+    paginar('ar_iniciativas', 'id, numero, titulo, epigrafe, desc_tipo, tipo, resumo_ia, data_inicio, data_fim, legislatura, autores_dep', 'data_inicio')
+      .then(todas => {
+        const mapa = new Map();
+        todas.forEach(ini => {
+          (ini.autores_dep ?? []).forEach(a => {
+            const cid = a.idCadastro ? String(a.idCadastro) : null;
+            if (!cid) return;
+            if (!mapa.has(cid)) mapa.set(cid, []);
+            mapa.get(cid).push(ini);
+          });
+        });
+        setIniciativasMapa(mapa);
+        setIniciativasProntas(true);
+      });
+  }, []);
+
   useEffect(() => {
     const carregarDeputados = async () => {
       try {
@@ -152,6 +221,11 @@ export const ParlamentoProvider = ({ children }) => {
     posicoes3D,
     carregando,
     erro,
+    perfisMapa,
+    intervencoesMapa,
+    iniciativasMapa,
+    tudoCarregado: !carregando && perfisProntos && intervencoesProntas && iniciativasProntas && cena3DPronta,
+    setCena3DPronta,
     // UI
     deputadoSelecionado,
     partidoDestaque,
@@ -173,6 +247,13 @@ export const ParlamentoProvider = ({ children }) => {
     posicoes3D,
     carregando,
     erro,
+    perfisMapa,
+    intervencoesMapa,
+    iniciativasMapa,
+    perfisProntos,
+    intervencoesProntas,
+    iniciativasProntas,
+    cena3DPronta,
     deputadoSelecionado,
     partidoDestaque,
     intervencaoAberta,

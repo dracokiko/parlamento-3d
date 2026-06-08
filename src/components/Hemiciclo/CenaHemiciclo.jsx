@@ -1,12 +1,25 @@
-import { Canvas } from '@react-three/fiber';
+import { Canvas, useFrame } from '@react-three/fiber';
 import { OrbitControls, PerspectiveCamera, Environment } from '@react-three/drei';
-import { Suspense, useRef, useEffect } from 'react';
+import { Suspense, useRef } from 'react';
 import PropTypes from 'prop-types';
 import { Assento } from './Assento';
 import { EstruturaHemiciclo } from './EstruturaHemiciclo';
 import { useParlamento } from '../../context/ParlamentoContext';
 
-const BG = '#f2ede4';
+/** Sinaliza ao contexto que o Three.js renderizou pelo menos uma frame com deputados. */
+const SinalPronto = () => {
+  const { deputados, setCena3DPronta } = useParlamento();
+  const disparado = useRef(false);
+  useFrame(() => {
+    if (!disparado.current && deputados.length > 0) {
+      disparado.current = true;
+      setCena3DPronta(true);
+    }
+  });
+  return null;
+};
+
+const BG = '#f0f4f8';
 
 const ControladorCamara = ({ controlsRef }) => {
   void controlsRef;
@@ -90,6 +103,7 @@ export const CenaHemiciclo = () => {
 
         {/* Estrutura e assentos */}
         <EstruturaHemiciclo />
+        <SinalPronto />
 
         {deputados.map((deputado) => {
           const pos = posicoes3D.get(deputado.id);

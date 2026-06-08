@@ -13,7 +13,7 @@ class TexturaBoundary extends Component {
 const EmblemaChao = () => {
   const emblema = useTexture('/simbolo-republica.png');
   return (
-    <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.03, -2]}>
+    <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.03, -3]}>
       <planeGeometry args={[4, 4]} />
       <meshStandardMaterial
         map={emblema} transparent alphaTest={0.05}
@@ -22,6 +22,7 @@ const EmblemaChao = () => {
     </mesh>
   );
 };
+
 
 // ─────────────────────────────────────────────────────────────
 // CONFIGURAÇÃO DO BANNER PUBLICITÁRIO
@@ -143,14 +144,15 @@ const EstruturaHemicicloComponent = () => {
         <meshStandardMaterial color={COR_SOALHO} roughness={0.30} metalness={0.08} />
       </mesh>
 
-      {/* Emblema */}
+      {/* Emblema no chão */}
       <TexturaBoundary>
         <Suspense fallback={null}>
           <EmblemaChao />
         </Suspense>
       </TexturaBoundary>
 
-      {/* ── Degraus com riser e nosing ───────────────────────── */}
+
+{/* ── Degraus com riser e nosing ───────────────────────── */}
       {Array.from({ length: NUM_FILAS }).map((_, i) => {
         const raioInt = RAIO_INTERNO + i * ESPACAMENTO_FILA - 0.45;
         const raioExt = RAIO_INTERNO + (i + 1) * ESPACAMENTO_FILA - 0.45;

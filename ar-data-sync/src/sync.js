@@ -3,7 +3,9 @@ import { AR_ENDPOINTS, BATCH_SIZE } from './config.js';
 import { downloadToTemp, streamRecords } from './downloader.js';
 import { NORMALIZADORES } from './processor.js';
 import { upsertBatch, registarLog } from './database.js';
-import { resumirIniciativas, resumirDeputados, obterTranscricoesDebates } from './summarizer.js';
+import { resumirIniciativas, resumirDeputados, resumirDebates, obterTranscricoesDebates, indexarIntervencoes } from './summarizer.js';
+import { crawlerDebatesDAR } from './catalogueCrawler.js';
+import { syncVotacoes } from './votacoesSync.js';
 
 async function sincronizar(recurso) {
   const { url, path: nestedKey } = AR_ENDPOINTS[recurso];
@@ -86,7 +88,21 @@ async function main() {
 
   if (resultados.iniciativas?.ok) await resumirIniciativas();
   if (resultados.deputados?.ok)   await resumirDeputados();
-  if (resultados.debates?.ok)     await obterTranscricoesDebates();
+
+  // Descobrir artigos novos do catálogo DAR (independente da API)
+  await crawlerDebatesDAR();
+
+  // Obter transcrições para todos os debates sem ela (API + catálogo)
+  await obterTranscricoesDebates();
+
+  // Gerar resumos IA para debates com transcrição mas sem resumo
+  await resumirDebates();
+
+  // Indexar intervenções individuais de cada debate
+  await indexarIntervencoes();
+
+  // Extrair votações dos IniEventos das iniciativas já sincronizadas
+  if (resultados.iniciativas?.ok) await syncVotacoes();
 
   // 3. Resultado final
   console.log(`\n${'='.repeat(55)}`);
