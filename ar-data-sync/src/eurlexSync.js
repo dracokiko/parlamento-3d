@@ -71,7 +71,7 @@ async function obterDiretivas() {
   let offset = 0;
 
   while (true) {
-    const bindings = await sparqlPage(offset);
+    const bindings = await comRetry(() => sparqlPage(offset));
 
     for (const b of bindings) {
       const celex = b.celex?.value;
@@ -103,14 +103,14 @@ async function fetchNIM(celex) {
 
   let html;
   try {
-    const res = await fetch(url, {
+    const res = await comRetry(() => fetch(url, {
       headers: {
         Accept:           'text/html,application/xhtml+xml',
         'Accept-Language': 'en-GB,en;q=0.9',
         'User-Agent':      UA,
       },
       signal: AbortSignal.timeout(45_000),
-    });
+    }), 3, 2000);
     if (!res.ok) return vazio();
     html = await res.text();
   } catch {
@@ -192,6 +192,19 @@ function parseDataEU(str) {
 // ─── Utilidades ────────────────────────────────────────────────────────────
 
 const delay = (ms) => new Promise((r) => setTimeout(r, ms));
+
+async function comRetry(fn, retries = 3, delayBase = 3000) {
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      return await fn();
+    } catch (err) {
+      if (attempt === retries) throw err;
+      const wait = delayBase * attempt;
+      console.warn(`  ⚠ Tentativa ${attempt}/${retries} falhou: ${err.message} — aguardar ${wait / 1000}s`);
+      await delay(wait);
+    }
+  }
+}
 
 async function emLotes(items, fn, n) {
   const results = [];

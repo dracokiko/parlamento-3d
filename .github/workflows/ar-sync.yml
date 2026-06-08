@@ -42,3 +42,14 @@ jobs:
           else
             node src/sync.js
           fi
+
+      - name: Notificar falha
+        if: failure()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh issue create \
+            --title "⚠️ AR Sync falhou — $(date -u '+%Y-%m-%d')" \
+            --body "**Workflow:** ${{ github.workflow }}
+          **Data:** $(date -u '+%Y-%m-%d %H:%M UTC')
+          **Ver detalhes:** ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"

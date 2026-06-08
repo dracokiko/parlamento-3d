@@ -31,3 +31,14 @@ jobs:
           SUPABASE_URL:         ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
         run: node src/eurlexSync.js
+
+      - name: Notificar falha
+        if: failure()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh issue create \
+            --title "⚠️ EUR-Lex Sync falhou — $(date -u '+%Y-%m-%d')" \
+            --body "**Workflow:** ${{ github.workflow }}
+          **Data:** $(date -u '+%Y-%m-%d %H:%M UTC')
+          **Ver detalhes:** ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"

@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { Building2, Scale, Database, AlertCircle } from 'lucide-react';
+import { Building2, Scale, Database, AlertCircle, Mail, User } from 'lucide-react';
 
 function Secao({ titulo, icone: Icone, children }) {
   return (
@@ -113,6 +113,28 @@ export function Sobre() {
           />
         </Secao>
 
+
+        <Secao titulo="Draco's Company" icone={User}>
+          <p>
+            O Parlamento 3D é um projeto da <strong>Draco's Company</strong>, uma iniciativa individual
+            criada por um jovem português com o objetivo de tornar a informação parlamentar mais
+            acessível e transparente para todos os cidadãos.
+          </p>
+        </Secao>
+
+        <Secao titulo="Sugestões e contacto" icone={Mail}>
+          <p>
+            Sugestões, correções ou ideias para melhorar esta plataforma são muito bem-vindas.
+            Podes enviá-las para{' '}
+            <a
+              href="mailto:dracoscompany@gmail.com"
+              className="text-blue-400 hover:text-blue-300 transition-colors"
+            >
+              dracoscompany@gmail.com
+            </a>
+            .
+          </p>
+        </Secao>
 
         <div className="mt-10 border-t border-white/5 pt-6 space-y-2 text-center">
           <p className="text-xs text-amber-600/70">
