@@ -1,0 +1,694 @@
+﻿
+ÔòÉÔòÉ NIM PAGE ÔòÉÔòÉ
+HTML: 777566 chars
+
+ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+CONTEXTOS de "17/10/2024 (prazo NIS2)"
+
+[ocorr├¬ncia 1, pos 71790]
+>
+                        <span class="VMIMore nonTransform">Belgium</span>
+                        <span class="VMILess nonTransform">Belgium</span>
+                     </button>
+                  </div>
+                  <div id="BEL_transposition" class="col-sm-4 hidden-xs" aria-expanded="true">17/10/2024</div>
+                  <div class="col-sm-4 visible-xs" aria-expanded="true">
+                     <b>Transposition deadline(s):</b>&nbsp;17/10/2024</div>
+                  <div id="BEL_numOfNims" class="col-sm-4 hidden-xs" aria-expanded="true">
+                     <p class="ViewMoreInfo ntmMore 
+
+[ocorr├¬ncia 2, pos 71940]
+                     </button>
+                  </div>
+                  <div id="BEL_transposition" class="col-sm-4 hidden-xs" aria-expanded="true">17/10/2024</div>
+                  <div class="col-sm-4 visible-xs" aria-expanded="true">
+                     <b>Transposition deadline(s):</b>&nbsp;17/10/2024</div>
+                  <div id="BEL_numOfNims" class="col-sm-4 hidden-xs" aria-expanded="true">
+                     <p class="ViewMoreInfo ntmMore collapsed countryToggle noNimsBtn">
+                        <span class="VMIMore">2</span>
+                        <span class="VMILess">2</span>
+    
+
+[ocorr├¬ncia 3, pos 77814]
+sgInput">┬á</span> into <span id="BEL_MT_msgOutput">┬á</span>.</div>
+                           </div>
+                        </div>
+                     </div>
+                     <div id="BEL_transp" class="transposition" align="center">
+                        <b>Transposition deadline:</b>&nbsp;17/10/2024</div>
+                     <ol>
+                        <li class="BEL_ntm">
+                           <div id="translationPlaceholderWrapper" class="panel hidden">
+                              <p id="translationPlaceholder"/>
+                           </div>
+                           <p>
+     
+
+[ocorr├¬ncia 4, pos 82828]
+                        <span class="VMIMore nonTransform">Bulgaria</span>
+                        <span class="VMILess nonTransform">Bulgaria</span>
+                     </button>
+                  </div>
+                  <div id="BGR_transposition" class="col-sm-4 hidden-xs" aria-expanded="true">17/10/2024</div>
+                  <div class="col-sm-4 visible-xs" aria-expanded="true">
+                     <b>Transposition deadline(s):</b>&nbsp;17/10/2024</div>
+                  <div id="BGR_numOfNims" class="col-sm-4 hidden-xs" aria-expanded="true">
+                     <p class="ViewMoreInfo ntmMore 
+
+[ocorr├¬ncia 5, pos 82978]
+                     </button>
+                  </div>
+                  <div id="BGR_transposition" class="col-sm-4 hidden-xs" aria-expanded="true">17/10/2024</div>
+                  <div class="col-sm-4 visible-xs" aria-expanded="true">
+                     <b>Transposition deadline(s):</b>&nbsp;17/10/2024</div>
+                  <div id="BGR_numOfNims" class="col-sm-4 hidden-xs" aria-expanded="true">
+                     <p class="ViewMoreInfo ntmMore collapsed countryToggle noNimsBtn">
+                        <span class="VMIMore">1</span>
+                        <span class="VMILess">1</span>
+    
+
+[ocorr├¬ncia 6, pos 88852]
+sgInput">┬á</span> into <span id="BGR_MT_msgOutput">┬á</span>.</div>
+                           </div>
+                        </div>
+                     </div>
+                     <div id="BGR_transp" class="transposition" align="center">
+                        <b>Transposition deadline:</b>&nbsp;17/10/2024</div>
+                     <ol>
+                        <li class="BGR_ntm">
+                           <div id="translationPlaceholderWrapper" class="panel hidden">
+                              <p id="translationPlaceholder"/>
+                           </div>
+                           <p>
+     
+
+ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+CONTEXTOS de "transposition"
+
+[ocorr├¬ncia 1, pos 50614]
+s="col-sm-6 col-md-4 col-break-sm">
+         <nav class="MenuBlock ">
+            <p class="BlockTitle" role="heading">National law and case-law</p>
+            <ul class="MenuList">
+               <li class=""><a href="./../../../collection/n-law/mne.html" class="no-arrow" id="mne" title="National transposition">National transposition</a></li>
+               <li class=""><a href="./../../../collection/n-law/n-case-law.html" class="no-arrow" id="n-case-law" title="National case-law">National case-law</a></li>
+               <li class=""><a href="./../../../collection/n-law/jure.html" class="no-arrow" id="J
+
+[ocorr├¬ncia 2, pos 50638]
+-break-sm">
+         <nav class="MenuBlock ">
+            <p class="BlockTitle" role="heading">National law and case-law</p>
+            <ul class="MenuList">
+               <li class=""><a href="./../../../collection/n-law/mne.html" class="no-arrow" id="mne" title="National transposition">National transposition</a></li>
+               <li class=""><a href="./../../../collection/n-law/n-case-law.html" class="no-arrow" id="n-case-law" title="National case-law">National case-law</a></li>
+               <li class=""><a href="./../../../collection/n-law/jure.html" class="no-arrow" id="JURE" title="JURE (Jurisd
+
+[ocorr├¬ncia 3, pos 62664]
+dden" id="selectedTabEnglishTranslationID_his"
+								   value="Procedure">
+						</li>
+					
+	
+	
+	
+	
+	
+	<li class="Selected">	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<a href="./../../../legal-content/EN/NIM/?uri=CELEX:32022L2555"                aria-label="">
+	National transposition
+	</a>
+
+	
+							<input type="hidden" id="selectedTabEnglishTranslationID_nim"
+								   value="National transposition">
+						</li>
+					
+	
+	
+	
+	<li class="legissumTab">	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<a href="./../../../legal-content/EN/LSU/?uri=CELEX:32022L25
+
+[ocorr├¬ncia 4, pos 62783]
+lected">	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<a href="./../../../legal-content/EN/NIM/?uri=CELEX:32022L2555"                aria-label="">
+	National transposition
+	</a>
+
+	
+							<input type="hidden" id="selectedTabEnglishTranslationID_nim"
+								   value="National transposition">
+						</li>
+					
+	
+	
+	
+	<li class="legissumTab">	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<a href="./../../../legal-content/EN/LSU/?uri=CELEX:32022L2555"                aria-label="">
+	Document summary
+	</a>
+
+	
+							<input type="hidden" id="selectedTabEnglishTranslat
+
+[ocorr├¬ncia 5, pos 67097]
+     <i class="fa fa-angle-right" aria-hidden="true">&nbsp;</i>Title and reference</button>
+         </p>
+      </div>
+      <div id="PP1Contents" class="panel-collapse collapse in" role="tabpanel"
+           aria-labelledby="PP1">
+         <div class="panel-body" lang="EN">
+            <p>National transposition measures communicated by the Member States concerning:</p>
+            <p>
+               <strong>Directive (EU) 2022/2555 of the European Parliament and of the Council of 14┬áDecember 2022 on measures for a high common level of cybersecurity across the Union, amending Regulation (EU) No┬á910/2014 an
+
+[ocorr├¬ncia 6, pos 67947]
+, ES, CS, DA, DE, ET, EL, EN, FR, GA, HR, IT, LV, LT, HU, MT, NL, PL, PT, RO, SK, SL, FI, SV)<br xmlns=""/>
+               </em>
+            </p><!-- Editorial content start -->
+		<div class="EurlexEditorial">
+	
+	
+
+
+
+
+
+
+
+
+
+
+
+
+	
+	
+
+<!-- 22/11/2016 National implementing measures >National transposition measures.
+    <p>
+      <img src="../../../en_GB/static/images/validation/warning.png" />
+      <strong>The national transposition measures are being updated. During this period, search results from this collection may be unreliable.</strong>
+    </p>-->
+
+
+<!--<p>The member states bear sole respons
+
+ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+CONTEXTOS de "Portugal"
+
+[ocorr├¬ncia 1, pos 612019]
+PRT"
+                             data-toggle="collapse"
+                             aria-controls="PRT"
+                             aria-expanded="false">
+                        <i class="fa fa-angle-right" aria-hidden="true">&nbsp;</i>
+                        <span class="VMIMore nonTransform">Portugal</span>
+                        <span class="VMILess nonTransform">Portugal</span>
+                     </button>
+                  </div>
+                  <div id="PRT_transposition" class="col-sm-4 hidden-xs" aria-expanded="true">17/10/2024</div>
+                  <div class="col-sm-4 visible-xs"
+
+[ocorr├¬ncia 2, pos 612094]
+           aria-controls="PRT"
+                             aria-expanded="false">
+                        <i class="fa fa-angle-right" aria-hidden="true">&nbsp;</i>
+                        <span class="VMIMore nonTransform">Portugal</span>
+                        <span class="VMILess nonTransform">Portugal</span>
+                     </button>
+                  </div>
+                  <div id="PRT_transposition" class="col-sm-4 hidden-xs" aria-expanded="true">17/10/2024</div>
+                  <div class="col-sm-4 visible-xs" aria-expanded="true">
+                     <b>Transposition deadline(s):</
+
+ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+CONTEXTOS de "deadline"
+
+[ocorr├¬ncia 1, pos 70838]
+                        onclick="$('.countryPanel').addClass('in').removeAttr('style');               $('.countryToggle').removeClass('collapsed');                          ">Expand all</a>
+                  </p>
+                  <p class="col-sm-4 hidden-xs">
+                     <b>Transposition deadline(s)</b>
+                  </p>
+                  <p class="col-sm-4 hidden-xs">
+                     <b>Number of measures</b>
+                  </p>
+               </div>
+               <div class="col-sm-12 ntmRow">
+                  <div class="col-sm-4">
+                     <button class="btn b
+
+[ocorr├¬ncia 2, pos 71918]
+sform">Belgium</span>
+                     </button>
+                  </div>
+                  <div id="BEL_transposition" class="col-sm-4 hidden-xs" aria-expanded="true">17/10/2024</div>
+                  <div class="col-sm-4 visible-xs" aria-expanded="true">
+                     <b>Transposition deadline(s):</b>&nbsp;17/10/2024</div>
+                  <div id="BEL_numOfNims" class="col-sm-4 hidden-xs" aria-expanded="true">
+                     <p class="ViewMoreInfo ntmMore collapsed countryToggle noNimsBtn">
+                        <span class="VMIMore">2</span>
+                        <span class
+
+[ocorr├¬ncia 3, pos 77795]
+ <span id="BEL_MT_msgInput">┬á</span> into <span id="BEL_MT_msgOutput">┬á</span>.</div>
+                           </div>
+                        </div>
+                     </div>
+                     <div id="BEL_transp" class="transposition" align="center">
+                        <b>Transposition deadline:</b>&nbsp;17/10/2024</div>
+                     <ol>
+                        <li class="BEL_ntm">
+                           <div id="translationPlaceholderWrapper" class="panel hidden">
+                              <p id="translationPlaceholder"/>
+                           </div>
+               
+
+[ocorr├¬ncia 4, pos 82956]
+form">Bulgaria</span>
+                     </button>
+                  </div>
+                  <div id="BGR_transposition" class="col-sm-4 hidden-xs" aria-expanded="true">17/10/2024</div>
+                  <div class="col-sm-4 visible-xs" aria-expanded="true">
+                     <b>Transposition deadline(s):</b>&nbsp;17/10/2024</div>
+                  <div id="BGR_numOfNims" class="col-sm-4 hidden-xs" aria-expanded="true">
+                     <p class="ViewMoreInfo ntmMore collapsed countryToggle noNimsBtn">
+                        <span class="VMIMore">1</span>
+                        <span class
+
+[ocorr├¬ncia 5, pos 88833]
+ <span id="BGR_MT_msgInput">┬á</span> into <span id="BGR_MT_msgOutput">┬á</span>.</div>
+                           </div>
+                        </div>
+                     </div>
+                     <div id="BGR_transp" class="transposition" align="center">
+                        <b>Transposition deadline:</b>&nbsp;17/10/2024</div>
+                     <ol>
+                        <li class="BGR_ntm">
+                           <div id="translationPlaceholderWrapper" class="panel hidden">
+                              <p id="translationPlaceholder"/>
+                           </div>
+               
+
+[ocorr├¬ncia 6, pos 92106]
+sform">Czechia</span>
+                     </button>
+                  </div>
+                  <div id="CZE_transposition" class="col-sm-4 hidden-xs" aria-expanded="true">17/10/2024</div>
+                  <div class="col-sm-4 visible-xs" aria-expanded="true">
+                     <b>Transposition deadline(s):</b>&nbsp;17/10/2024</div>
+                  <div id="CZE_numOfNims" class="col-sm-4 hidden-xs" aria-expanded="true">
+                     <p class="ViewMoreInfo ntmMore collapsed countryToggle noNimsBtn">
+                        <span class="VMIMore">83</span>
+                        <span clas
+
+ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+JSON em <script> com "portugal"
+  (n├úo encontrado)
+
+ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+JSON em <script> com "transpos"
+  (n├úo encontrado)
+
+ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+JSON em <script> com "17/10"
+  (n├úo encontrado)
+
+
+ÔòÉÔòÉ ALL PAGE ÔòÉÔòÉ
+HTML: 1007715 chars
+
+ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+CONTEXTOS de "17/10/2024 (prazo NIS2)"
+
+[ocorr├¬ncia 1, pos 180725]
+.org/1999/xhtml">Deadline: </dt>
+               <dd xmlns="http://www.w3.org/1999/xhtml">16/01/2028; <span lang="en">See Art 38.2 </span>
+               </dd>
+               <dt xmlns="http://www.w3.org/1999/xhtml">Date of transposition: </dt>
+               <dd xmlns="http://www.w3.org/1999/xhtml">17/10/2024; <span lang="en">Adoption See Art 41.1 </span>
+               </dd>
+               <dt xmlns="http://www.w3.org/1999/xhtml">Date of transposition: </dt>
+               <dd xmlns="http://www.w3.org/1999/xhtml">18/10/2024; <span lang="en">Application See Art 41.1 </span>
+               </dd>
+        
+
+ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+CONTEXTOS de "transposition"
+
+[ocorr├¬ncia 1, pos 156312]
+s="col-sm-6 col-md-4 col-break-sm">
+         <nav class="MenuBlock ">
+            <p class="BlockTitle" role="heading">National law and case-law</p>
+            <ul class="MenuList">
+               <li class=""><a href="./../../../collection/n-law/mne.html" class="no-arrow" id="mne" title="National transposition">National transposition</a></li>
+               <li class=""><a href="./../../../collection/n-law/n-case-law.html" class="no-arrow" id="n-case-law" title="National case-law">National case-law</a></li>
+               <li class=""><a href="./../../../collection/n-law/jure.html" class="no-arrow" id="J
+
+[ocorr├¬ncia 2, pos 156336]
+-break-sm">
+         <nav class="MenuBlock ">
+            <p class="BlockTitle" role="heading">National law and case-law</p>
+            <ul class="MenuList">
+               <li class=""><a href="./../../../collection/n-law/mne.html" class="no-arrow" id="mne" title="National transposition">National transposition</a></li>
+               <li class=""><a href="./../../../collection/n-law/n-case-law.html" class="no-arrow" id="n-case-law" title="National case-law">National case-law</a></li>
+               <li class=""><a href="./../../../collection/n-law/jure.html" class="no-arrow" id="JURE" title="JURE (Jurisd
+
+[ocorr├¬ncia 3, pos 168353]
+	<input type="hidden" id="selectedTabEnglishTranslationID_his"
+								   value="Procedure">
+						</li>
+					
+	
+	
+	
+	
+	
+	<li >	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<a href="./../../../legal-content/EN/NIM/?uri=CELEX:32022L2555"                aria-label="">
+	National transposition
+	</a>
+
+	
+							<input type="hidden" id="selectedTabEnglishTranslationID_nim"
+								   value="National transposition">
+						</li>
+					
+	
+	
+	
+	<li class="legissumTab">	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<a href="./../../../legal-content/EN/LSU/?uri=CELEX:32022L25
+
+[ocorr├¬ncia 4, pos 168472]
+	
+	<li >	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<a href="./../../../legal-content/EN/NIM/?uri=CELEX:32022L2555"                aria-label="">
+	National transposition
+	</a>
+
+	
+							<input type="hidden" id="selectedTabEnglishTranslationID_nim"
+								   value="National transposition">
+						</li>
+					
+	
+	
+	
+	<li class="legissumTab">	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<a href="./../../../legal-content/EN/LSU/?uri=CELEX:32022L2555"                aria-label="">
+	Document summary
+	</a>
+
+	
+							<input type="hidden" id="selectedTabEnglishTranslat
+
+[ocorr├¬ncia 5, pos 180648]
+e Art 40 </span>
+               </dd>
+               <dt xmlns="http://www.w3.org/1999/xhtml">Deadline: </dt>
+               <dd xmlns="http://www.w3.org/1999/xhtml">16/01/2028; <span lang="en">See Art 38.2 </span>
+               </dd>
+               <dt xmlns="http://www.w3.org/1999/xhtml">Date of transposition: </dt>
+               <dd xmlns="http://www.w3.org/1999/xhtml">17/10/2024; <span lang="en">Adoption See Art 41.1 </span>
+               </dd>
+               <dt xmlns="http://www.w3.org/1999/xhtml">Date of transposition: </dt>
+               <dd xmlns="http://www.w3.org/1999/xhtml">18/10/2024; <spa
+
+[ocorr├¬ncia 6, pos 180868]
+          </dd>
+               <dt xmlns="http://www.w3.org/1999/xhtml">Date of transposition: </dt>
+               <dd xmlns="http://www.w3.org/1999/xhtml">17/10/2024; <span lang="en">Adoption See Art 41.1 </span>
+               </dd>
+               <dt xmlns="http://www.w3.org/1999/xhtml">Date of transposition: </dt>
+               <dd xmlns="http://www.w3.org/1999/xhtml">18/10/2024; <span lang="en">Application See Art 41.1 </span>
+               </dd>
+               <dt xmlns="http://www.w3.org/1999/xhtml">Date of end of validity: </dt>
+               <dd xmlns="http://www.w3.org/1999/xhtml">No end date
+
+
+Fim.

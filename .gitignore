@@ -11,3 +11,5 @@ dist/
 ar-data-sync/.env
 ar-data-sync/node_modules/
 ar-data-sync/*.json.tmp
+
+.vercel
