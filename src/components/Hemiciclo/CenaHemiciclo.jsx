@@ -37,11 +37,13 @@ export const CenaHemiciclo = () => {
   // Em mobile portrait (aspect ~0.47) o FOV horizontal derivado do vertical FOV
   // é muito estreito, fazendo o hemiciclo (~35 unidades de largura) ficar cortado.
   // A câmara recua para z=44 e usa FOV=90 para cobrir os ~41 unidades necessárias.
-  const cameraPos = isMobile ? [0, 14, 38] : [0, 12, 24];
-  const cameraFov = isMobile ? 90         : 48;
-  const maxDist   = isMobile ? 70         : 42;
-  const fogNear   = isMobile ? 63         : 30;
-  const fogFar    = isMobile ? 170        : 90;
+  // Camera mobile muito mais próxima (z=26) para preencher as bordas laterais.
+  // Y=18 eleva a câmara para que o hemiciclo caia para a borda inferior do ecrã portrait.
+  const cameraPos = isMobile ? [0, 18, 26] : [0, 12, 24];
+  const cameraFov = isMobile ? 90          : 48;
+  const maxDist   = isMobile ? 55          : 42;
+  const fogNear   = isMobile ? 50          : 30;
+  const fogFar    = isMobile ? 150         : 90;
 
   return (
     <Canvas
