@@ -34,18 +34,17 @@ export const CenaHemiciclo = () => {
   const { deputados, posicoes3D } = useParlamento();
   const isMobile = useIsMobile();
 
-  // Em mobile portrait (aspect ~0.47) o FOV horizontal derivado do vertical FOV
-  // é muito estreito, fazendo o hemiciclo (~35 unidades de largura) ficar cortado.
-  // A câmara recua para z=44 e usa FOV=90 para cobrir os ~41 unidades necessárias.
-  // Camera mobile: z=26 preenche as bordas laterais; Y=22 desce o hemiciclo para a borda inferior.
-  // Target Y=18 (acima do hemiciclo) mantém a câmara quase horizontal e respeita maxPolarAngle.
-  const cameraPos    = isMobile ? [0, 22, 26]  : [0, 12, 24];
-  const cameraFov    = isMobile ? 90            : 48;
-  const maxDist      = isMobile ? 55            : 42;
-  const fogNear      = isMobile ? 50            : 30;
-  const fogFar       = isMobile ? 150           : 90;
-  const orbitTarget  = isMobile ? [0, 18, -16]  : [0, 10, -16];
-  const assentoScale = isMobile ? 1.3           : 1;
+  // Mobile: a cena inteira é escalada 1.4× — aumenta posições E geometria (espaçamento + tamanho).
+  // Câmara em Y=36 desce o hemiciclo para a borda inferior do ecrã portrait.
+  // Target Y=31 mantém a câmara quase horizontal respeitando maxPolarAngle (85.7°).
+  // z=46 com fov=90 e aspect≈0.47 mostra ~43u de largura → cobre as filas A–E (1.4× = 19.9u).
+  const sceneScale   = isMobile ? 1.4           : 1;
+  const cameraPos    = isMobile ? [0, 36, 46]   : [0, 12, 24];
+  const cameraFov    = isMobile ? 90             : 48;
+  const maxDist      = isMobile ? 70             : 42;
+  const fogNear      = isMobile ? 60             : 30;
+  const fogFar       = isMobile ? 170            : 90;
+  const orbitTarget  = isMobile ? [0, 31, -16]   : [0, 10, -16];
 
   return (
     <Canvas
@@ -116,23 +115,24 @@ export const CenaHemiciclo = () => {
         {/* Luz quente da tribuna (fundo da cena) */}
         <pointLight position={[0, 4, -14]} intensity={1.2} color="#ffdea0" distance={28} decay={2} />
 
-        {/* Estrutura e assentos */}
-        <EstruturaHemiciclo />
-        <SinalPronto />
+        {/* Estrutura e assentos — grupo escalado para mobile */}
+        <group scale={sceneScale}>
+          <EstruturaHemiciclo />
+          <SinalPronto />
 
-        {deputados.map((deputado) => {
-          const pos = posicoes3D.get(deputado.id);
-          if (!pos) return null;
-          return (
-            <Assento
-              key={deputado.id}
-              deputado={deputado}
-              position={pos.position}
-              rotation={pos.rotation}
-              scale={assentoScale}
-            />
-          );
-        })}
+          {deputados.map((deputado) => {
+            const pos = posicoes3D.get(deputado.id);
+            if (!pos) return null;
+            return (
+              <Assento
+                key={deputado.id}
+                deputado={deputado}
+                position={pos.position}
+                rotation={pos.rotation}
+              />
+            );
+          })}
+        </group>
 
       </Suspense>
     </Canvas>
