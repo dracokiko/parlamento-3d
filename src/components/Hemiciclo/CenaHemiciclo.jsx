@@ -5,6 +5,7 @@ import PropTypes from 'prop-types';
 import { Assento } from './Assento';
 import { EstruturaHemiciclo } from './EstruturaHemiciclo';
 import { useParlamento } from '../../context/ParlamentoContext';
+import { useIsMobile } from '../../hooks/useIsMobile';
 
 /** Sinaliza ao contexto que o Three.js renderizou pelo menos uma frame com deputados. */
 const SinalPronto = () => {
@@ -31,6 +32,16 @@ ControladorCamara.propTypes = { controlsRef: PropTypes.object.isRequired };
 export const CenaHemiciclo = () => {
   const controlsRef = useRef();
   const { deputados, posicoes3D } = useParlamento();
+  const isMobile = useIsMobile();
+
+  // Em mobile portrait (aspect ~0.47) o FOV horizontal derivado do vertical FOV
+  // é muito estreito, fazendo o hemiciclo (~35 unidades de largura) ficar cortado.
+  // A câmara recua para z=44 e usa FOV=90 para cobrir os ~41 unidades necessárias.
+  const cameraPos = isMobile ? [0, 16, 44] : [0, 12, 24];
+  const cameraFov = isMobile ? 90        : 48;
+  const maxDist   = isMobile ? 80        : 42;
+  const fogNear   = isMobile ? 70        : 30;
+  const fogFar    = isMobile ? 180       : 90;
 
   return (
     <Canvas
@@ -45,14 +56,14 @@ export const CenaHemiciclo = () => {
         <color attach="background" args={[BG]} />
 
         {/* Névoa suave para dar profundidade */}
-        <fog attach="fog" color={BG} near={30} far={90} />
+        <fog attach="fog" color={BG} near={fogNear} far={fogFar} />
 
         <PerspectiveCamera
           makeDefault
-          position={[0, 12, 24]}
-          fov={48}
+          position={cameraPos}
+          fov={cameraFov}
           near={0.1}
-          far={150}
+          far={200}
         />
 
         <OrbitControls
@@ -60,7 +71,7 @@ export const CenaHemiciclo = () => {
           enableDamping
           dampingFactor={0.08}
           minDistance={10}
-          maxDistance={42}
+          maxDistance={maxDist}
           maxPolarAngle={Math.PI / 2.1}
           target={[0, 10, -16]}
           enableRotate={false}
