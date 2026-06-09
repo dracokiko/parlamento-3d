@@ -13,7 +13,7 @@ import { useParlamento } from '../../context/ParlamentoContext';
  * Passar um objeto literal causa "Cannot read properties of undefined (reading 'label')"
  * dentro do reconciler do R3F.
  */
-const AssentoComponent = ({ deputado, position, rotation }) => {
+const AssentoComponent = ({ deputado, position, rotation, scale = 1 }) => {
   const meshRef = useRef();
   // Vector3 reutilizável como alvo da interpolação
   const escalaAlvo = useRef(new THREE.Vector3(1, 1, 1));
@@ -66,7 +66,7 @@ const AssentoComponent = ({ deputado, position, rotation }) => {
   };
 
   return (
-    <group position={position} rotation={rotation}>
+    <group position={position} rotation={rotation} scale={scale}>
       {/* Grupo escalável — hover e select animam a cadeira inteira */}
       <group ref={meshRef}>
         {/* Assento (seat pad) */}
@@ -129,7 +129,8 @@ AssentoComponent.propTypes = {
     taxaPresenca:   PropTypes.number,
   }).isRequired,
   position: PropTypes.arrayOf(PropTypes.number).isRequired,
-  rotation:  PropTypes.arrayOf(PropTypes.number).isRequired
+  rotation:  PropTypes.arrayOf(PropTypes.number).isRequired,
+  scale:     PropTypes.number,
 };
 
 export const Assento = memo(AssentoComponent);

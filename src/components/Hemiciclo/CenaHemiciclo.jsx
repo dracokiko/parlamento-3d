@@ -37,13 +37,15 @@ export const CenaHemiciclo = () => {
   // Em mobile portrait (aspect ~0.47) o FOV horizontal derivado do vertical FOV
   // é muito estreito, fazendo o hemiciclo (~35 unidades de largura) ficar cortado.
   // A câmara recua para z=44 e usa FOV=90 para cobrir os ~41 unidades necessárias.
-  // Camera mobile muito mais próxima (z=26) para preencher as bordas laterais.
-  // Y=18 eleva a câmara para que o hemiciclo caia para a borda inferior do ecrã portrait.
-  const cameraPos = isMobile ? [0, 18, 26] : [0, 12, 24];
-  const cameraFov = isMobile ? 90          : 48;
-  const maxDist   = isMobile ? 55          : 42;
-  const fogNear   = isMobile ? 50          : 30;
-  const fogFar    = isMobile ? 150         : 90;
+  // Camera mobile: z=26 preenche as bordas laterais; Y=22 desce o hemiciclo para a borda inferior.
+  // Target Y=18 (acima do hemiciclo) mantém a câmara quase horizontal e respeita maxPolarAngle.
+  const cameraPos    = isMobile ? [0, 22, 26]  : [0, 12, 24];
+  const cameraFov    = isMobile ? 90            : 48;
+  const maxDist      = isMobile ? 55            : 42;
+  const fogNear      = isMobile ? 50            : 30;
+  const fogFar       = isMobile ? 150           : 90;
+  const orbitTarget  = isMobile ? [0, 18, -16]  : [0, 10, -16];
+  const assentoScale = isMobile ? 1.3           : 1;
 
   return (
     <Canvas
@@ -75,7 +77,7 @@ export const CenaHemiciclo = () => {
           minDistance={10}
           maxDistance={maxDist}
           maxPolarAngle={Math.PI / 2.1}
-          target={[0, 10, -16]}
+          target={orbitTarget}
           enableRotate={false}
           enablePan={false}
           enableZoom={false}
@@ -127,6 +129,7 @@ export const CenaHemiciclo = () => {
               deputado={deputado}
               position={pos.position}
               rotation={pos.rotation}
+              scale={assentoScale}
             />
           );
         })}
