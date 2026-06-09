@@ -1,19 +1,19 @@
 import { Suspense, useState, useEffect } from 'react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Link, useLocation } from 'react-router-dom';
+import { Menu, X } from 'lucide-react';
 import { ParlamentoProvider, useParlamento } from './context/ParlamentoContext';
 import { CenaHemiciclo } from './components/Hemiciclo/CenaHemiciclo';
 import { LegendaPartidos } from './components/Hemiciclo/LegendaPartidos';
 import { ControlosCamara } from './components/Hemiciclo/ControlosCamara';
 import { PainelDeputado } from './components/PainelDeputado/PainelDeputado';
-import { DetalheIntervencao } from './components/IntervencaoView/DetalheIntervencao';
 import { ModalTranscricao } from './components/IntervencaoView/ModalTranscricao';
-import { LoadingScene } from './components/UI/LoadingScene';
 import { TooltipDeputado, CoatOfArmsAR } from './components/UI/TooltipDeputado';
 import { Header } from './components/UI/Header';
 import { PesquisaDeputado } from './components/UI/PesquisaDeputado';
 import { DiretivasUE } from './pages/DiretivasUE';
 import { Votacoes } from './pages/Votacoes';
 import { Sobre } from './pages/Sobre';
+import { useIsMobile } from './hooks/useIsMobile';
 
 const MENSAGENS = [
   'A verificar se há quórum...',
@@ -38,7 +38,6 @@ const MENSAGENS = [
   'A garantir que a tribuna está bem aparafusada...',
 ];
 
-/** Ecrã de loading que cobre tudo até todos os recursos estarem prontos. */
 const TelaCarregamento = () => {
   const { tudoCarregado } = useParlamento();
   const [idx, setIdx] = useState(() => Math.floor(Math.random() * MENSAGENS.length));
@@ -74,7 +73,6 @@ const TelaCarregamento = () => {
   );
 };
 
-/** Hemiciclo 3D — renderiza sempre em background, fica pronto quando o loading desaparece. */
 const BlocoHemiciclo = () => {
   const { erro } = useParlamento();
   if (erro) return (
@@ -89,38 +87,124 @@ const BlocoHemiciclo = () => {
   );
 };
 
-/**
- * Renderiza a área de informação (painel do deputado / intervenção)
- * apenas quando há um deputado selecionado. Quando retorna null,
- * a canvas 3D expande-se para ocupar toda a altura disponível.
- */
+/** Desktop only: painel lateral + canvas sobreposto quando há deputado selecionado. */
 const BlocoInfo = () => {
   const { deputadoSelecionado } = useParlamento();
-  if (!deputadoSelecionado) return null;
+  const isMobile = useIsMobile();
+  if (!deputadoSelecionado || isMobile) return null;
   return (
     <div className="relative h-screen w-full overflow-hidden">
-  {/* O Canvas ocupa sempre 100% do espaço, nunca é encolhido */}
-  <CenaHemiciclo />
-
-  {/* O painel é injetado por cima, sem mexer no tamanho do Canvas */}
-  {deputadoSelecionado && <PainelDeputado />}
-</div>
+      <CenaHemiciclo />
+      <PainelDeputado />
+    </div>
   );
 };
 
-/** Página do hemiciclo 3D — layout com sidebar. */
+/** Mobile only: renderiza o PainelDeputado quando há deputado selecionado. */
+const MobilePainel = () => {
+  const { deputadoSelecionado } = useParlamento();
+  const isMobile = useIsMobile();
+  if (!isMobile || !deputadoSelecionado) return null;
+  return <PainelDeputado />;
+};
+
+const NAV_LINKS = [
+  { to: '/',             label: 'Hemiciclo'    },
+  { to: '/votacoes',     label: 'Votações'     },
+  { to: '/diretivas-eu', label: 'Diretivas UE' },
+  { to: '/sobre',        label: 'Sobre'        },
+];
+
 function HemicicloPage() {
+  const [drawerAberto, setDrawerAberto] = useState(false);
+  const { pathname } = useLocation();
+
   return (
     <ParlamentoProvider>
-      <div className="flex w-screen h-screen overflow-hidden" style={{ background: '#f0f4f8' }}>
 
-        {/* ── Painel esquerdo ────────────────────────────────── */}
-        <aside className="w-64 h-full flex flex-col shrink-0 bg-[#16213e] border-r border-white/10 z-10">
+      {/* ── Barra topo mobile ──────────────────────────────────── */}
+      <div className="md:hidden fixed top-0 left-0 right-0 z-40 flex items-center gap-3 px-4 py-3 bg-[#16213e] border-b border-white/10">
+        <button
+          onClick={() => setDrawerAberto(true)}
+          className="text-gray-300 hover:text-white transition-colors p-0.5"
+          aria-label="Abrir menu"
+        >
+          <Menu size={22} />
+        </button>
+        <img src="/Draco_sem_background.png" alt="" style={{ width: '22px', height: 'auto' }} />
+        <span className="text-white text-sm font-semibold flex-1 truncate">Parlamento 3D</span>
+      </div>
+
+      {/* ── Drawer mobile ──────────────────────────────────────── */}
+      {drawerAberto && (
+        <div
+          className="md:hidden fixed inset-0 z-50"
+          onClick={() => setDrawerAberto(false)}
+        >
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+          <aside
+            className="absolute left-0 top-0 h-full w-72 bg-[#16213e] flex flex-col border-r border-white/10"
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Cabeçalho do drawer */}
+            <div className="flex items-center gap-3 px-4 py-4 border-b border-white/10 shrink-0">
+              <img src="/Draco_sem_background.png" alt="" style={{ width: '26px', height: 'auto' }} />
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-semibold text-white leading-tight">Assembleia da República</p>
+                <span className="text-[11px] text-gray-400">XVII Legislatura</span>
+              </div>
+              <button
+                onClick={() => setDrawerAberto(false)}
+                className="text-gray-400 hover:text-white transition-colors p-1"
+                aria-label="Fechar menu"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Navegação */}
+            <nav className="px-2 py-2 border-b border-white/5 shrink-0 space-y-0.5">
+              {NAV_LINKS.map(({ to, label }) => (
+                <Link
+                  key={to}
+                  to={to}
+                  onClick={() => setDrawerAberto(false)}
+                  className={`block px-3 py-2 rounded-md text-xs font-medium transition-colors ${
+                    pathname === to
+                      ? 'bg-blue-600/20 text-blue-300 border border-blue-600/30'
+                      : 'text-gray-300 hover:text-white hover:bg-white/5 border border-transparent'
+                  }`}
+                >
+                  {label}
+                </Link>
+              ))}
+            </nav>
+
+            {/* Legenda partidos */}
+            <div className="flex-1 overflow-y-auto">
+              <LegendaPartidos />
+            </div>
+
+            <div className="px-4 py-2.5 border-t border-white/5 shrink-0">
+              <p className="text-[10px] text-gray-600 leading-relaxed">
+                Informação não oficial. Os dados podem estar incompletos ou desatualizados.
+              </p>
+            </div>
+          </aside>
+        </div>
+      )}
+
+      {/* ── Layout principal ────────────────────────────────────── */}
+      <div
+        className="flex w-screen overflow-hidden"
+        style={{ background: '#f0f4f8', height: '100dvh' }}
+      >
+        {/* Sidebar — só desktop */}
+        <aside className="hidden md:flex w-64 h-full flex-col shrink-0 bg-[#16213e] border-r border-white/10 z-10">
           <Header />
           <div className="flex-1 overflow-y-auto">
             <LegendaPartidos />
           </div>
-          {/* Disclaimer */}
           <div className="px-4 py-2.5 border-t border-white/5 shrink-0">
             <p className="text-[10px] text-gray-600 leading-relaxed">
               Informação não oficial. Os dados podem estar incompletos ou desatualizados.
@@ -129,34 +213,34 @@ function HemicicloPage() {
           </div>
         </aside>
 
-        {/* ── Painel direito: info + hemiciclo ──────────────── */}
-        <div className="flex-1 h-full flex flex-col overflow-hidden" style={{ background: '#f0f4f8' }}>
-
-          {/* Área superior: painel do deputado (só existe quando há seleção) */}
+        {/* Área principal */}
+        <div
+          className="flex-1 h-full flex flex-col overflow-hidden pt-[52px] md:pt-0"
+          style={{ background: '#f0f4f8' }}
+        >
+          {/* Desktop: painel do deputado sobreposto ao canvas */}
           <BlocoInfo />
 
-          {/* Área inferior: hemiciclo 3D — cresce para ocupar tudo */}
+          {/* Canvas 3D — ocupa todo o espaço restante */}
           <div className="relative flex-1 min-h-0">
             <BlocoHemiciclo />
             <ControlosCamara />
-            {/* Pesquisa flutuante — canto superior direito */}
-            <div className="absolute top-4 right-4 z-20">
+            {/* Pesquisa flutuante */}
+            <div className="absolute top-3 right-3 z-20">
               <PesquisaDeputado />
             </div>
           </div>
 
-          {/* Modal transcrição — sobrepõe tudo */}
           <ModalTranscricao />
         </div>
-
       </div>
 
-      {/* Coat of arms — aparece quando nenhum deputado está em hover */}
-      <CoatOfArmsAR />
-      {/* Tooltip de hover — substitui o coat of arms quando há hover */}
-      <TooltipDeputado />
+      {/* Mobile: painel do deputado como bottom sheet */}
+      <MobilePainel />
 
-      {/* Loading — cobre tudo até estar pronto, depois desaparece com fade */}
+      {/* Coat of arms — oculto em mobile */}
+      <CoatOfArmsAR />
+      <TooltipDeputado />
       <TelaCarregamento />
     </ParlamentoProvider>
   );

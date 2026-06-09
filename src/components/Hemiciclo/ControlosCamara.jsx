@@ -17,7 +17,7 @@ export const ControlosCamara = () => {
   };
 
   return (
-    <div className="absolute top-4 right-4 z-10 flex flex-col gap-2">
+    <div className="absolute bottom-4 left-3 z-10 flex flex-col gap-2">
       <button
         onClick={handleReset}
         className="bg-white/95 backdrop-blur-sm hover:bg-gray-50 p-2 rounded-lg shadow-lg transition-colors"
@@ -39,16 +39,19 @@ export const ControlosCamara = () => {
       </button>
 
       {mostrarAjuda && (
-        <div className="bg-white/95 backdrop-blur-sm rounded-lg shadow-lg p-3 w-64 text-sm text-gray-700 space-y-2">
+        <div className="bg-white/95 backdrop-blur-sm rounded-lg shadow-lg p-3 w-56 md:w-64 text-sm text-gray-700 space-y-2">
           <h4 className="font-semibold flex items-center gap-1">
             <Maximize2 size={14} /> Como navegar
           </h4>
           <ul className="text-xs space-y-1 list-disc list-inside">
-            <li><strong>Arrastar com botão esquerdo:</strong> rodar a vista</li>
-            <li><strong>Arrastar com botão direito:</strong> mover (pan)</li>
-            <li><strong>Roda do rato:</strong> zoom in/out</li>
-            <li><strong>Clicar num assento:</strong> ver perfil do deputado</li>
-            <li><strong>Clicar num partido na legenda:</strong> focar nesse grupo</li>
+            <li className="md:hidden"><strong>Um dedo:</strong> rodar a vista</li>
+            <li className="md:hidden"><strong>Dois dedos:</strong> zoom e pan</li>
+            <li className="md:hidden"><strong>Toque num assento:</strong> ver perfil do deputado</li>
+            <li className="hidden md:list-item"><strong>Arrastar com botão esquerdo:</strong> rodar a vista</li>
+            <li className="hidden md:list-item"><strong>Arrastar com botão direito:</strong> mover (pan)</li>
+            <li className="hidden md:list-item"><strong>Roda do rato:</strong> zoom in/out</li>
+            <li className="hidden md:list-item"><strong>Clicar num assento:</strong> ver perfil do deputado</li>
+            <li className="hidden md:list-item"><strong>Clicar num partido na legenda:</strong> focar nesse grupo</li>
           </ul>
         </div>
       )}

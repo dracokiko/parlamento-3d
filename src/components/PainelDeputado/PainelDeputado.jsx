@@ -6,16 +6,15 @@ import { partidos } from '../../data/mockPartidos';
 import { obterIniciais } from '../../utils/formatters';
 import { useArDeputado } from '../../hooks/useArDeputado';
 import { useIntervencoesDeputado } from '../../hooks/useIntervencoesDeputado';
+import { useIsMobile } from '../../hooks/useIsMobile';
 import { ModalIniciativa } from './ModalIniciativa';
 import { ModalDebate } from './ModalDebate';
 
-// ── Aba activa ────────────────────────────────────────────────
 const ABAS = [
   { id: 'iniciativas',  label: 'Iniciativas',  icon: FileText },
   { id: 'intervencoes', label: 'Intervenções', icon: Mic      },
 ];
 
-// ── Secção: Iniciativas ───────────────────────────────────────
 const SecaoIniciativas = ({ iniciativas, carregando, onClickIniciativa }) => {
   if (carregando) return <p className="text-sm text-gray-400 italic">A carregar iniciativas...</p>;
   if (!iniciativas.length) return <p className="text-sm text-gray-400 italic">Sem iniciativas registadas.</p>;
@@ -52,7 +51,6 @@ const SecaoIniciativas = ({ iniciativas, carregando, onClickIniciativa }) => {
   );
 };
 
-// ── Secção: Debates ───────────────────────────────────────────
 const SecaoDebates = ({ debates, carregando, onClickDebate }) => {
   if (carregando) return <p className="text-sm text-gray-400 italic">A carregar debates...</p>;
   if (!debates.length) return <p className="text-sm text-gray-400 italic">Sem debates registados.</p>;
@@ -79,10 +77,8 @@ const SecaoDebates = ({ debates, carregando, onClickDebate }) => {
   );
 };
 
-// Intervenções com menos de N palavras são consideradas interjeições/aplausos
 const MIN_PALAVRAS = 40;
 
-// ── Secção: Intervenções ──────────────────────────────────────
 const SecaoIntervencoes = ({ intervencoes, carregando, corPartido }) => {
   const [expandido, setExpandido]       = useState(null);
   const [textos, setTextos]             = useState({});
@@ -106,7 +102,6 @@ const SecaoIntervencoes = ({ intervencoes, carregando, corPartido }) => {
 
   const filtradas = intervencoes.length - lista.length;
 
-  // Agrupar por dia
   const porDia = lista.reduce((acc, iv) => {
     const dia = iv.data_debate ?? 'Sem data';
     (acc[dia] ??= []).push(iv);
@@ -116,7 +111,6 @@ const SecaoIntervencoes = ({ intervencoes, carregando, corPartido }) => {
 
   return (
     <div className="space-y-4">
-      {/* Toggle filtro */}
       <div className="flex items-center justify-between text-xs text-gray-400 pb-1 border-b border-gray-100">
         <span>{lista.length} intervenções{filtradas > 0 && !mostrarTodas ? ` (${filtradas} interjeições ocultas)` : ''}</span>
         <button
@@ -179,9 +173,37 @@ const SecaoIntervencoes = ({ intervencoes, carregando, corPartido }) => {
   );
 };
 
+// ── Abas partilhadas entre mobile e desktop ────────────────────
+const Abas = ({ abaAtiva, setAbaAtiva, contagens }) => (
+  <div className="flex border-b border-gray-100 px-4 pt-3 gap-1 flex-shrink-0">
+    {ABAS.map(({ id, label, icon: Icon }) => (
+      <button
+        key={id}
+        onClick={() => setAbaAtiva(id)}
+        className={`flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-t-lg transition-colors ${
+          abaAtiva === id
+            ? 'bg-white border border-b-white border-gray-200 text-gray-900 -mb-px'
+            : 'text-gray-400 hover:text-gray-600'
+        }`}
+      >
+        <Icon size={12} />
+        {label}
+        {contagens[id] > 0 && (
+          <span className={`text-xs rounded-full px-1.5 py-0.5 ${
+            abaAtiva === id ? 'bg-gray-100 text-gray-600' : 'bg-gray-100 text-gray-400'
+          }`}>
+            {contagens[id]}
+          </span>
+        )}
+      </button>
+    ))}
+  </div>
+);
+
 // ── Componente principal ──────────────────────────────────────
 export const PainelDeputado = () => {
   const { deputadoSelecionado, fecharPainel } = useParlamento();
+  const isMobile = useIsMobile();
   const [abaAtiva, setAbaAtiva] = useState('iniciativas');
   const [iniciativaSelecionada, setIniciativaSelecionada] = useState(null);
   const [debateSelecionado, setDebateSelecionado] = useState(null);
@@ -194,132 +216,203 @@ export const PainelDeputado = () => {
   if (!deputadoSelecionado) return null;
 
   const partido = partidos[deputadoSelecionado.partido];
-
   const contagens = {
     iniciativas:  iniciativas.length,
     intervencoes: intervencoes.length,
   };
 
+  const conteudo = (
+    <>
+      {abaAtiva === 'iniciativas'  && <SecaoIniciativas  iniciativas={iniciativas}  carregando={carregando}    onClickIniciativa={setIniciativaSelecionada} />}
+      {abaAtiva === 'intervencoes' && <SecaoIntervencoes intervencoes={intervencoes} carregando={carregandoInt} corPartido={partido?.cor} />}
+    </>
+  );
+
+  const modais = (
+    <>
+      <ModalIniciativa
+        iniciativa={iniciativaSelecionada}
+        onFechar={() => setIniciativaSelecionada(null)}
+      />
+      <ModalDebate
+        debate={debateSelecionado}
+        onFechar={() => setDebateSelecionado(null)}
+      />
+    </>
+  );
+
+  // ── Layout mobile: bottom sheet ───────────────────────────────
+  if (isMobile) {
+    return (
+      <>
+        <div
+          className="fixed bottom-0 left-0 right-0 z-30 flex flex-col bg-white rounded-t-2xl shadow-2xl border-t border-gray-100"
+          style={{ maxHeight: '78vh' }}
+        >
+          {/* Handle */}
+          <div className="flex justify-center pt-2.5 pb-1 flex-shrink-0">
+            <div className="w-10 h-1 rounded-full bg-gray-200" />
+          </div>
+
+          {/* Cabeçalho compacto */}
+          <div
+            className="flex items-center gap-3 px-4 py-2.5 border-b border-gray-100 flex-shrink-0"
+            style={{ borderLeft: `4px solid ${partido?.cor ?? '#6b7280'}` }}
+          >
+            {/* Foto */}
+            <div
+              className="rounded-xl overflow-hidden border border-gray-200 flex-shrink-0"
+              style={{ width: '44px', height: '52px' }}
+            >
+              {deputadoSelecionado.foto ? (
+                <img
+                  src={deputadoSelecionado.foto}
+                  alt={deputadoSelecionado.nomeAbrev ?? deputadoSelecionado.nome}
+                  style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top center' }}
+                />
+              ) : (
+                <div style={{
+                  width: '100%', height: '100%',
+                  background: partido?.cor ?? '#555',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  color: 'white', fontSize: '18px', fontWeight: 700,
+                }}>
+                  {obterIniciais(deputadoSelecionado.nome)}
+                </div>
+              )}
+            </div>
+
+            {/* Info */}
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-bold text-gray-900 truncate leading-tight">
+                {deputadoSelecionado.nome}
+              </p>
+              <div className="flex items-center gap-1.5 mt-0.5">
+                {partido?.logo && (
+                  <img src={partido.logo} alt={partido.id} style={{ height: '13px', width: 'auto' }} />
+                )}
+                <span className="text-xs text-gray-500 truncate">{partido?.nome}</span>
+              </div>
+              {deputadoSelecionado.circulo && (
+                <div className="flex items-center gap-1 mt-0.5">
+                  <MapPin size={9} className="text-gray-400 flex-shrink-0" />
+                  <span className="text-xs text-gray-400 truncate">{deputadoSelecionado.circulo}</span>
+                </div>
+              )}
+            </div>
+
+            {/* Fechar + stats */}
+            <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
+              <button
+                onClick={fecharPainel}
+                className="p-1.5 rounded-full hover:bg-gray-100 transition-colors"
+                aria-label="Fechar painel"
+              >
+                <X size={16} className="text-gray-500" />
+              </button>
+              <span className="text-[10px] text-gray-400 text-right leading-tight">
+                {iniciativas.length} init.<br />{intervencoes.length} interv.
+              </span>
+            </div>
+          </div>
+
+          {/* Abas */}
+          <Abas abaAtiva={abaAtiva} setAbaAtiva={setAbaAtiva} contagens={contagens} />
+
+          {/* Conteúdo scrollável */}
+          <div className="flex-1 overflow-y-auto px-4 py-3 min-h-0">
+            {conteudo}
+          </div>
+        </div>
+        {modais}
+      </>
+    );
+  }
+
+  // ── Layout desktop: painel lateral ───────────────────────────
   return (
     <>
-    <div
-      className="absolute inset-0 flex overflow-hidden z-20 bg-white"
-      role="dialog"
-      aria-label={`Perfil de ${deputadoSelecionado.nome}`}
-    >
-      {/* ── Coluna esquerda: identidade ─────────────────────── */}
       <div
-        className="w-64 flex-shrink-0 flex flex-col justify-between px-5 py-6 text-white relative"
-        style={{ backgroundColor: partido?.cor ?? '#555' }}
+        className="absolute inset-0 flex overflow-hidden z-20 bg-white"
+        role="dialog"
+        aria-label={`Perfil de ${deputadoSelecionado.nome}`}
       >
-        <button
-          onClick={fecharPainel}
-          className="absolute top-4 right-4 p-1.5 rounded-full hover:bg-white/20 transition-colors"
-          aria-label="Fechar painel"
+        {/* Coluna esquerda: identidade */}
+        <div
+          className="w-64 flex-shrink-0 flex flex-col justify-between px-5 py-6 text-white relative"
+          style={{ backgroundColor: partido?.cor ?? '#555' }}
         >
-          <X size={18} />
-        </button>
+          <button
+            onClick={fecharPainel}
+            className="absolute top-4 right-4 p-1.5 rounded-full hover:bg-white/20 transition-colors"
+            aria-label="Fechar painel"
+          >
+            <X size={18} />
+          </button>
 
-        <div>
-          {/* Foto */}
-          <div className="w-24 mb-4 rounded-xl overflow-hidden border-2 border-white/40" style={{ height: '112px' }}>
-            {deputadoSelecionado.foto ? (
-              <img
-                src={deputadoSelecionado.foto}
-                alt={deputadoSelecionado.nomeAbrev ?? deputadoSelecionado.nome}
-                style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top center' }}
-              />
-            ) : (
-              <div className="w-full h-full bg-white/20 flex items-center justify-center text-2xl font-bold">
-                {obterIniciais(deputadoSelecionado.nome)}
+          <div>
+            <div className="w-24 mb-4 rounded-xl overflow-hidden border-2 border-white/40" style={{ height: '112px' }}>
+              {deputadoSelecionado.foto ? (
+                <img
+                  src={deputadoSelecionado.foto}
+                  alt={deputadoSelecionado.nomeAbrev ?? deputadoSelecionado.nome}
+                  style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top center' }}
+                />
+              ) : (
+                <div className="w-full h-full bg-white/20 flex items-center justify-center text-2xl font-bold">
+                  {obterIniciais(deputadoSelecionado.nome)}
+                </div>
+              )}
+            </div>
+
+            <h2 className="text-base font-bold leading-tight">{deputadoSelecionado.nome}</h2>
+
+            <div className="flex items-center gap-2 mt-1">
+              {partido?.logo && (
+                <img src={partido.logo} alt={partido.id}
+                  className="w-5 h-5 object-contain rounded-sm"
+                  style={{ background: 'rgba(255,255,255,0.15)' }}
+                />
+              )}
+              <p className="text-white/80 text-xs">{partido?.nome}</p>
+            </div>
+
+            {deputadoSelecionado.circulo && (
+              <div className="flex items-center gap-1 text-white/60 text-xs mt-2">
+                <MapPin size={10} />
+                <span>{deputadoSelecionado.circulo}</span>
               </div>
             )}
+
+            <div className="mt-4 space-y-1">
+              <div className="flex justify-between text-xs text-white/70">
+                <span>Iniciativas</span>
+                <span className="font-bold text-white">{iniciativas.length}</span>
+              </div>
+              <div className="flex justify-between text-xs text-white/70">
+                <span>Intervenções</span>
+                <span className="font-bold text-white">{intervencoes.length}</span>
+              </div>
+            </div>
           </div>
 
-          <h2 className="text-base font-bold leading-tight">{deputadoSelecionado.nome}</h2>
-
-          <div className="flex items-center gap-2 mt-1">
-            {partido?.logo && (
-              <img src={partido.logo} alt={partido.id}
-                className="w-5 h-5 object-contain rounded-sm"
-                style={{ background: 'rgba(255,255,255,0.15)' }}
-              />
-            )}
-            <p className="text-white/80 text-xs">{partido?.nome}</p>
-          </div>
-
-          {deputadoSelecionado.circulo && (
-            <div className="flex items-center gap-1 text-white/60 text-xs mt-2">
-              <MapPin size={10} />
-              <span>{deputadoSelecionado.circulo}</span>
+          {deputadoSelecionado.lugar && (
+            <div className="mt-auto pt-4 border-t border-white/20">
+              <span className="text-white/50 text-xs uppercase tracking-wider">Lugar</span>
+              <p className="text-white font-mono text-2xl font-bold mt-0.5">{deputadoSelecionado.lugar}</p>
             </div>
           )}
+        </div>
 
-          {/* Estatísticas rápidas */}
-          <div className="mt-4 space-y-1">
-            <div className="flex justify-between text-xs text-white/70">
-              <span>Iniciativas</span>
-              <span className="font-bold text-white">{iniciativas.length}</span>
-            </div>
-            <div className="flex justify-between text-xs text-white/70">
-              <span>Intervenções</span>
-              <span className="font-bold text-white">{intervencoes.length}</span>
-            </div>
+        {/* Coluna direita: dados */}
+        <div className="flex-1 flex flex-col overflow-hidden bg-white">
+          <Abas abaAtiva={abaAtiva} setAbaAtiva={setAbaAtiva} contagens={contagens} />
+          <div className="flex-1 overflow-y-auto px-5 py-4">
+            {conteudo}
           </div>
         </div>
-
-        {deputadoSelecionado.lugar && (
-          <div className="mt-auto pt-4 border-t border-white/20">
-            <span className="text-white/50 text-xs uppercase tracking-wider">Lugar</span>
-            <p className="text-white font-mono text-2xl font-bold mt-0.5">{deputadoSelecionado.lugar}</p>
-          </div>
-        )}
       </div>
-
-      {/* ── Coluna direita: dados AR + IA ───────────────────── */}
-      <div className="flex-1 flex flex-col overflow-hidden bg-white">
-
-        {/* Abas */}
-        <div className="flex border-b border-gray-100 px-4 pt-3 gap-1 flex-shrink-0">
-          {ABAS.map(({ id, label, icon: Icon }) => (
-            <button
-              key={id}
-              onClick={() => setAbaAtiva(id)}
-              className={`flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-t-lg transition-colors ${
-                abaAtiva === id
-                  ? 'bg-white border border-b-white border-gray-200 text-gray-900 -mb-px'
-                  : 'text-gray-400 hover:text-gray-600'
-              }`}
-            >
-              <Icon size={12} />
-              {label}
-              {contagens[id] > 0 && (
-                <span className={`text-xs rounded-full px-1.5 py-0.5 ${
-                  abaAtiva === id ? 'bg-gray-100 text-gray-600' : 'bg-gray-100 text-gray-400'
-                }`}>
-                  {contagens[id]}
-                </span>
-              )}
-            </button>
-          ))}
-        </div>
-
-        {/* Conteúdo da aba */}
-        <div className="flex-1 overflow-y-auto px-5 py-4">
-          {abaAtiva === 'iniciativas'  && <SecaoIniciativas  iniciativas={iniciativas}  carregando={carregando}    onClickIniciativa={setIniciativaSelecionada} />}
-          {abaAtiva === 'intervencoes' && <SecaoIntervencoes intervencoes={intervencoes} carregando={carregandoInt} corPartido={partido?.cor} />}
-        </div>
-      </div>
-    </div>
-
-    <ModalIniciativa
-      iniciativa={iniciativaSelecionada}
-      onFechar={() => setIniciativaSelecionada(null)}
-    />
-    <ModalDebate
-      debate={debateSelecionado}
-      onFechar={() => setDebateSelecionado(null)}
-    />
+      {modais}
     </>
   );
 };

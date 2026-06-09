@@ -13,18 +13,20 @@ const POSICAO = {
 export const CoatOfArmsAR = () => {
   const { deputadoHover, deputadoSelecionado } = useParlamento();
 
-  // Só aparece quando o hemiciclo está completamente inativo
+  // Só aparece quando o hemiciclo está completamente inativo, e apenas em desktop
   if (deputadoHover || deputadoSelecionado) return null;
 
   return (
-    <div style={{
-      ...POSICAO,
-      width: '340px',
-      display: 'flex',
-      justifyContent: 'center',
-      zIndex: 1,          // abaixo de qualquer elemento UI
-      pointerEvents: 'none',
-    }}>
+    <div
+      className="hidden md:flex"
+      style={{
+        ...POSICAO,
+        width: '340px',
+        justifyContent: 'center',
+        zIndex: 1,
+        pointerEvents: 'none',
+      }}
+    >
       <img
         src="/Coat_of_arms_of_the_Assembly_of_the_Portuguese_Republic.svg.png"
         alt="Assembleia da República"
