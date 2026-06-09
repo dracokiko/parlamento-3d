@@ -38,13 +38,13 @@ export const CenaHemiciclo = () => {
   // Câmara em Y=36 desce o hemiciclo para a borda inferior do ecrã portrait.
   // Target Y=31 mantém a câmara quase horizontal respeitando maxPolarAngle (85.7°).
   // z=46 com fov=90 e aspect≈0.47 mostra ~43u de largura → cobre as filas A–E (1.4× = 19.9u).
-  const sceneScale   = isMobile ? 1.4           : 1;
-  const cameraPos    = isMobile ? [0, 36, 46]   : [0, 12, 24];
+  const sceneScale   = isMobile ? 1.7            : 1;
+  const cameraPos    = isMobile ? [0, 44, 50]   : [0, 12, 24];
   const cameraFov    = isMobile ? 90             : 48;
-  const maxDist      = isMobile ? 70             : 42;
-  const fogNear      = isMobile ? 60             : 30;
-  const fogFar       = isMobile ? 170            : 90;
-  const orbitTarget  = isMobile ? [0, 31, -16]   : [0, 10, -16];
+  const maxDist      = isMobile ? 75             : 42;
+  const fogNear      = isMobile ? 65             : 30;
+  const fogFar       = isMobile ? 180            : 90;
+  const orbitTarget  = isMobile ? [0, 38, -16]   : [0, 10, -16];
 
   return (
     <Canvas
