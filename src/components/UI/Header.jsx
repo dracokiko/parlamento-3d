@@ -1,4 +1,4 @@
-import { Building2, FileText, Info, Vote } from 'lucide-react';
+import { FileText, Info, Vote, Building2 } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 
 const NAV = [
@@ -15,7 +15,12 @@ export const Header = () => {
     <div className="shrink-0 border-b border-white/10">
       {/* Título */}
       <div className="flex items-center gap-3 px-4 py-4">
-        <Building2 size={18} className="text-blue-400 shrink-0" />
+        <img
+          src="/Draco_sem_background.png"
+          alt="Draco"
+          style={{ width: '28px', height: 'auto' }}
+          className="shrink-0"
+        />
         <div className="min-w-0">
           <h1 className="text-xs font-semibold text-white leading-tight">
             Assembleia da República

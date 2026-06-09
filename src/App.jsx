@@ -60,6 +60,12 @@ const TelaCarregamento = () => {
       style={{ opacity: tudoCarregado ? 0 : 1, pointerEvents: tudoCarregado ? 'none' : 'all' }}
     >
       <div className="text-center px-8">
+        <img
+          src="/Draco_sem_background.png"
+          alt="Draco"
+          className="mx-auto mb-4"
+          style={{ width: '90px', height: 'auto', opacity: 0.92 }}
+        />
         <div className="inline-block w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-6" />
         <p className="text-white text-base font-semibold mb-2">Parlamento 3D</p>
         <p className="text-blue-300 text-sm transition-all duration-500">{MENSAGENS[idx]}</p>
