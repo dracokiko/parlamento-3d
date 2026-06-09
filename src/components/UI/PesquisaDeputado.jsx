@@ -108,7 +108,7 @@ export function PesquisaDeputado() {
     if (!q && !partido) return [];
     return (deputados ?? [])
       .filter((d) => {
-        const matchNome    = !q       || d.nome?.toLowerCase().includes(q);
+        const matchNome    = !q       || d.nomeAbrev?.toLowerCase().includes(q);
         const matchPartido = !partido || d.partido === partido;
         return matchNome && matchPartido;
       })
@@ -202,7 +202,7 @@ export function PesquisaDeputado() {
                            border-b border-white/5 last:border-0"
               >
                 <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: p?.cor ?? '#6b7280' }} />
-                <span className="text-white text-xs font-medium truncate flex-1">{d.nome}</span>
+                <span className="text-white text-xs font-medium truncate flex-1">{d.nomeAbrev ?? d.nome}</span>
                 <span className="text-gray-500 text-[10px] shrink-0">{d.partido}</span>
               </button>
             );
