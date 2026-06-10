@@ -31,8 +31,8 @@ const EmblemaChao = () => {
 // ─────────────────────────────────────────────────────────────
 const BANNER_CONFIG = {
   texto:      '  ★  SPOT PUBLICITÁRIO  —  Para anunciar contacte: dracoscompany@gmail.com  ★  ',
-  corFundo:   '#0d1117',   // fundo do banner (negro azulado)
-  corTexto:   '#f5c842',   // cor do texto (dourado)
+  corFundo:   '#eef2f7',   // fundo do banner (azul-acinzentado claro)
+  corTexto:   '#2c5282',   // cor do texto (azul médio)
   velocidade: 0.04,        // velocidade de scroll (unidades/s); aumente para mais rápido
 };
 // ─────────────────────────────────────────────────────────────
@@ -130,7 +130,7 @@ const BannerPublicitario = () => {
       <meshStandardMaterial
         map={texture}
         emissiveMap={texture}
-        emissive={new THREE.Color(0.15, 0.10, 0.0)}
+        emissive={new THREE.Color(0.55, 0.65, 0.80)}
         roughness={0.3}
         metalness={0.05}
         side={DOUBLE_SIDE}
