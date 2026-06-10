@@ -18,7 +18,7 @@ export const Header = () => {
         <img
           src="/logo_solo.png"
           alt="Parlamento 3D"
-          style={{ width: '28px', height: 'auto' }}
+          style={{ width: '56px', height: 'auto' }}
           className="shrink-0"
         />
         <div className="min-w-0">
