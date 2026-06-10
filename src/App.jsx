@@ -63,10 +63,10 @@ const TelaCarregamento = () => {
           src="/logo_com_nome.png"
           alt="Parlamento 3D"
           className="mx-auto mb-4"
-          style={{ width: '200px', height: 'auto', opacity: 0.92 }}
+          style={{ width: '280px', height: 'auto', opacity: 0.92 }}
         />
         <div className="inline-block w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-6" />
-        <p className="text-white text-base font-semibold mb-2">Parlamento 3D</p>
+
         <p className="text-blue-300 text-sm transition-all duration-500">{MENSAGENS[idx]}</p>
       </div>
     </div>
@@ -131,7 +131,7 @@ function HemicicloPage() {
         >
           <Menu size={22} />
         </button>
-        <img src="/logo_solo.png" alt="" style={{ width: '90px', height: 'auto' }} />
+        <img src="/logo_solo.png" alt="" style={{ width: '140px', height: 'auto' }} />
         <span className="text-white text-sm font-semibold flex-1 truncate">Parlamento 3D</span>
       </div>
 
@@ -148,7 +148,7 @@ function HemicicloPage() {
           >
             {/* Cabeçalho do drawer */}
             <div className="flex items-center gap-3 px-4 py-4 border-b border-white/10 shrink-0">
-              <img src="/logo_solo.png" alt="" style={{ width: '100px', height: 'auto' }} />
+              <img src="/logo_solo.png" alt="" style={{ width: '150px', height: 'auto' }} />
               <div className="flex-1 min-w-0">
                 <p className="text-xs font-semibold text-white leading-tight">Assembleia da República</p>
                 <span className="text-[11px] text-gray-400">XVII Legislatura</span>
