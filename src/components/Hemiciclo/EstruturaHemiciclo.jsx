@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { useFrame } from '@react-three/fiber';
 import { useTexture } from '@react-three/drei';
 import { RAIO_INTERNO, NUM_FILAS, ESPACAMENTO_FILA, ALTURA_DEGRAU } from '../../utils/posicoes3D';
+import { useIsMobile } from '../../hooks/useIsMobile';
 
 class TexturaBoundary extends Component {
   constructor(props) { super(props); this.state = { erro: false }; }
@@ -108,17 +109,21 @@ function criarTexturaBanner(cfg) {
 
 // Componente animado do banner
 const BannerPublicitario = () => {
+  const isMobile = useIsMobile();
   const texture = useMemo(() => criarTexturaBanner(BANNER_CONFIG), []);
+
+  const altura = isMobile ? BANNER_HEIGHT * 2 : BANNER_HEIGHT;
+  const posY   = isMobile ? BANNER_Y + BANNER_HEIGHT / 2 : BANNER_Y;
 
   useFrame((_, delta) => {
     texture.offset.x += delta * BANNER_CONFIG.velocidade;
-    texture.needsUpdate = false; // canvas já não muda, só o offset
+    texture.needsUpdate = false;
   });
 
   return (
-    <mesh position={[0, BANNER_Y, 0]}>
+    <mesh position={[0, posY, 0]}>
       <cylinderGeometry
-        args={[WALL_RADIUS - 0.05, WALL_RADIUS - 0.05, BANNER_HEIGHT, 120, 1, true, WALL_THETA_START, WALL_THETA_LENGTH]}
+        args={[WALL_RADIUS - 0.05, WALL_RADIUS - 0.05, altura, 120, 1, true, WALL_THETA_START, WALL_THETA_LENGTH]}
       />
       <meshStandardMaterial
         map={texture}
