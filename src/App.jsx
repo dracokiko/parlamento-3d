@@ -131,7 +131,7 @@ function HemicicloPage() {
         >
           <Menu size={22} />
         </button>
-        <img src="/logo_solo.png" alt="" style={{ width: '140px', height: 'auto' }} />
+        <img src="/logo_solo.png" alt="" style={{ width: '70px', height: 'auto' }} />
         <span className="text-white text-sm font-semibold flex-1 truncate">Parlamento 3D</span>
       </div>
 
@@ -148,7 +148,7 @@ function HemicicloPage() {
           >
             {/* Cabeçalho do drawer */}
             <div className="flex items-center gap-3 px-4 py-4 border-b border-white/10 shrink-0">
-              <img src="/logo_solo.png" alt="" style={{ width: '150px', height: 'auto' }} />
+              <img src="/logo_solo.png" alt="" style={{ width: '75px', height: 'auto' }} />
               <div className="flex-1 min-w-0">
                 <p className="text-xs font-semibold text-white leading-tight">Assembleia da República</p>
                 <span className="text-[11px] text-gray-400">XVII Legislatura</span>
