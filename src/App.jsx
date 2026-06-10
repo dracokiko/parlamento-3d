@@ -60,8 +60,8 @@ const TelaCarregamento = () => {
     >
       <div className="text-center px-8">
         <img
-          src="/Draco_sem_background.png"
-          alt="Draco"
+          src="/logo_com_nome.png"
+          alt="Parlamento 3D"
           className="mx-auto mb-4"
           style={{ width: '90px', height: 'auto', opacity: 0.92 }}
         />
@@ -131,7 +131,7 @@ function HemicicloPage() {
         >
           <Menu size={22} />
         </button>
-        <img src="/Draco_sem_background.png" alt="" style={{ width: '22px', height: 'auto' }} />
+        <img src="/logo_solo.png" alt="" style={{ width: '22px', height: 'auto' }} />
         <span className="text-white text-sm font-semibold flex-1 truncate">Parlamento 3D</span>
       </div>
 
@@ -148,7 +148,7 @@ function HemicicloPage() {
           >
             {/* Cabeçalho do drawer */}
             <div className="flex items-center gap-3 px-4 py-4 border-b border-white/10 shrink-0">
-              <img src="/Draco_sem_background.png" alt="" style={{ width: '26px', height: 'auto' }} />
+              <img src="/logo_solo.png" alt="" style={{ width: '26px', height: 'auto' }} />
               <div className="flex-1 min-w-0">
                 <p className="text-xs font-semibold text-white leading-tight">Assembleia da República</p>
                 <span className="text-[11px] text-gray-400">XVII Legislatura</span>

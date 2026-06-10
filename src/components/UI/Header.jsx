@@ -16,8 +16,8 @@ export const Header = () => {
       {/* Título */}
       <div className="flex items-center gap-3 px-4 py-4">
         <img
-          src="/Draco_sem_background.png"
-          alt="Draco"
+          src="/logo_solo.png"
+          alt="Parlamento 3D"
           style={{ width: '28px', height: 'auto' }}
           className="shrink-0"
         />
