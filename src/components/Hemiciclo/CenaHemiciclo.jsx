@@ -38,13 +38,16 @@ export const CenaHemiciclo = () => {
   // Câmara em Y=36 desce o hemiciclo para a borda inferior do ecrã portrait.
   // Target Y=31 mantém a câmara quase horizontal respeitando maxPolarAngle (85.7°).
   // z=46 com fov=90 e aspect≈0.47 mostra ~43u de largura → cobre as filas A–E (1.4× = 19.9u).
-  const sceneScale   = isMobile ? 2.0            : 1;
-  const cameraPos    = isMobile ? [0, 52, 52]   : [0, 12, 24];
-  const cameraFov    = isMobile ? 90             : 48;
-  const maxDist      = isMobile ? 75             : 42;
-  const fogNear      = isMobile ? 68             : 30;
-  const fogFar       = isMobile ? 185            : 90;
-  const orbitTarget  = isMobile ? [0, 46, -16]   : [0, 10, -16];
+  // Y=24 dá ângulo ~24° sobre as cadeiras (frontal, como audiência).
+  // Target Y=18 mantém câmara acima do target (polar constraint) e olha ligeiramente para baixo.
+  // sceneScale=2.3 compensa o afastamento e aumenta tamanho + espaçamento.
+  const sceneScale   = isMobile ? 2.3            : 1;
+  const cameraPos    = isMobile ? [0, 24, 50]    : [0, 12, 24];
+  const cameraFov    = isMobile ? 90              : 48;
+  const maxDist      = isMobile ? 75              : 42;
+  const fogNear      = isMobile ? 65              : 30;
+  const fogFar       = isMobile ? 180             : 90;
+  const orbitTarget  = isMobile ? [0, 18, -16]    : [0, 10, -16];
 
   return (
     <Canvas
