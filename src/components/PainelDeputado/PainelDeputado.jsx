@@ -241,28 +241,36 @@ export const PainelDeputado = () => {
     </>
   );
 
-  // ── Layout mobile: bottom sheet ───────────────────────────────
+  // ── Layout mobile: modal centrado ────────────────────────────
   if (isMobile) {
     return (
       <>
+        {/* Backdrop */}
         <div
-          className="fixed bottom-0 left-0 right-0 z-30 flex flex-col bg-white rounded-t-2xl shadow-2xl border-t border-gray-100"
-          style={{ maxHeight: '78vh' }}
-        >
-          {/* Handle */}
-          <div className="flex justify-center pt-2.5 pb-1 flex-shrink-0">
-            <div className="w-10 h-1 rounded-full bg-gray-200" />
-          </div>
+          className="fixed inset-0 z-30 bg-black/40"
+          onClick={fecharPainel}
+        />
 
-          {/* Cabeçalho compacto */}
+        {/* Card centrado */}
+        <div
+          className="fixed z-40 flex flex-col bg-white rounded-2xl shadow-2xl overflow-hidden"
+          style={{
+            width: '82vw',
+            maxHeight: '62vh',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+          }}
+        >
+          {/* Cabeçalho */}
           <div
-            className="flex items-center gap-3 px-4 py-2.5 border-b border-gray-100 flex-shrink-0"
-            style={{ borderLeft: `4px solid ${partido?.cor ?? '#6b7280'}` }}
+            className="flex items-center gap-2.5 px-3 py-2.5 border-b border-gray-100 flex-shrink-0"
+            style={{ borderLeft: `3px solid ${partido?.cor ?? '#6b7280'}` }}
           >
             {/* Foto */}
             <div
-              className="rounded-xl overflow-hidden border border-gray-200 flex-shrink-0"
-              style={{ width: '44px', height: '52px' }}
+              className="rounded-lg overflow-hidden border border-gray-200 flex-shrink-0"
+              style={{ width: '36px', height: '42px' }}
             >
               {deputadoSelecionado.foto ? (
                 <img
@@ -275,7 +283,7 @@ export const PainelDeputado = () => {
                   width: '100%', height: '100%',
                   background: partido?.cor ?? '#555',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  color: 'white', fontSize: '18px', fontWeight: 700,
+                  color: 'white', fontSize: '15px', fontWeight: 700,
                 }}>
                   {obterIniciais(deputadoSelecionado.nome)}
                 </div>
@@ -284,43 +292,38 @@ export const PainelDeputado = () => {
 
             {/* Info */}
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-bold text-gray-900 truncate leading-tight">
+              <p className="text-xs font-bold text-gray-900 truncate leading-tight">
                 {deputadoSelecionado.nome}
               </p>
-              <div className="flex items-center gap-1.5 mt-0.5">
+              <div className="flex items-center gap-1 mt-0.5">
                 {partido?.logo && (
-                  <img src={partido.logo} alt={partido.id} style={{ height: '13px', width: 'auto' }} />
+                  <img src={partido.logo} alt={partido.id} style={{ height: '11px', width: 'auto' }} />
                 )}
-                <span className="text-xs text-gray-500 truncate">{partido?.nome}</span>
+                <span className="text-[11px] text-gray-500 truncate">{partido?.nome}</span>
               </div>
               {deputadoSelecionado.circulo && (
                 <div className="flex items-center gap-1 mt-0.5">
-                  <MapPin size={9} className="text-gray-400 flex-shrink-0" />
-                  <span className="text-xs text-gray-400 truncate">{deputadoSelecionado.circulo}</span>
+                  <MapPin size={8} className="text-gray-400 flex-shrink-0" />
+                  <span className="text-[10px] text-gray-400 truncate">{deputadoSelecionado.circulo}</span>
                 </div>
               )}
             </div>
 
-            {/* Fechar + stats */}
-            <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
-              <button
-                onClick={fecharPainel}
-                className="p-1.5 rounded-full hover:bg-gray-100 transition-colors"
-                aria-label="Fechar painel"
-              >
-                <X size={16} className="text-gray-500" />
-              </button>
-              <span className="text-[10px] text-gray-400 text-right leading-tight">
-                {iniciativas.length} init.<br />{intervencoes.length} interv.
-              </span>
-            </div>
+            {/* Fechar */}
+            <button
+              onClick={fecharPainel}
+              className="p-1 rounded-full hover:bg-gray-100 transition-colors flex-shrink-0"
+              aria-label="Fechar painel"
+            >
+              <X size={14} className="text-gray-500" />
+            </button>
           </div>
 
           {/* Abas */}
           <Abas abaAtiva={abaAtiva} setAbaAtiva={setAbaAtiva} contagens={contagens} />
 
           {/* Conteúdo scrollável */}
-          <div className="flex-1 overflow-y-auto px-4 py-3 min-h-0">
+          <div className="flex-1 overflow-y-auto px-3 py-2.5 min-h-0">
             {conteudo}
           </div>
         </div>
