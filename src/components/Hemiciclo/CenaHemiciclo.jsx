@@ -44,13 +44,17 @@ export const CenaHemiciclo = () => {
   // Target Y=61 (quase igual ao Y da câmara=75) → look direction apenas 12° para baixo.
   // Com a câmara alta e olhar quase horizontal, o chão (atan(75/50)=56°) cai para
   // ~1% da borda inferior do ecrã portrait.
-  const sceneScale   = isMobile ? 2.8             : 1;
-  const cameraPos    = isMobile ? [0, 70, 62]    : [0, 12, 24];
-  const cameraFov    = isMobile ? 90              : 48;
-  const maxDist      = isMobile ? 85              : 42;
-  const fogNear      = isMobile ? 72              : 30;
-  const fogFar       = isMobile ? 188             : 90;
-  const orbitTarget  = isMobile ? [0, 64, -16]    : [0, 10, -16];
+  // maxPolarAngle=π/2 em mobile permite câmara perfeitamente horizontal (dy=0).
+  // Com camera Y=target Y, look-angle=0° (mais frontal possível).
+  // floor_angle=atan(61/62)=44.5° → chão a ~0.6% da borda inferior.
+  const sceneScale      = isMobile ? 2.8              : 1;
+  const cameraPos       = isMobile ? [0, 61, 62]     : [0, 12, 24];
+  const cameraFov       = isMobile ? 90               : 48;
+  const maxDist         = isMobile ? 85               : 42;
+  const fogNear         = isMobile ? 72               : 30;
+  const fogFar          = isMobile ? 188              : 90;
+  const orbitTarget     = isMobile ? [0, 61, -16]     : [0, 10, -16];
+  const maxPolarAngle   = isMobile ? Math.PI / 2      : Math.PI / 2.1;
 
   return (
     <Canvas
@@ -81,7 +85,7 @@ export const CenaHemiciclo = () => {
           dampingFactor={0.08}
           minDistance={10}
           maxDistance={maxDist}
-          maxPolarAngle={Math.PI / 2.1}
+          maxPolarAngle={maxPolarAngle}
           target={orbitTarget}
           enableRotate={false}
           enablePan={false}
