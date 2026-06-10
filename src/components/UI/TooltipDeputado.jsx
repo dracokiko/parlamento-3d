@@ -1,5 +1,6 @@
 import { useParlamento } from '../../context/ParlamentoContext';
 import { getCorPartido, partidos } from '../../data/mockPartidos';
+import { useIsMobile } from '../../hooks/useIsMobile';
 
 const POSICAO = {
   position: 'fixed',
@@ -43,10 +44,76 @@ export const CoatOfArmsAR = () => {
 
 export const TooltipDeputado = () => {
   const { deputadoHover } = useParlamento();
+  const isMobile = useIsMobile();
 
   if (!deputadoHover) return null;
 
   const corBase = getCorPartido(deputadoHover.partido);
+
+  if (isMobile) {
+    return (
+      <div style={{
+        position: 'fixed',
+        top: '50%',
+        left: '50%',
+        transform: 'translate(-50%, -50%)',
+        zIndex: 100,
+        pointerEvents: 'none',
+        background: 'white',
+        borderRadius: '16px',
+        boxShadow: '0 12px 40px rgba(0,0,0,0.22)',
+        border: '1px solid #e5e7eb',
+        padding: '14px 18px',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        gap: '7px',
+        width: '180px',
+        color: '#111827',
+      }}>
+        {/* Fotografia */}
+        <div style={{
+          width: '64px',
+          height: '76px',
+          borderRadius: '10px',
+          overflow: 'hidden',
+          border: '2px solid #e5e7eb',
+          background: '#f3f4f6',
+          flexShrink: 0,
+        }}>
+          {deputadoHover.foto ? (
+            <img
+              src={deputadoHover.foto}
+              alt={deputadoHover.nomeAbrev ?? deputadoHover.nome}
+              style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top center' }}
+            />
+          ) : (
+            <div style={{
+              width: '100%', height: '100%',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              background: corBase, color: 'white', fontSize: '28px', fontWeight: 700,
+            }}>
+              {(deputadoHover.nomeAbrev ?? deputadoHover.nome ?? '?').charAt(0)}
+            </div>
+          )}
+        </div>
+
+        <div style={{
+          fontWeight: 700, fontSize: '12px', textAlign: 'center', lineHeight: 1.2,
+          width: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+        }}>
+          {deputadoHover.nomeAbrev ?? deputadoHover.nome ?? '—'}
+        </div>
+
+        <div style={{
+          fontSize: '11px', color: '#4b5563', textAlign: 'center',
+          width: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+        }}>
+          {partidos[deputadoHover.partido]?.nome ?? deputadoHover.partido ?? '—'}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={{
