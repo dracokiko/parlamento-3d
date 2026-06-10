@@ -45,12 +45,12 @@ export const CenaHemiciclo = () => {
   // Com a câmara alta e olhar quase horizontal, o chão (atan(75/50)=56°) cai para
   // ~1% da borda inferior do ecrã portrait.
   const sceneScale   = isMobile ? 2.8             : 1;
-  const cameraPos    = isMobile ? [0, 58, 70]    : [0, 12, 24];
+  const cameraPos    = isMobile ? [0, 70, 62]    : [0, 12, 24];
   const cameraFov    = isMobile ? 90              : 48;
-  const maxDist      = isMobile ? 90              : 42;
-  const fogNear      = isMobile ? 75              : 30;
-  const fogFar       = isMobile ? 190             : 90;
-  const orbitTarget  = isMobile ? [0, 51, -16]    : [0, 10, -16];
+  const maxDist      = isMobile ? 85              : 42;
+  const fogNear      = isMobile ? 72              : 30;
+  const fogFar       = isMobile ? 188             : 90;
+  const orbitTarget  = isMobile ? [0, 64, -16]    : [0, 10, -16];
 
   return (
     <Canvas
