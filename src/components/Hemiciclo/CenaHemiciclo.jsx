@@ -42,7 +42,7 @@ export const CenaHemiciclo = () => {
   // Target Y=18 mantém câmara acima do target (polar constraint) e olha ligeiramente para baixo.
   // sceneScale=2.3 compensa o afastamento e aumenta tamanho + espaçamento.
   const sceneScale   = isMobile ? 2.8             : 1;
-  const cameraPos    = isMobile ? [0, 65, 58]    : [0, 12, 24];
+  const cameraPos    = isMobile ? [0, 75, 50]    : [0, 12, 24];
   const cameraFov    = isMobile ? 90              : 48;
   const maxDist      = isMobile ? 80              : 42;
   const fogNear      = isMobile ? 70              : 30;
