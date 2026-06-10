@@ -67,6 +67,8 @@ const WALL_HEIGHT    = (NUM_FILAS - 1) * ALTURA_DEGRAU + 4.2;
 const WALL_CENTER_Y  = WALL_HEIGHT / 2 - 0.05;
 const BANNER_HEIGHT  = 2.5;
 const BANNER_Y       = 4.5;
+const SEPARADOR_HEIGHT = 0.28;
+const SEPARADOR_Y      = BANNER_Y - BANNER_HEIGHT / 2 - SEPARADOR_HEIGHT / 2;
 
 // Cria um canvas com o texto do banner repetido e pronto a scrollar.
 // Não usa espelhamento: o offset.x negativo trata da direcção correcta.
@@ -221,6 +223,14 @@ const EstruturaHemicicloComponent = () => {
       <mesh position={[0, WALL_HEIGHT - 0.05, 0]}>
         <cylinderGeometry args={[WALL_RADIUS + 0.10, WALL_RADIUS + 0.10, 0.30, 80, 1, true, WALL_THETA_START, WALL_THETA_LENGTH]} />
         <meshStandardMaterial color={COR_CORNIJA} roughness={0.72} side={DOUBLE_SIDE} />
+      </mesh>
+
+      {/* ── Banda separadora (entre hemiciclo e banner) ─────── */}
+      <mesh position={[0, SEPARADOR_Y, 0]}>
+        <cylinderGeometry
+          args={[WALL_RADIUS - 0.04, WALL_RADIUS - 0.04, SEPARADOR_HEIGHT, 80, 1, true, WALL_THETA_START, WALL_THETA_LENGTH]}
+        />
+        <meshStandardMaterial color="#ffffff" roughness={0.25} metalness={0.08} side={DOUBLE_SIDE} />
       </mesh>
 
       {/* ── Banner publicitário ──────────────────────────────── */}
