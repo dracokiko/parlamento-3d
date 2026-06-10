@@ -41,13 +41,16 @@ export const CenaHemiciclo = () => {
   // Y=24 dá ângulo ~24° sobre as cadeiras (frontal, como audiência).
   // Target Y=18 mantém câmara acima do target (polar constraint) e olha ligeiramente para baixo.
   // sceneScale=2.3 compensa o afastamento e aumenta tamanho + espaçamento.
+  // Target Y=61 (quase igual ao Y da câmara=75) → look direction apenas 12° para baixo.
+  // Com a câmara alta e olhar quase horizontal, o chão (atan(75/50)=56°) cai para
+  // ~1% da borda inferior do ecrã portrait.
   const sceneScale   = isMobile ? 2.8             : 1;
   const cameraPos    = isMobile ? [0, 75, 50]    : [0, 12, 24];
   const cameraFov    = isMobile ? 90              : 48;
-  const maxDist      = isMobile ? 80              : 42;
+  const maxDist      = isMobile ? 85              : 42;
   const fogNear      = isMobile ? 70              : 30;
   const fogFar       = isMobile ? 185             : 90;
-  const orbitTarget  = isMobile ? [0, 22, -16]    : [0, 10, -16];
+  const orbitTarget  = isMobile ? [0, 61, -16]    : [0, 10, -16];
 
   return (
     <Canvas
