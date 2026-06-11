@@ -32,13 +32,38 @@ jobs:
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
         run: node src/eurlexSync.js
 
-      - name: Notificar falha
+      - name: Email — sucesso
+        if: success()
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 465
+          secure: true
+          username: ${{ secrets.GMAIL_USER }}
+          password: ${{ secrets.GMAIL_APP_PASSWORD }}
+          subject: "✅ EUR-Lex Sync concluído — ${{ github.run_number }}"
+          to: ${{ secrets.GMAIL_USER }}
+          from: Parlamento 3D <${{ secrets.GMAIL_USER }}>
+          body: |
+            O pipeline de diretivas UE do Parlamento 3D correu com sucesso.
+
+            Data: ${{ github.run_started_at }}
+            Ver detalhes: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+      - name: Email — falha
         if: failure()
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          gh issue create \
-            --title "⚠️ EUR-Lex Sync falhou — $(date -u '+%Y-%m-%d')" \
-            --body "**Workflow:** ${{ github.workflow }}
-          **Data:** $(date -u '+%Y-%m-%d %H:%M UTC')
-          **Ver detalhes:** ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 465
+          secure: true
+          username: ${{ secrets.GMAIL_USER }}
+          password: ${{ secrets.GMAIL_APP_PASSWORD }}
+          subject: "❌ EUR-Lex Sync falhou — ${{ github.run_number }}"
+          to: ${{ secrets.GMAIL_USER }}
+          from: Parlamento 3D <${{ secrets.GMAIL_USER }}>
+          body: |
+            O pipeline de diretivas UE do Parlamento 3D falhou.
+
+            Data: ${{ github.run_started_at }}
+            Ver detalhes: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}

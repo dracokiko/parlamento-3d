@@ -178,54 +178,67 @@ export async function obterTranscricoesDebates() {
 export async function indexarIntervencoes() {
   console.log('\n  [INT] A indexar intervenções...');
 
-  // Buscar debates com transcrição que ainda não foram indexados
-  // (verifica se já existem intervenções para este debate)
-  const { data: debates, error } = await db()
-    .from('ar_debates')
-    .select('id, assunto, data_debate, url_diario, transcricao')
-    .not('transcricao', 'is', null)
-    .limit(500);
-
-  if (error) { console.error('  ✗ Erro:', error.message); return; }
-  if (!debates?.length) { console.log('  [INT] Sem debates para indexar.'); return; }
-
-  // Descobrir quais debates já foram indexados
-  const { data: jaIndexados } = await db()
-    .from('ar_intervencoes')
-    .select('debate_id')
-    .in('debate_id', debates.map(d => d.id));
-
-  const indexadosSet = new Set((jaIndexados ?? []).map(r => r.debate_id));
-  const porProcessar = debates.filter(d => !indexadosSet.has(d.id));
-
-  console.log(`  [INT] ${porProcessar.length} debates novos para indexar...`);
   let totalInt = 0, totalDeb = 0;
+  let offset = 0;
+  const PAGE = 50;
 
-  for (const debate of porProcessar) {
-    const intervencoes = parsearIntervencoes(debate.transcricao);
-    if (!intervencoes.length) continue;
+  while (true) {
+    // Busca apenas IDs para não carregar texto de transcrições desnecessariamente
+    const { data: lote, error } = await db()
+      .from('ar_debates')
+      .select('id')
+      .not('transcricao', 'is', null)
+      .range(offset, offset + PAGE - 1);
 
-    const registos = intervencoes.map((iv, i) => ({
-      id:          `${debate.id}_${i}`,
-      debate_id:   debate.id,
-      nome_dep:    iv.nome,
-      partido:     iv.partido,
-      texto:       iv.texto,
-      data_debate: debate.data_debate,
-      assunto:     debate.assunto,
-      url_diario:  debate.url_diario,
-      num_palavras: iv.texto.trim().split(/\s+/).filter(Boolean).length,
-    }));
+    if (error) { console.error('  ✗ Erro:', error.message); break; }
+    if (!lote?.length) break;
 
-    const { error: upsertErr } = await db()
+    // Quais deste lote já têm intervenções indexadas?
+    const { data: jaIndexados } = await db()
       .from('ar_intervencoes')
-      .upsert(registos, { onConflict: 'id', ignoreDuplicates: true });
+      .select('debate_id')
+      .in('debate_id', lote.map(d => d.id));
 
-    if (!upsertErr) {
-      totalInt += registos.length;
-      totalDeb++;
+    const indexadosSet = new Set((jaIndexados ?? []).map(r => r.debate_id));
+    const novosIds = lote.filter(d => !indexadosSet.has(d.id)).map(d => d.id);
+
+    if (novosIds.length) {
+      // Só agora busca transcrições — apenas para os debates novos
+      const { data: debates } = await db()
+        .from('ar_debates')
+        .select('id, assunto, data_debate, url_diario, transcricao')
+        .in('id', novosIds);
+
+      for (const debate of debates ?? []) {
+        const intervencoes = parsearIntervencoes(debate.transcricao);
+        if (!intervencoes.length) continue;
+
+        const registos = intervencoes.map((iv, i) => ({
+          id:           `${debate.id}_${i}`,
+          debate_id:    debate.id,
+          nome_dep:     iv.nome,
+          partido:      iv.partido,
+          texto:        iv.texto,
+          data_debate:  debate.data_debate,
+          assunto:      debate.assunto,
+          url_diario:   debate.url_diario,
+          num_palavras: iv.texto.trim().split(/\s+/).filter(Boolean).length,
+        }));
+
+        const { error: upsertErr } = await db()
+          .from('ar_intervencoes')
+          .upsert(registos, { onConflict: 'id', ignoreDuplicates: true });
+
+        if (!upsertErr) {
+          totalInt += registos.length;
+          totalDeb++;
+        }
+        process.stdout.write(`  [INT] ${totalDeb} debates → ${totalInt} intervenções\r`);
+      }
     }
-    process.stdout.write(`  [INT] ${totalDeb} debates → ${totalInt} intervenções\r`);
+
+    if (lote.length < PAGE) break;
+    offset += PAGE;
   }
 
   console.log(`\n  [INT] Indexação concluída — ${totalDeb} debates, ${totalInt} intervenções`);
