@@ -90,7 +90,11 @@ async function main() {
   if (resultados.deputados?.ok)   await resumirDeputados();
 
   // Descobrir artigos novos do catálogo DAR (independente da API)
-  await crawlerDebatesDAR();
+  try {
+    await crawlerDebatesDAR();
+  } catch (err) {
+    console.warn(`\n  ⚠ Crawler DAR falhou (${err.message}) — a continuar pipeline`);
+  }
 
   // Obter transcrições para todos os debates sem ela (API + catálogo)
   await obterTranscricoesDebates();

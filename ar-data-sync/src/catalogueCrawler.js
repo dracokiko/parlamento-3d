@@ -17,7 +17,7 @@ import { SUPABASE_URL, SUPABASE_KEY } from './config.js';
 import { extrairCamposForm } from './scraper.js';
 
 const BASE    = 'https://debates.parlamento.pt';
-const TIMEOUT = 15_000;
+const TIMEOUT = 30_000;
 const DELAY   = 600; // ms entre pedidos — evita rate limit
 
 let _client = null;
@@ -28,13 +28,21 @@ const db = () => {
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
-async function fetchHtml(url) {
-  const res = await fetch(url, {
-    signal:  AbortSignal.timeout(TIMEOUT),
-    headers: { 'User-Agent': 'Mozilla/5.0 (compatible; ParlamentoBot/1.0)' },
-  });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  return res.text();
+async function fetchHtml(url, tentativas = 3) {
+  for (let i = 1; i <= tentativas; i++) {
+    try {
+      const res = await fetch(url, {
+        signal:  AbortSignal.timeout(TIMEOUT),
+        headers: { 'User-Agent': 'Mozilla/5.0 (compatible; ParlamentoBot/1.0)' },
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return res.text();
+    } catch (err) {
+      if (i === tentativas) throw err;
+      console.warn(`  ⚠ Tentativa ${i}/${tentativas} falhou (${err.message}) — a repetir...`);
+      await sleep(2000 * i);
+    }
+  }
 }
 
 const RE_ORG = /org=([A-Z]+)/;
