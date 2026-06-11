@@ -17,7 +17,7 @@ export const ControlosCamara = () => {
   };
 
   return (
-    <div className="absolute bottom-4 left-3 z-10 flex flex-col gap-2">
+    <div className="absolute bottom-4 left-3 z-10 hidden md:flex flex-col gap-2">
       <button
         onClick={handleReset}
         className="bg-white/95 backdrop-blur-sm hover:bg-gray-50 p-2 rounded-lg shadow-lg transition-colors"

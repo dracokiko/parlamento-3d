@@ -73,8 +73,8 @@ export const TooltipDeputado = () => {
       }}>
         {/* Fotografia */}
         <div style={{
-          width: '64px',
-          height: '76px',
+          width: '96px',
+          height: '114px',
           borderRadius: '10px',
           overflow: 'hidden',
           border: '2px solid #e5e7eb',

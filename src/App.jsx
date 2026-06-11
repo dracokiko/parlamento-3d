@@ -226,7 +226,7 @@ function HemicicloPage() {
             <BlocoHemiciclo />
             <ControlosCamara />
             {/* Pesquisa flutuante */}
-            <div className="absolute top-3 right-3 z-20">
+            <div className="absolute top-6 md:top-3 right-3 z-20">
               <PesquisaDeputado />
             </div>
           </div>
