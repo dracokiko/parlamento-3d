@@ -18,7 +18,7 @@ import { useParlamento } from '../../context/ParlamentoContext';
  * Clicar num partido destaca-o no hemiciclo 3D (a câmara aproxima-se
  * dessa zona e os deputados dos outros partidos ficam esbatidos).
  */
-export const LegendaPartidos = () => {
+export const LegendaPartidos = ({ onSelect } = {}) => {
   const { partidoDestaque, destacarPartido } = useParlamento();
 
   return (
@@ -35,7 +35,7 @@ export const LegendaPartidos = () => {
           return (
             <button
               key={idPartido}
-              onClick={() => destacarPartido(idPartido)}
+              onClick={() => { destacarPartido(idPartido); onSelect?.(); }}
               className={`
                 w-full flex items-center gap-2 px-2 py-1.5 rounded-md
                 text-left transition-all duration-200

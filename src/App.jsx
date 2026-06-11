@@ -184,7 +184,7 @@ function HemicicloPage() {
 
             {/* Legenda partidos */}
             <div className="flex-1 overflow-y-auto">
-              <LegendaPartidos />
+              <LegendaPartidos onSelect={() => setDrawerAberto(false)} />
             </div>
 
             <div className="px-4 py-2.5 border-t border-white/5 shrink-0">
