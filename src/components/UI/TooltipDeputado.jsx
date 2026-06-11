@@ -13,28 +13,39 @@ const POSICAO = {
 
 export const CoatOfArmsAR = () => {
   const { deputadoHover, deputadoSelecionado } = useParlamento();
+  const isMobile = useIsMobile();
 
-  // Só aparece quando o hemiciclo está completamente inativo, e apenas em desktop
   if (deputadoHover || deputadoSelecionado) return null;
 
-  return (
-    <div
-      className="hidden md:flex"
-      style={{
+  const estilo = isMobile
+    ? {
+        position: 'fixed',
+        top: '52px',
+        left: '50%',
+        transform: 'translateX(-50%)',
+        zIndex: 1,
+        pointerEvents: 'none',
+        display: 'flex',
+        justifyContent: 'center',
+      }
+    : {
         ...POSICAO,
         width: '340px',
         justifyContent: 'center',
         zIndex: 1,
         pointerEvents: 'none',
-      }}
-    >
+        display: 'flex',
+      };
+
+  return (
+    <div style={estilo}>
       <img
         src="/Coat_of_arms_of_the_Assembly_of_the_Portuguese_Republic.svg.png"
         alt="Assembleia da República"
         style={{
-          width: '160px',
+          width: isMobile ? '90px' : '160px',
           height: 'auto',
-          opacity: 0.85,
+          opacity: isMobile ? 0.70 : 0.85,
           filter: 'drop-shadow(0 4px 20px rgba(0,0,0,0.20))',
         }}
       />
