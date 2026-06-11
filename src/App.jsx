@@ -131,7 +131,7 @@ function HemicicloPage() {
         >
           <Menu size={22} />
         </button>
-        <img src="/logo_solo.png" alt="" style={{ width: '70px', height: 'auto' }} />
+        <img src="/logo_solo.png" alt="" style={{ width: '88px', height: 'auto' }} />
         <span className="text-white text-sm font-semibold flex-1 truncate">Parlamento 3D</span>
       </div>
 
@@ -226,7 +226,7 @@ function HemicicloPage() {
             <BlocoHemiciclo />
             <ControlosCamara />
             {/* Pesquisa flutuante */}
-            <div className="absolute top-6 md:top-3 right-3 z-20">
+            <div className="absolute top-14 md:top-3 right-3 z-20">
               <PesquisaDeputado />
             </div>
           </div>
