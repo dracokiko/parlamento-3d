@@ -13,9 +13,11 @@ class TexturaBoundary extends Component {
 
 const EmblemaChao = () => {
   const emblema = useTexture('/simbolo-republica.png');
+  const isMobile = useIsMobile();
+  const tamanho = isMobile ? 5.5 : 4;
   return (
     <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.03, -3]}>
-      <planeGeometry args={[4, 4]} />
+      <planeGeometry args={[tamanho, tamanho]} />
       <meshStandardMaterial
         map={emblema} transparent alphaTest={0.05}
         opacity={0.80} roughness={0.55} depthWrite={false}
