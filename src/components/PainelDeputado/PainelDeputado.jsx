@@ -137,7 +137,14 @@ const SecaoIntervencoes = ({ intervencoes, carregando, corPartido }) => {
                     <p className="text-xs text-gray-500 truncate flex-1 italic">
                       {iv.assunto ?? 'Intervenção parlamentar'}
                     </p>
-                    <span className="text-xs text-gray-300 flex-shrink-0">{expandido === iv.id ? '▲' : '▼'}</span>
+                    <div className="flex items-center gap-1.5 flex-shrink-0">
+                      {iv.num_palavras != null && iv.num_palavras < MIN_PALAVRAS && (
+                        <span className="text-[10px] text-gray-400 bg-gray-100 rounded px-1.5 py-0.5 leading-none">
+                          💬 interjeição
+                        </span>
+                      )}
+                      <span className="text-xs text-gray-300">{expandido === iv.id ? '▲' : '▼'}</span>
+                    </div>
                   </div>
                 </button>
 
