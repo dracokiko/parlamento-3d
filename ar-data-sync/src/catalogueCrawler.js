@@ -17,7 +17,7 @@ import { SUPABASE_URL, SUPABASE_KEY } from './config.js';
 import { extrairCamposForm } from './scraper.js';
 
 const BASE    = 'https://debates.parlamento.pt';
-const TIMEOUT = 30_000;
+const TIMEOUT = 300_000; // site do DAR pode demorar 3+ minutos a responder
 const DELAY   = 600; // ms entre pedidos — evita rate limit
 
 let _client = null;
@@ -28,7 +28,7 @@ const db = () => {
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
-async function fetchHtml(url, tentativas = 3) {
+async function fetchHtml(url, tentativas = 2) {
   for (let i = 1; i <= tentativas; i++) {
     try {
       const res = await fetch(url, {
