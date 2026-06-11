@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { X, Sparkles, Users, Calendar, GitBranch, Vote, ExternalLink } from 'lucide-react';
+import { X, Sparkles, Users, Calendar, GitBranch, Vote, ExternalLink, MessageSquare } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { partidos as PARTIDOS } from '../../data/mockPartidos';
 import { InfoTooltip } from '../UI/InfoTooltip';
@@ -172,6 +172,7 @@ const SecaoVotacoes = ({ votacoes, carregando }) => {
 export const ModalIniciativa = ({ iniciativa, onFechar }) => {
   const [votacoes,   setVotacoes]   = useState([]);
   const [eventos,    setEventos]    = useState([]);
+  const [debates,    setDebates]    = useState([]);
   const [carregando, setCarregando] = useState(false);
 
   useEffect(() => {
@@ -194,6 +195,15 @@ export const ModalIniciativa = ({ iniciativa, onFechar }) => {
     ]).then(([{ data: vots }, { data: ini }]) => {
       setVotacoes(vots ?? []);
       setEventos(ini?.eventos ?? []);
+
+      const datas = [...new Set((vots ?? []).map(v => v.data_votacao).filter(Boolean))];
+      if (datas.length) {
+        supabase
+          .from('ar_debates')
+          .select('id, assunto, tipo_debate, data_debate')
+          .in('data_debate', datas)
+          .then(({ data }) => setDebates(data ?? []));
+      }
     }).finally(() => setCarregando(false));
   }, [iniciativa?.id]);
 
@@ -306,6 +316,36 @@ export const ModalIniciativa = ({ iniciativa, onFechar }) => {
               <div className="flex flex-wrap gap-1.5">
                 {autoresGP.map((g, i) => (
                   <Pill key={i}>{g.GP}</Pill>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Debates relacionados */}
+          {debates.length > 0 && (
+            <div>
+              <div className="flex items-center gap-1.5 mb-3">
+                <MessageSquare size={13} className="text-gray-400" />
+                <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                  Debates ({debates.length})
+                </span>
+              </div>
+              <div className="space-y-2">
+                {debates.map(d => (
+                  <div key={d.id} className="flex items-start gap-3 py-2 border-b border-gray-50 last:border-0">
+                    <div className="w-1.5 h-1.5 rounded-full bg-purple-300 flex-shrink-0 mt-1.5" />
+                    <div className="flex-1 min-w-0">
+                      {d.tipo_debate && (
+                        <span className="text-xs text-purple-600 font-medium">{d.tipo_debate}</span>
+                      )}
+                      {d.assunto && (
+                        <p className="text-sm text-gray-700 mt-0.5 leading-snug">{d.assunto}</p>
+                      )}
+                    </div>
+                    {d.data_debate && (
+                      <span className="text-xs text-gray-400 flex-shrink-0">{d.data_debate}</span>
+                    )}
+                  </div>
                 ))}
               </div>
             </div>

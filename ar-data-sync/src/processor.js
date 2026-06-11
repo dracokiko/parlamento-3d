@@ -11,6 +11,13 @@ const dataEntrada = eventos => {
   const ev = eventos.find(e => e.CodigoFase === '10' || e.Fase === 'Entrada');
   return safeDate(ev?.DataFase);
 };
+
+// Data de fim real — data do último evento registado
+const dataFim = eventos => {
+  if (!Array.isArray(eventos) || !eventos.length) return null;
+  const datas = eventos.map(e => safeDate(e.DataFase)).filter(Boolean);
+  return datas.length ? datas[datas.length - 1] : null;
+};
 const safeDate = v => {
   if (!v) return null;
   const s = String(v).trim().slice(0, 10);
@@ -33,7 +40,7 @@ export function normalizarIniciativa(raw) {
     epigrafe:     safeStr(raw.IniEpigrafe, 1000),
     legislatura:  safeStr(raw.IniLeg),
     data_inicio:  dataEntrada(raw.IniEventos) ?? safeDate(raw.DataInicioleg),
-    data_fim:     safeDate(raw.DataFimleg),
+    data_fim:     dataFim(raw.IniEventos) ?? safeDate(raw.DataFimleg),
     autores_dep:  raw.IniAutorDeputados   ?? null,
     autores_gp:   raw.IniAutorGruposParlamentares ?? null,
     eventos:      raw.IniEventos          ?? null,
@@ -73,14 +80,8 @@ export function normalizarDeputado(raw) {
 // Campos reais: DebateId, Artigo, Assunto, AutoresDeputados, AutoresGP,
 //               DataDebate, DataEntrada, Intervencoes, Publicacao, TipoDebateDesig
 export function normalizarDebate(raw) {
-  // Usar DebateId oficial se existir, senão fallback para hash
-  let id = safeStr(raw.DebateId);
-  if (!id) {
-    const dataStr = safeDate(raw.DataDebate) || safeDate(raw.DataEntrada) || '';
-    const assunto = safeStr(raw.Assunto, 200) || '';
-    id = `${dataStr}_${assunto.slice(0, 80)}`.replace(/\s+/g, '_');
-  }
-  if (!id || id === '_') return null;
+  const id = safeStr(raw.DebateId);
+  if (!id) return null;
 
   // URL do Diário da AR para scraping de transcrição
   const pub = Array.isArray(raw.Publicacao) ? raw.Publicacao[0] : null;
