@@ -123,15 +123,15 @@ function HemicicloPage() {
     <ParlamentoProvider>
 
       {/* ── Barra topo mobile ──────────────────────────────────── */}
-      <div className="md:hidden fixed top-0 left-0 right-0 z-40 flex items-center gap-3 px-4 py-3 bg-[#16213e] border-b border-white/10">
+      <div className="md:hidden fixed top-0 left-0 right-0 z-40 flex items-center gap-2 px-3 py-1.5 bg-[#16213e] border-b border-white/10">
         <button
           onClick={() => setDrawerAberto(true)}
           className="text-gray-300 hover:text-white transition-colors p-0.5"
           aria-label="Abrir menu"
         >
-          <Menu size={22} />
+          <Menu size={18} />
         </button>
-        <img src="/logo_solo.png" alt="" style={{ width: '70px', height: 'auto' }} />
+        <img src="/logo_solo.png" alt="" style={{ width: '44px', height: 'auto' }} />
         <span className="text-white text-sm font-semibold flex-1 truncate">Parlamento 3D</span>
       </div>
 
@@ -215,7 +215,7 @@ function HemicicloPage() {
 
         {/* Área principal */}
         <div
-          className="flex-1 h-full flex flex-col overflow-hidden pt-[52px] md:pt-0"
+          className="flex-1 h-full flex flex-col overflow-hidden pt-[40px] md:pt-0"
           style={{ background: '#f0f4f8' }}
         >
           {/* Desktop: painel do deputado sobreposto ao canvas */}
