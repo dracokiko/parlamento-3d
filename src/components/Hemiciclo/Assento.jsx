@@ -43,8 +43,8 @@ const AssentoComponent = ({ deputado, position, rotation, scale = 1 }) => {
     }
   });
 
-  const opacity = partidoEstaDestaque ? 1 : 0.25;
-  const emissiveIntensity = estaSelecionado ? 0.8 : hovered ? 0.4 : 0.05;
+  const opacity = partidoEstaDestaque ? 1 : 0.15;
+  const emissiveIntensity = estaSelecionado ? 0.8 : hovered ? 0.4 : (partidoEstaDestaque ? 0.05 : 0);
 
   const handlePointerOver = (e) => {
     e.stopPropagation();
@@ -88,7 +88,7 @@ const AssentoComponent = ({ deputado, position, rotation, scale = 1 }) => {
             roughness={0.45}
             metalness={0.1}
           />
-          <Edges threshold={15} color="#000000" />
+          {partidoEstaDestaque && <Edges threshold={15} color="#000000" />}
         </mesh>
 
         {/* Encosto — ligeiramente inclinado para trás */}
@@ -110,7 +110,7 @@ const AssentoComponent = ({ deputado, position, rotation, scale = 1 }) => {
             roughness={0.5}
             metalness={0.08}
           />
-          <Edges threshold={15} color="#000000" />
+          {partidoEstaDestaque && <Edges threshold={15} color="#000000" />}
         </mesh>
       </group>
 
