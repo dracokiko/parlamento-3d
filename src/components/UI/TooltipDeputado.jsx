@@ -15,12 +15,14 @@ export const CoatOfArmsAR = () => {
   const { deputadoHover, deputadoSelecionado } = useParlamento();
   const isMobile = useIsMobile();
 
-  if (deputadoHover || deputadoSelecionado) return null;
+  // No desktop esconde quando há hover/seleção (o tooltip sobrepõe-se).
+  // No mobile o tooltip aparece no centro e o brasão fica no topo — não se sobrepõem.
+  if (!isMobile && (deputadoHover || deputadoSelecionado)) return null;
 
   const estilo = isMobile
     ? {
         position: 'fixed',
-        top: '52px',
+        top: '76px',
         left: '50%',
         transform: 'translateX(-50%)',
         zIndex: 1,
@@ -45,8 +47,7 @@ export const CoatOfArmsAR = () => {
         style={{
           width: isMobile ? '90px' : '160px',
           height: 'auto',
-          opacity: isMobile ? 0.70 : 0.85,
-          filter: 'drop-shadow(0 4px 20px rgba(0,0,0,0.20))',
+          opacity: isMobile ? 0.72 : 0.85,
         }}
       />
     </div>
