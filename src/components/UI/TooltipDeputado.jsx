@@ -22,7 +22,7 @@ export const CoatOfArmsAR = () => {
   const estilo = isMobile
     ? {
         position: 'fixed',
-        top: '136px',
+        top: '156px',
         left: '50%',
         transform: 'translateX(-50%)',
         zIndex: 1,
