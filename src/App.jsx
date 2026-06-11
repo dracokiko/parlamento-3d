@@ -11,7 +11,9 @@ import { TooltipDeputado, CoatOfArmsAR } from './components/UI/TooltipDeputado';
 import { Header } from './components/UI/Header';
 import { PesquisaDeputado } from './components/UI/PesquisaDeputado';
 import { DiretivasUE } from './pages/DiretivasUE';
+import { DiretivaDetalhe } from './pages/DiretivaDetalhe';
 import { Votacoes } from './pages/Votacoes';
+import { VotacaoDetalhe } from './pages/VotacaoDetalhe';
 import { Sobre } from './pages/Sobre';
 import { useIsMobile } from './hooks/useIsMobile';
 
@@ -250,10 +252,12 @@ function App() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/"             element={<HemicicloPage />} />
-        <Route path="/diretivas-eu" element={<DiretivasUE />} />
-        <Route path="/votacoes"     element={<Votacoes />} />
-        <Route path="/sobre"        element={<Sobre />} />
+        <Route path="/"                    element={<HemicicloPage />} />
+        <Route path="/diretivas-eu"        element={<DiretivasUE />} />
+        <Route path="/diretivas-eu/:celex" element={<DiretivaDetalhe />} />
+        <Route path="/votacoes"            element={<Votacoes />} />
+        <Route path="/votacoes/:id"        element={<VotacaoDetalhe />} />
+        <Route path="/sobre"               element={<Sobre />} />
       </Routes>
     </BrowserRouter>
   );

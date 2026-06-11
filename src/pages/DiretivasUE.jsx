@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { ExternalLink, Search, AlertTriangle, CheckCircle2, Clock, Building2, RefreshCw } from 'lucide-react';
+import { ExternalLink, Search, AlertTriangle, CheckCircle2, Clock, Building2, RefreshCw, ChevronRight } from 'lucide-react';
+import { useIsMobile } from '../hooks/useIsMobile';
 import { supabase } from '../lib/supabase';
 
 const FILTROS = [
@@ -130,7 +131,35 @@ function EstatCard({ valor, label, cor }) {
   );
 }
 
+const CartaoDiretivaMobile = ({ d }) => {
+  const atraso = d.em_atraso ? diasAtraso(d.prazo_transposicao) : 0;
+  return (
+    <Link
+      to={`/diretivas-eu/${encodeURIComponent(d.id)}`}
+      className="block bg-white/5 border border-white/10 rounded-2xl px-4 py-3.5 active:bg-white/10 transition-colors"
+    >
+      <div className="flex items-start justify-between gap-2 mb-2">
+        <span className="font-mono text-xs text-gray-400 shrink-0">{d.id}</span>
+        <div className="flex items-center gap-1.5 shrink-0">
+          <StatusBadge em_atraso={d.em_atraso} transposto_pt={d.transposto_pt} />
+          <ChevronRight size={14} className="text-gray-600" />
+        </div>
+      </div>
+      <p className="text-sm text-gray-200 leading-snug line-clamp-2">
+        {tituloCurto(d.titulo) ?? '—'}
+      </p>
+      {d.prazo_transposicao && (
+        <p className={`text-xs mt-1.5 ${d.em_atraso ? 'text-red-400' : 'text-gray-500'}`}>
+          Prazo: {formatarData(d.prazo_transposicao)}
+          {d.em_atraso && <span className="ml-1 font-medium">({atraso}d atraso)</span>}
+        </p>
+      )}
+    </Link>
+  );
+};
+
 export function DiretivasUE() {
+  const isMobile = useIsMobile();
   const [diretivas, setDiretivas] = useState([]);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState(null);
@@ -310,71 +339,79 @@ export function DiretivasUE() {
 
             <p className="text-xs text-gray-500 mb-3">{listagem.length} diretivas</p>
 
-            {/* ── Tabela ───────────────────────────────── */}
-            <div className="rounded-xl border border-white/10 overflow-hidden">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="bg-white/5 text-xs text-gray-400 uppercase tracking-wider">
-                    <th className="text-left px-4 py-3">Estado</th>
-                    <th className="text-left px-4 py-3">CELEX</th>
-                    <th className="text-left px-4 py-3">Título</th>
-                    <th className="text-left px-4 py-3">Prazo</th>
-                    <th className="text-left px-4 py-3">Atraso</th>
-                    <th className="px-4 py-3"></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {listagem.map((d, i) => {
-                    const atraso = d.em_atraso ? diasAtraso(d.prazo_transposicao) : 0;
-                    return (
-                      <tr
-                        key={d.id}
-                        className={`border-t border-white/5 transition-colors hover:bg-white/[0.03] ${
-                          i % 2 === 0 ? '' : 'bg-white/[0.02]'
-                        }`}
-                      >
-                        <td className="px-4 py-3 whitespace-nowrap">
-                          <StatusBadge em_atraso={d.em_atraso} transposto_pt={d.transposto_pt} />
-                        </td>
-                        <td className="px-4 py-3 font-mono text-xs text-gray-300 whitespace-nowrap">
-                          {d.id}
-                        </td>
-                        <TituloCell titulo={d.titulo} />
-                        <td className="px-4 py-3 whitespace-nowrap text-gray-400 text-xs">
-                          {formatarData(d.prazo_transposicao)}
-                        </td>
-                        <td className="px-4 py-3 whitespace-nowrap text-xs">
-                          {d.em_atraso ? (
-                            <span className="text-red-400 font-medium">{atraso}d</span>
-                          ) : (
-                            <span className="text-gray-600">—</span>
-                          )}
-                        </td>
-                        <td className="px-4 py-3 whitespace-nowrap text-right">
-                          {d.link_eurlex && (
-                            <a
-                              href={d.link_eurlex}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-blue-400 hover:text-blue-300 transition-colors"
-                              title="Ver no EUR-Lex"
-                            >
-                              <ExternalLink size={14} />
-                            </a>
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-
-              {listagem.length === 0 && (
-                <div className="text-center py-10 text-gray-500 text-sm">
-                  Nenhuma diretiva encontrada com este filtro.
-                </div>
-              )}
-            </div>
+            {/* ── Lista (mobile) / Tabela (desktop) ────── */}
+            {isMobile ? (
+              <div className="space-y-3">
+                {listagem.map(d => <CartaoDiretivaMobile key={d.id} d={d} />)}
+                {listagem.length === 0 && (
+                  <p className="text-center py-10 text-gray-500 text-sm">Nenhuma diretiva encontrada.</p>
+                )}
+              </div>
+            ) : (
+              <div className="rounded-xl border border-white/10 overflow-hidden">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="bg-white/5 text-xs text-gray-400 uppercase tracking-wider">
+                      <th className="text-left px-4 py-3">Estado</th>
+                      <th className="text-left px-4 py-3">CELEX</th>
+                      <th className="text-left px-4 py-3">Título</th>
+                      <th className="text-left px-4 py-3">Prazo</th>
+                      <th className="text-left px-4 py-3">Atraso</th>
+                      <th className="px-4 py-3"></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {listagem.map((d, i) => {
+                      const atraso = d.em_atraso ? diasAtraso(d.prazo_transposicao) : 0;
+                      return (
+                        <tr
+                          key={d.id}
+                          className={`border-t border-white/5 transition-colors hover:bg-white/[0.03] ${
+                            i % 2 === 0 ? '' : 'bg-white/[0.02]'
+                          }`}
+                        >
+                          <td className="px-4 py-3 whitespace-nowrap">
+                            <StatusBadge em_atraso={d.em_atraso} transposto_pt={d.transposto_pt} />
+                          </td>
+                          <td className="px-4 py-3 font-mono text-xs text-gray-300 whitespace-nowrap">
+                            {d.id}
+                          </td>
+                          <TituloCell titulo={d.titulo} />
+                          <td className="px-4 py-3 whitespace-nowrap text-gray-400 text-xs">
+                            {formatarData(d.prazo_transposicao)}
+                          </td>
+                          <td className="px-4 py-3 whitespace-nowrap text-xs">
+                            {d.em_atraso ? (
+                              <span className="text-red-400 font-medium">{atraso}d</span>
+                            ) : (
+                              <span className="text-gray-600">—</span>
+                            )}
+                          </td>
+                          <td className="px-4 py-3 whitespace-nowrap text-right">
+                            {d.link_eurlex && (
+                              <a
+                                href={d.link_eurlex}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-blue-400 hover:text-blue-300 transition-colors"
+                                title="Ver no EUR-Lex"
+                              >
+                                <ExternalLink size={14} />
+                              </a>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+                {listagem.length === 0 && (
+                  <div className="text-center py-10 text-gray-500 text-sm">
+                    Nenhuma diretiva encontrada com este filtro.
+                  </div>
+                )}
+              </div>
+            )}
 
             <p className="text-xs text-gray-600 mt-4 text-center">
               Dados sincronizados via EUR-Lex CELLAR SPARQL · Atualização manual via script

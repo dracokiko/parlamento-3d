@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, Vote, ExternalLink, CheckCircle2, XCircle, MinusCircle } from 'lucide-react';
+import { ArrowLeft, Vote, ExternalLink, CheckCircle2, XCircle, MinusCircle, ChevronRight } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { partidos as PARTIDOS } from '../data/mockPartidos';
 import { InfoTooltip } from '../components/UI/InfoTooltip';
+import { useIsMobile } from '../hooks/useIsMobile';
 
 const PAGE = 40;
 
@@ -158,7 +159,43 @@ const CartaoVotacao = ({ voto, tituloIni, descTipo }) => {
   );
 };
 
+const CartaoVotacaoMobile = ({ voto, tituloIni, descTipo }) => {
+  const { bg, text, icon: Icon } = corResultado(voto.resultado);
+  return (
+    <Link
+      to={`/votacoes/${voto.id}`}
+      className="block bg-white border border-gray-100 rounded-2xl px-4 py-3.5 shadow-sm active:bg-gray-50 transition-colors"
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex-1 min-w-0">
+          {descTipo && (
+            <span className="inline-flex items-center text-[10px] font-medium text-blue-600 bg-blue-50 rounded px-1.5 py-0.5 mb-1">
+              {descTipo}
+            </span>
+          )}
+          <p className="text-sm font-semibold text-gray-900 leading-snug line-clamp-2">
+            {tituloIni ?? <span className="text-gray-400 italic">Iniciativa #{voto.iniciativa_id}</span>}
+          </p>
+        </div>
+        <div className="flex items-center gap-1 shrink-0">
+          <div className={`flex items-center gap-1 rounded-full px-2.5 py-1 ${bg}`}>
+            <Icon size={11} className={text} />
+            <span className={`text-xs font-bold ${text}`}>{voto.resultado ?? '—'}</span>
+          </div>
+          <ChevronRight size={14} className="text-gray-300 ml-0.5" />
+        </div>
+      </div>
+      {voto.data_votacao && (
+        <p className="text-xs text-gray-400 mt-1.5">
+          {new Date(voto.data_votacao).toLocaleDateString('pt-PT', { day: '2-digit', month: 'short', year: 'numeric' })}
+        </p>
+      )}
+    </Link>
+  );
+};
+
 export function Votacoes() {
+  const isMobile = useIsMobile();
   const [votos,      setVotos]      = useState([]);
   const [titulos,    setTitulos]    = useState({});   // iniciativa_id → { titulo, desc_tipo }
   const [filtro,     setFiltro]     = useState('todos');
@@ -277,15 +314,24 @@ export function Votacoes() {
           <p className="text-center text-gray-400 text-sm py-16">Nenhuma votação encontrada.</p>
         )}
 
-        <div className="space-y-4">
-          {votos.map(v => (
-            <CartaoVotacao
-              key={v.id}
-              voto={v}
-              tituloIni={titulos[v.iniciativa_id]?.titulo}
-              descTipo={titulos[v.iniciativa_id]?.desc_tipo}
-            />
-          ))}
+        <div className="space-y-3">
+          {votos.map(v =>
+            isMobile ? (
+              <CartaoVotacaoMobile
+                key={v.id}
+                voto={v}
+                tituloIni={titulos[v.iniciativa_id]?.titulo}
+                descTipo={titulos[v.iniciativa_id]?.desc_tipo}
+              />
+            ) : (
+              <CartaoVotacao
+                key={v.id}
+                voto={v}
+                tituloIni={titulos[v.iniciativa_id]?.titulo}
+                descTipo={titulos[v.iniciativa_id]?.desc_tipo}
+              />
+            )
+          )}
         </div>
 
         {/* Carregar mais */}
