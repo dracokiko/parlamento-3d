@@ -43,7 +43,7 @@ const AssentoComponent = ({ deputado, position, rotation, scale = 1 }) => {
     }
   });
 
-  const opacity = partidoEstaDestaque ? 1 : 0.15;
+  const opacity = partidoEstaDestaque ? 1 : 0.38;
   const emissiveIntensity = estaSelecionado ? 0.8 : hovered ? 0.4 : (partidoEstaDestaque ? 0.05 : 0);
 
   const handlePointerOver = (e) => {
