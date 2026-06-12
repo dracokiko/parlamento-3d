@@ -4,42 +4,65 @@ import { parsearIntervencoes } from './interventionParser.js';
 
 const db = createClient(SUPABASE_URL, SUPABASE_KEY);
 
-// Debates mais recentes com transcrição
-const { data: debates } = await db
+// Contagens gerais
+const { count: totalComUrl } = await db
   .from('ar_debates')
-  .select('id, assunto, data_debate, transcricao')
-  .not('transcricao', 'is', null)
-  .order('data_debate', { ascending: false })
-  .limit(20);
+  .select('*', { count: 'exact', head: true })
+  .not('url_diario', 'is', null);
 
-// Quais já estão indexados
-const { data: indexados } = await db
+const { count: totalComTranscricao } = await db
+  .from('ar_debates')
+  .select('*', { count: 'exact', head: true })
+  .not('transcricao', 'is', null);
+
+const { count: totalSemTranscricao } = await db
+  .from('ar_debates')
+  .select('*', { count: 'exact', head: true })
+  .not('url_diario', 'is', null)
+  .is('transcricao', null);
+
+const { count: totalIndexados } = await db
   .from('ar_intervencoes')
-  .select('debate_id')
-  .in('debate_id', debates.map(d => d.id));
+  .select('debate_id', { count: 'exact', head: true });
 
-const indexadosSet = new Set((indexados ?? []).map(r => r.debate_id));
+const { data: debatesIndexados } = await db
+  .from('ar_intervencoes')
+  .select('debate_id');
+const uniqueDebatesIndexados = new Set((debatesIndexados ?? []).map(r => r.debate_id)).size;
 
-console.log('\nÚltimos 20 debates com transcrição:\n');
-console.log('ID'.padEnd(25), 'Data'.padEnd(12), 'Indexado'.padEnd(10), 'Interv.'.padEnd(10), 'Texto (chars)');
-console.log('-'.repeat(75));
+console.log('\n=== ESTADO GERAL ===');
+console.log(`Debates com url_diario:          ${totalComUrl}`);
+console.log(`Debates com transcrição:         ${totalComTranscricao}`);
+console.log(`Debates SEM transcrição:         ${totalSemTranscricao}`);
+console.log(`Debates únicos com intervenções: ${uniqueDebatesIndexados}`);
+console.log(`Total de intervenções:           ${totalIndexados}`);
 
-for (const d of debates) {
-  const indexed  = indexadosSet.has(d.id);
-  const parsed   = parsearIntervencoes(d.transcricao ?? '');
-  const chars    = d.transcricao?.length ?? 0;
-  console.log(
-    d.id.padEnd(25),
-    (d.data_debate ?? '').padEnd(12),
-    String(indexed).padEnd(10),
-    String(parsed.length).padEnd(10),
-    chars
-  );
+// Buscar debates COM transcrição mas SEM entradas em ar_intervencoes
+const { data: comTranscricao } = await db
+  .from('ar_debates')
+  .select('id')
+  .not('transcricao', 'is', null);
 
-  // Mostrar amostra de transcrições não indexadas com texto mas 0 intervenções
-  if (!indexed && parsed.length === 0 && chars > 200) {
-    console.log('\n  >>> AMOSTRA (primeiros 600 chars):');
-    console.log(d.transcricao.slice(0, 600).replace(/\n/g, '\n  '));
-    console.log();
-  }
+const { data: jaIndexados } = await db
+  .from('ar_intervencoes')
+  .select('debate_id');
+
+const indexadosSet = new Set((jaIndexados ?? []).map(r => r.debate_id));
+const naoIndexados = (comTranscricao ?? []).filter(d => !indexadosSet.has(d.id));
+
+console.log(`\nDebates com transcrição mas NÃO indexados: ${naoIndexados.length}`);
+
+// Amostra dos não indexados — testar se parser encontra alguma coisa
+const { data: amostra } = await db
+  .from('ar_debates')
+  .select('id, data_debate, transcricao')
+  .in('id', naoIndexados.slice(0, 10).map(d => d.id));
+
+let comIntervencoes = 0, semIntervencoes = 0;
+for (const d of amostra ?? []) {
+  const n = parsearIntervencoes(d.transcricao ?? '').length;
+  if (n > 0) comIntervencoes++;
+  else semIntervencoes++;
 }
+
+console.log(`  → Dos primeiros 10: ${comIntervencoes} têm intervenções, ${semIntervencoes} não têm (sumários/vazios)`);
