@@ -216,9 +216,7 @@ export const PainelDeputado = () => {
   const [debateSelecionado, setDebateSelecionado] = useState(null);
   const { perfil, iniciativas, carregando } = useArDeputado(deputadoSelecionado);
   const nomeParlamentar = perfil?.nome_parlamentar ?? deputadoSelecionado?.nomeAbrev ?? '';
-  const { intervencoes, carregando: carregandoInt } = useIntervencoesDeputado(
-    abaAtiva === 'intervencoes' ? nomeParlamentar : null
-  );
+  const { intervencoes, carregando: carregandoInt } = useIntervencoesDeputado(nomeParlamentar);
 
   if (!deputadoSelecionado) return null;
 
@@ -403,12 +401,6 @@ export const PainelDeputado = () => {
             </div>
           </div>
 
-          {deputadoSelecionado.lugar && (
-            <div className="mt-auto pt-4 border-t border-white/20">
-              <span className="text-white/50 text-xs uppercase tracking-wider">Lugar</span>
-              <p className="text-white font-mono text-2xl font-bold mt-0.5">{deputadoSelecionado.lugar}</p>
-            </div>
-          )}
         </div>
 
         {/* Coluna direita: dados */}
