@@ -41,11 +41,12 @@ export const ParlamentoProvider = ({ children }) => {
   useEffect(() => {
     const LOTE = 1000;
 
-    const paginar = async (tabela, campos, ordenar) => {
+    const paginar = async (tabela, campos, ordenar, filtrar) => {
       const todos = [];
       for (let i = 0; ; i += LOTE) {
-        const q = supabase.from(tabela).select(campos).range(i, i + LOTE - 1);
-        if (ordenar) q.order(ordenar, { ascending: false });
+        let q = supabase.from(tabela).select(campos).range(i, i + LOTE - 1);
+        if (ordenar) q = q.order(ordenar, { ascending: false });
+        if (filtrar) q = filtrar(q);
         const { data } = await q;
         if (!data?.length) break;
         todos.push(...data);
@@ -54,16 +55,11 @@ export const ParlamentoProvider = ({ children }) => {
       return todos;
     };
 
-    // Perfis AR — filtrar pela XVII Legislatura para não exceder o limite de 1000 linhas
-    // (a tabela tem ~1446 linhas de múltiplas legislaturas)
-    supabase
-      .from('ar_deputados')
-      .select('id, cad_id, nome_parlamentar, nome_completo, partido_sigla, circulo, resumo_ia')
-      .eq('legislatura', 'XVII')
-      .then(({ data }) => {
-        if (!data) return;
+    // Perfis AR — paginar para não perder deputados além do limite de 1000 linhas do Supabase
+    paginar('ar_deputados', 'id, cad_id, nome_parlamentar, nome_completo, partido_sigla, circulo, resumo_ia', null, q => q.eq('legislatura', 'XVII'))
+      .then(todos => {
         const mapa = new Map();
-        data.forEach(p => { if (p.nome_parlamentar) mapa.set(p.nome_parlamentar.toLowerCase(), p); });
+        todos.forEach(p => { if (p.nome_parlamentar) mapa.set(p.nome_parlamentar.toLowerCase(), p); });
         setPerfisMapa(mapa);
         setPerfisProntos(true);
       });
