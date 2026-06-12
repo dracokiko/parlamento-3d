@@ -22,7 +22,7 @@ const TITULOS = [
 
 // Detecta o início de QUALQUER intervenção (com ou sem sigla de GP)
 const RE_QUALQUER = new RegExp(
-  `(?:^|\\n)\\s*(?:${TITULOS})\\b[^\\n:]{0,80}?(?:\\s*\\([^)\\n]{1,25}\\))?\\s*:\\s*[—\\-–]`,
+  `(?:^|\\n)\\s*(?:${TITULOS})[^\\n:]{0,80}?(?:\\s*\\([^)\\n]{1,25}\\))?\\s*:\\s*[—\\-–]`,
   'g'
 );
 

@@ -114,11 +114,10 @@ export function Sobre() {
         </Secao>
 
 
-        <Secao titulo="Draco's Company" icone={User}>
+        <Secao titulo="Sobre o projeto" icone={User}>
           <p>
-            O Parlamento 3D é um projeto da <strong>Draco's Company</strong>, uma iniciativa individual
-            criada por um jovem português com o objetivo de tornar a informação parlamentar mais
-            acessível e transparente para todos os cidadãos.
+            O Parlamento 3D é uma iniciativa individual criada por um jovem português com o objetivo
+            de tornar a informação parlamentar mais acessível e transparente para todos os cidadãos.
           </p>
         </Secao>
 
@@ -127,10 +126,10 @@ export function Sobre() {
             Sugestões, correções ou ideias para melhorar esta plataforma são muito bem-vindas.
             Podes enviá-las para{' '}
             <a
-              href="mailto:dracoscompany@gmail.com"
+              href="mailto:parlamento3d@gmail.com"
               className="text-blue-400 hover:text-blue-300 transition-colors"
             >
-              dracoscompany@gmail.com
+              parlamento3d@gmail.com
             </a>
             .
           </p>
