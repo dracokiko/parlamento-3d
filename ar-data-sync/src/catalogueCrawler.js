@@ -1,24 +1,20 @@
 /**
  * Crawler do catálogo de debates do DAR (debates.parlamento.pt).
  *
- * Descobre todos os artigos do Diário da AR (série I, XVII legislatura)
- * que correspondem a debates substantivos (artigos com vários intervenientes).
- *
  * Estratégia:
- *   1. Listar todos os números do DAR na sessão actual
- *   2. Para cada número, listar as páginas dos artigos
- *   3. Para cada artigo, obter o range de páginas (prettyLinkExtraParams)
- *   4. Artigos com ≥ 3 páginas são debates; os restantes são páginas de rotina
- *   5. Upsert na tabela ar_debates
+ *   1. Listar todos os (numero, data) do DAR na sessão actual
+ *   2. Para cada par novo, buscar o texto completo via ?sft=true
+ *   3. Guardar uma entrada por sessão em ar_debates com transcricao preenchida
  */
 
 import { createClient } from '@supabase/supabase-js';
 import { SUPABASE_URL, SUPABASE_KEY } from './config.js';
-import { extrairCamposForm } from './scraper.js';
+import { extrairTextoHtml } from './scraper.js';
 
 const BASE    = 'https://debates.parlamento.pt';
-const TIMEOUT = 300_000; // site do DAR pode demorar 3+ minutos a responder
-const DELAY   = 600; // ms entre pedidos — evita rate limit
+const TIMEOUT = 300_000;
+const DELAY   = 1000; // ms entre pedidos
+const MIN_TEXTO = 2000; // chars mínimos para ser considerado uma sessão real
 
 let _client = null;
 const db = () => {
@@ -40,14 +36,12 @@ async function fetchHtml(url, tentativas = 2) {
     } catch (err) {
       if (i === tentativas) throw err;
       console.warn(`  ⚠ Tentativa ${i}/${tentativas} falhou (${err.message}) — a repetir...`);
-      await sleep(2000 * i);
+      await sleep(3000 * i);
     }
   }
 }
 
-const RE_ORG = /org=([A-Z]+)/;
-
-/** Lista todos os números do DAR disponíveis no catálogo. */
+/** Lista todos os (numero, data) do DAR disponíveis no catálogo. */
 async function listarNumerosDar() {
   const html = await fetchHtml(`${BASE}/catalogo/r3/dar/01/17/01`);
   const vistos = new Set();
@@ -59,10 +53,10 @@ async function listarNumerosDar() {
       numeros.push({ numero: m[1], data: m[2] });
     }
   }
-  return numeros.sort((a, b) => a.numero.localeCompare(b.numero));
+  return numeros.sort((a, b) => a.data.localeCompare(b.data));
 }
 
-/** Para um número do DAR, devolve os IDs dos artigos existentes na BD. */
+/** IDs dar_ já existentes no Supabase para um dado numero. */
 async function idsExistentes(numero) {
   const { data } = await db()
     .from('ar_debates')
@@ -71,95 +65,85 @@ async function idsExistentes(numero) {
   return new Set((data ?? []).map(r => r.id));
 }
 
-/** Extrai os números de página (artigos) listados na página de um número do DAR. */
-async function listarPaginasDoNumero(numero, data) {
-  const html = await fetchHtml(`${BASE}/catalogo/r3/dar/01/17/01/${numero}/${data}`);
-  const pags = new Set();
-  for (const m of html.matchAll(/href="\/catalogo\/r3\/dar\/01\/17\/01\/\d+\/[^\/]+\/(\d+)[^"]*"/g)) {
-    pags.add(parseInt(m[1], 10));
-  }
-  return [...pags].sort((a, b) => a - b);
-}
-
-/** Obtém os metadados de um artigo usando os campos hidden do form de exportação. */
-async function metadadosArtigo(numero, dataIssue, pagina) {
-  const url  = `${BASE}/catalogo/r3/dar/01/17/01/${numero}/${dataIssue}/${pagina}`;
-  const html = await fetchHtml(url);
-
-  // O campo hidden <input name="pgs" value="3-16"> dá-nos o range do artigo
-  const campos = extrairCamposForm(html);
-  if (!campos?.pgs) return null;
-
-  const pgsMatch = campos.pgs.match(/(\d+)-(\d+)/);
-  if (!pgsMatch) return null;
-
-  const pagInicio = parseInt(pgsMatch[1], 10);
-  const pagFim    = parseInt(pgsMatch[2], 10);
-  if (pagFim - pagInicio < 2) return null; // demasiado curto
-
-  return {
-    pagInicio,
-    pagFim,
-    urlDiario: `${BASE}/catalogo/r3/dar/01/17/01/${numero}/${dataIssue}/${pagina}?pgs=${pagInicio}-${pagFim}&org=PLC`,
-  };
+/**
+ * Data mais recente com url_diario fornecida pela API AR (entradas não-dar_).
+ * O crawler só precisa de processar sessões APÓS esta data.
+ */
+async function dataCoberturApiAR() {
+  const { data } = await db()
+    .from('ar_debates')
+    .select('data_debate')
+    .not('url_diario', 'is', null)
+    .not('id', 'ilike', 'dar_%')
+    .order('data_debate', { ascending: false })
+    .limit(1);
+  return data?.[0]?.data_debate ?? '2000-01-01';
 }
 
 /**
- * Crawl principal: descobre artigos novos em todos os números do DAR
- * e faz upsert na tabela ar_debates.
- *
- * Só processa artigos cujo ID ainda não existe na BD.
+ * Busca o texto completo de uma sessão via ?sft=true.
+ * Devolve { url, texto } ou null se texto insuficiente.
+ */
+async function fetchTextoSessao(numero, data) {
+  const url = `${BASE}/catalogo/r3/dar/01/17/01/${numero}/${data}?sft=true`;
+  const html = await fetchHtml(url);
+  const texto = extrairTextoHtml(html);
+  if (!texto || texto.length < MIN_TEXTO) return null;
+  return { url: `${BASE}/catalogo/r3/dar/01/17/01/${numero}/${data}`, texto };
+}
+
+/**
+ * Crawl principal: descobre sessões novas no catálogo do DAR
+ * e insere em ar_debates com a transcrição completa já preenchida.
  */
 export async function crawlerDebatesDAR() {
-  console.log('\n  [DAR-CRAWL] A descobrir artigos no catálogo do DAR...');
+  console.log('\n  [DAR-CRAWL] A descobrir sessões no catálogo do DAR...');
 
-  const numeros = await listarNumerosDar();
-  console.log(`  [DAR-CRAWL] ${numeros.length} números encontrados`);
+  const [todosNumeros, cutoff] = await Promise.all([
+    listarNumerosDar(),
+    dataCoberturApiAR(),
+  ]);
+
+  // Só processar sessões com data APÓS a cobertura da API AR (evita duplicados)
+  const numeros = todosNumeros.filter(({ data }) => data > cutoff);
+  console.log(`  [DAR-CRAWL] ${todosNumeros.length} entradas no catálogo, ${numeros.length} a processar (após ${cutoff})`);
 
   let novos = 0, ignorados = 0, erros = 0;
 
   for (const { numero, data } of numeros) {
-    let paginas;
-    try {
-      paginas = await listarPaginasDoNumero(numero, data);
-      await sleep(DELAY);
-    } catch (e) {
-      console.warn(`  ⚠ Nº ${numero}: ${e.message}`);
-      erros++;
-      continue;
-    }
-
-    // IDs já existentes para este número → skip
+    const id = `dar_${numero}_${data}`;
     const existentes = await idsExistentes(numero);
 
-    for (const pg of paginas) {
-      const id = `dar_${numero}_${pg}`;
-      if (existentes.has(id)) { ignorados++; continue; }
+    if (existentes.has(id)) { ignorados++; continue; }
 
-      await sleep(DELAY);
-      try {
-        const meta = await metadadosArtigo(numero, data, pg);
-        if (!meta) { ignorados++; continue; }
+    await sleep(DELAY);
+    try {
+      const sessao = await fetchTextoSessao(numero, data);
+      if (!sessao) { ignorados++; continue; }
 
-        const { error } = await db().from('ar_debates').upsert({
-          id,
-          data_debate:  data,
-          sessao:       '01',
-          legislatura:  'XVII',
-          url_diario:   meta.urlDiario,
-          // assunto, transcricao e resumo_ia preenchidos nas fases seguintes
-        }, { onConflict: 'id', ignoreDuplicates: true });
+      const { error } = await db().from('ar_debates').upsert({
+        id,
+        data_debate:  data,
+        sessao:       '01',
+        legislatura:  'XVII',
+        url_diario:   sessao.url,
+        transcricao:  sessao.texto,
+      }, { onConflict: 'id', ignoreDuplicates: true });
 
-        if (error) { erros++; }
-        else        { novos++; process.stdout.write(`  [DAR-CRAWL] ${novos} novos artigos\r`); }
-
-      } catch (e) {
-        console.warn(`  ⚠ Artigo ${numero}/${data}/${pg}: ${e.message}`);
+      if (error) {
+        console.warn(`  ⚠ Upsert ${id}: ${error.message}`);
         erros++;
+      } else {
+        novos++;
+        console.log(`  [DAR-CRAWL] +${novos} ${id} (${sessao.texto.length} chars)`);
       }
+
+    } catch (e) {
+      console.warn(`  ⚠ ${numero}/${data}: ${e.message}`);
+      erros++;
     }
   }
 
-  console.log(`\n  [DAR-CRAWL] Concluído — ${novos} novos, ${ignorados} já existentes, ${erros} erros`);
+  console.log(`\n  [DAR-CRAWL] Concluído — ${novos} novos, ${ignorados} ignorados, ${erros} erros`);
   return { novos, erros };
 }

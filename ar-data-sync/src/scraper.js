@@ -99,7 +99,7 @@ async function exportarPdf(campos, referer) {
 
 // ── Fallback: extracção HTML ──────────────────────────────────────────────────
 
-function extrairTextoHtml(html) {
+export function extrairTextoHtml(html) {
   const markerIdx = html.indexOf('id="pageTextRaw"');
   if (markerIdx === -1) return '';
 

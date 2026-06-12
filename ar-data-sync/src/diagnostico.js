@@ -1,68 +1,37 @@
 import { createClient } from '@supabase/supabase-js';
 import { SUPABASE_URL, SUPABASE_KEY } from './config.js';
-import { parsearIntervencoes } from './interventionParser.js';
 
 const db = createClient(SUPABASE_URL, SUPABASE_KEY);
 
-// Contagens gerais
-const { count: totalComUrl } = await db
-  .from('ar_debates')
-  .select('*', { count: 'exact', head: true })
-  .not('url_diario', 'is', null);
+const nome = process.argv[2] ?? 'Pedro Pinto';
+console.log(`\nA procurar intervenções de: "${nome}"\n`);
 
-const { count: totalComTranscricao } = await db
-  .from('ar_debates')
-  .select('*', { count: 'exact', head: true })
-  .not('transcricao', 'is', null);
-
-const { count: totalSemTranscricao } = await db
-  .from('ar_debates')
-  .select('*', { count: 'exact', head: true })
-  .not('url_diario', 'is', null)
-  .is('transcricao', null);
-
-const { count: totalIndexados } = await db
-  .from('ar_intervencoes')
-  .select('debate_id', { count: 'exact', head: true });
-
-const { data: debatesIndexados } = await db
-  .from('ar_intervencoes')
-  .select('debate_id');
-const uniqueDebatesIndexados = new Set((debatesIndexados ?? []).map(r => r.debate_id)).size;
-
-console.log('\n=== ESTADO GERAL ===');
-console.log(`Debates com url_diario:          ${totalComUrl}`);
-console.log(`Debates com transcrição:         ${totalComTranscricao}`);
-console.log(`Debates SEM transcrição:         ${totalSemTranscricao}`);
-console.log(`Debates únicos com intervenções: ${uniqueDebatesIndexados}`);
-console.log(`Total de intervenções:           ${totalIndexados}`);
-
-// Buscar debates COM transcrição mas SEM entradas em ar_intervencoes
-const { data: comTranscricao } = await db
-  .from('ar_debates')
-  .select('id')
-  .not('transcricao', 'is', null);
-
-const { data: jaIndexados } = await db
-  .from('ar_intervencoes')
-  .select('debate_id');
-
-const indexadosSet = new Set((jaIndexados ?? []).map(r => r.debate_id));
-const naoIndexados = (comTranscricao ?? []).filter(d => !indexadosSet.has(d.id));
-
-console.log(`\nDebates com transcrição mas NÃO indexados: ${naoIndexados.length}`);
-
-// Amostra dos não indexados — testar se parser encontra alguma coisa
-const { data: amostra } = await db
-  .from('ar_debates')
-  .select('id, data_debate, transcricao')
-  .in('id', naoIndexados.slice(0, 10).map(d => d.id));
-
-let comIntervencoes = 0, semIntervencoes = 0;
-for (const d of amostra ?? []) {
-  const n = parsearIntervencoes(d.transcricao ?? '').length;
-  if (n > 0) comIntervencoes++;
-  else semIntervencoes++;
+// Paginar ar_intervencoes para encontrar todas as entradas do deputado
+let todas = [], offset = 0;
+const LOTE = 1000;
+while (true) {
+  const { data } = await db
+    .from('ar_intervencoes')
+    .select('id, nome_dep, data_debate, assunto')
+    .ilike('nome_dep', `%${nome}%`)
+    .order('data_debate', { ascending: false })
+    .range(offset, offset + LOTE - 1);
+  if (!data?.length) break;
+  todas.push(...data);
+  if (data.length < LOTE) break;
+  offset += LOTE;
 }
 
-console.log(`  → Dos primeiros 10: ${comIntervencoes} têm intervenções, ${semIntervencoes} não têm (sumários/vazios)`);
+if (!todas.length) {
+  console.log('Nenhuma intervenção encontrada.');
+} else {
+  console.log(`Total: ${todas.length} intervenções\n`);
+  console.log('Mais recentes:');
+  todas.slice(0, 10).forEach(i =>
+    console.log(`  ${i.data_debate}  ${(i.assunto ?? '').slice(0, 60)}`)
+  );
+  console.log('\nMais antigas:');
+  todas.slice(-5).forEach(i =>
+    console.log(`  ${i.data_debate}  ${(i.assunto ?? '').slice(0, 60)}`)
+  );
+}
