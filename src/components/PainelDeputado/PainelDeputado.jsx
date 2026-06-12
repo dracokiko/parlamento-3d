@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { X, MapPin, FileText, Mic, ExternalLink, User } from 'lucide-react';
+import { X, MapPin, FileText, Mic, ExternalLink, BookUser } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useParlamento } from '../../context/ParlamentoContext';
 import { partidos } from '../../data/mockPartidos';
@@ -10,11 +10,11 @@ import { useBiografiaDeputado } from '../../hooks/useBiografiaDeputado';
 import { useIsMobile } from '../../hooks/useIsMobile';
 import { ModalIniciativa } from './ModalIniciativa';
 import { ModalDebate } from './ModalDebate';
+import { ModalBiografia } from './ModalBiografia';
 
 const ABAS = [
   { id: 'iniciativas',  label: 'Iniciativas',  icon: FileText },
   { id: 'intervencoes', label: 'Intervenções', icon: Mic      },
-  { id: 'biografia',    label: 'Biografia',    icon: User     },
 ];
 
 const SecaoIniciativas = ({ iniciativas, carregando, onClickIniciativa }) => {
@@ -182,52 +182,6 @@ const SecaoIntervencoes = ({ intervencoes, carregando, corPartido }) => {
   );
 };
 
-const SecaoBiografia = ({ bio, carregando }) => {
-  if (carregando) return <p className="text-sm text-gray-400 italic">A carregar biografia...</p>;
-  if (!bio) return <p className="text-sm text-gray-400 italic">Sem dados biográficos disponíveis.</p>;
-
-  const Seccao = ({ titulo, items }) => {
-    if (!items?.length) return null;
-    return (
-      <div>
-        <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2">{titulo}</h3>
-        <ul className="space-y-1.5">
-          {items.map((item, i) => (
-            <li key={i} className="text-sm text-gray-700 flex items-start gap-2">
-              <span className="text-gray-300 mt-0.5 flex-shrink-0">·</span>
-              <span className="leading-snug">{item}</span>
-            </li>
-          ))}
-        </ul>
-      </div>
-    );
-  };
-
-  return (
-    <div className="space-y-5">
-      {(bio.data_nascimento || bio.profissao) && (
-        <div className="space-y-1.5">
-          {bio.data_nascimento && (
-            <div className="flex justify-between text-sm">
-              <span className="text-gray-400">Nascimento</span>
-              <span className="text-gray-700">{bio.data_nascimento}</span>
-            </div>
-          )}
-          {bio.profissao && (
-            <div className="flex justify-between text-sm">
-              <span className="text-gray-400">Profissão</span>
-              <span className="text-gray-700 text-right max-w-[60%]">{bio.profissao}</span>
-            </div>
-          )}
-        </div>
-      )}
-      <Seccao titulo="Habilitações literárias" items={bio.habilitacoes} />
-      <Seccao titulo="Cargos exercidos"        items={bio.cargos_exercidos} />
-      <Seccao titulo="Comissões parlamentares" items={bio.comissoes} />
-    </div>
-  );
-};
-
 // ── Abas partilhadas entre mobile e desktop ────────────────────
 const Abas = ({ abaAtiva, setAbaAtiva, contagens }) => (
   <div className="flex border-b border-gray-100 px-4 pt-3 gap-1 flex-shrink-0">
@@ -262,6 +216,7 @@ export const PainelDeputado = () => {
   const [abaAtiva, setAbaAtiva] = useState('iniciativas');
   const [iniciativaSelecionada, setIniciativaSelecionada] = useState(null);
   const [debateSelecionado, setDebateSelecionado] = useState(null);
+  const [biografiaAberta, setBiografiaAberta] = useState(false);
   const { perfil, iniciativas, carregando } = useArDeputado(deputadoSelecionado);
   const nomeParlamentar = perfil?.nome_parlamentar ?? deputadoSelecionado?.nomeAbrev ?? '';
   const { intervencoes, carregando: carregandoInt } = useIntervencoesDeputado(nomeParlamentar);
@@ -281,7 +236,6 @@ export const PainelDeputado = () => {
     <>
       {abaAtiva === 'iniciativas'  && <SecaoIniciativas  iniciativas={iniciativas}  carregando={carregando}    onClickIniciativa={setIniciativaSelecionada} />}
       {abaAtiva === 'intervencoes' && <SecaoIntervencoes intervencoes={intervencoes} carregando={carregandoInt} corPartido={partido?.cor} />}
-      {abaAtiva === 'biografia'    && <SecaoBiografia    bio={bio}                  carregando={carregandoBio} />}
     </>
   );
 
@@ -295,6 +249,15 @@ export const PainelDeputado = () => {
         debate={debateSelecionado}
         onFechar={() => setDebateSelecionado(null)}
       />
+      {biografiaAberta && (
+        <ModalBiografia
+          bio={bio}
+          carregando={carregandoBio}
+          nomeDeputado={deputadoSelecionado.nome}
+          corPartido={partido?.cor}
+          onFechar={() => setBiografiaAberta(false)}
+        />
+      )}
     </>
   );
 
@@ -366,6 +329,13 @@ export const PainelDeputado = () => {
                 aria-label="Fechar painel"
               >
                 <X size={16} className="text-gray-500" />
+              </button>
+              <button
+                onClick={() => setBiografiaAberta(true)}
+                className="p-1.5 rounded-full hover:bg-gray-100 transition-colors"
+                aria-label="Ver biografia"
+              >
+                <BookUser size={16} className="text-gray-400" />
               </button>
               <span className="text-[10px] text-gray-400 text-right leading-tight">
                 {iniciativas.length} init.<br />{intervencoes.length} interv.
@@ -451,6 +421,16 @@ export const PainelDeputado = () => {
                 <span className="font-bold text-white">{intervencoes.length}</span>
               </div>
             </div>
+
+            <button
+              onClick={() => setBiografiaAberta(true)}
+              className="mt-5 w-full aspect-square rounded-2xl border-2 border-white/30 hover:border-white/60 hover:bg-white/10 transition-all flex flex-col items-center justify-center gap-2 group"
+            >
+              <BookUser size={28} className="text-white/60 group-hover:text-white transition-colors" />
+              <span className="text-white/70 group-hover:text-white text-xs font-semibold uppercase tracking-wider transition-colors">
+                Biografia
+              </span>
+            </button>
           </div>
 
         </div>
