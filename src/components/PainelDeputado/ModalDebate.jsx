@@ -1,27 +1,6 @@
-import { useState, useEffect } from 'react';
-import { X, Sparkles, Users, Calendar, ExternalLink, BookOpen } from 'lucide-react';
-import { supabase } from '../../lib/supabase';
+import { X, Sparkles, Users, Calendar, ExternalLink } from 'lucide-react';
 
 export const ModalDebate = ({ debate, onFechar }) => {
-  const [iniciativas, setIniciativas] = useState([]);
-
-  useEffect(() => {
-    if (!debate?.data_debate) { setIniciativas([]); return; }
-    supabase
-      .from('ar_votacoes')
-      .select('iniciativa_id')
-      .eq('data_votacao', debate.data_debate)
-      .then(async ({ data: vots }) => {
-        const ids = [...new Set((vots ?? []).map(v => v.iniciativa_id).filter(Boolean))];
-        if (!ids.length) return setIniciativas([]);
-        const { data } = await supabase
-          .from('ar_iniciativas')
-          .select('id, titulo, numero, desc_tipo')
-          .in('id', ids);
-        setIniciativas(data ?? []);
-      });
-  }, [debate?.data_debate]);
-
   if (!debate) return null;
 
   const autoresDep = typeof debate.autores_dep === 'string'
@@ -106,31 +85,6 @@ export const ModalDebate = ({ debate, onFechar }) => {
               </div>
               <p className="text-sm text-gray-700 leading-relaxed">{debate.resumo_ia}</p>
               <p className="text-xs text-gray-400 mt-2">Gerado automaticamente · pode conter imprecisões</p>
-            </div>
-          )}
-
-          {/* Iniciativas discutidas */}
-          {iniciativas.length > 0 && (
-            <div>
-              <div className="flex items-center gap-1.5 mb-3">
-                <BookOpen size={13} className="text-gray-400" />
-                <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                  Iniciativas discutidas ({iniciativas.length})
-                </span>
-              </div>
-              <div className="space-y-2">
-                {iniciativas.map(ini => (
-                  <div key={ini.id} className="border border-gray-100 rounded-xl p-3">
-                    {ini.desc_tipo && (
-                      <span className="inline-block text-xs font-medium text-blue-600 bg-blue-50 rounded px-2 py-0.5 mb-1.5">
-                        {ini.desc_tipo}
-                        {ini.numero && <span className="ml-1 opacity-70">nº {ini.numero}</span>}
-                      </span>
-                    )}
-                    <p className="text-sm text-gray-800 leading-snug">{ini.titulo ?? '—'}</p>
-                  </div>
-                ))}
-              </div>
             </div>
           )}
 
