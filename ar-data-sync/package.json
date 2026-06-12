@@ -8,7 +8,8 @@
     "sync:iniciativas": "node src/sync.js iniciativas",
     "sync:intervencoes": "node src/sync.js intervencoes",
     "sync:votacoes": "node src/sync.js votacoes",
-    "sync:eurlex": "node src/eurlexSync.js"
+    "sync:eurlex": "node src/eurlexSync.js",
+    "sync:biografias": "node src/biografiasCrawler.js"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.39.0",
