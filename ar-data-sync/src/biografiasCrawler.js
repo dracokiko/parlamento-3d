@@ -21,8 +21,9 @@ if (!SUPABASE_URL || !SUPABASE_KEY) {
 
 const CATALOGO = 'https://debates.parlamento.pt/catalogo/r3/dar/01/17/01';
 const BIO_BASE  = 'https://www.parlamento.pt/DeputadoGP/Paginas/Biografia.aspx?BID=';
-const DELAY     = 800;
-const TIMEOUT   = 15_000;
+const DELAY          = 800;
+const TIMEOUT_PAGINA = 60_000;   // catálogo é pesado
+const TIMEOUT_BIO    = 15_000;
 
 let _client = null;
 const db = () => {
@@ -32,14 +33,22 @@ const db = () => {
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
-async function fetchHtml(url) {
-  const res = await fetch(url, {
-    redirect: 'follow',
-    signal: AbortSignal.timeout(TIMEOUT),
-    headers: { 'User-Agent': 'Mozilla/5.0 (compatible; ParlamentoBot/1.0)' },
-  });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  return res.text();
+async function fetchHtml(url, timeout = TIMEOUT_BIO, tentativas = 3) {
+  for (let i = 1; i <= tentativas; i++) {
+    try {
+      const res = await fetch(url, {
+        redirect: 'follow',
+        signal: AbortSignal.timeout(timeout),
+        headers: { 'User-Agent': 'Mozilla/5.0 (compatible; ParlamentoBot/1.0)' },
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return res.text();
+    } catch (err) {
+      if (i === tentativas) throw err;
+      console.warn(`  ⚠ Tentativa ${i}/${tentativas} falhou (${err.message}) — a repetir em ${i * 3}s...`);
+      await sleep(i * 3000);
+    }
+  }
 }
 
 function decodeHtml(str) {
@@ -102,9 +111,10 @@ function parseBio(html, bid) {
 
 /** Extrai todos os BIDs únicos da página do catálogo. */
 async function extrairBids() {
-  const html = await fetchHtml(CATALOGO);
+  const html = await fetchHtml(CATALOGO, TIMEOUT_PAGINA);
   const bids = new Set();
-  for (const m of html.matchAll(/BID=(\d+)/gi)) {
+  // Só extrai BIDs de links directos para Biografia.aspx, ignorando outras referências
+  for (const m of html.matchAll(/Biografia\.aspx\?BID=(\d+)/gi)) {
     bids.add(parseInt(m[1], 10));
   }
   return [...bids].sort((a, b) => a - b);
@@ -138,7 +148,8 @@ export async function crawlerBiografias() {
       if (error) throw new Error(error.message);
 
       ok++;
-      process.stdout.write(`  … ${ok}/${bids.length} — ${bio.nome_abrev}\r`);
+      const linha = `  … ${ok}/${bids.length} — ${bio.nome_abrev}`;
+      process.stdout.write(linha.padEnd(60) + '\r');
     } catch (err) {
       erros++;
       console.warn(`\n  ✗ BID ${bid}: ${err.message}`);
