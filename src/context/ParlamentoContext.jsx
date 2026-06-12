@@ -54,10 +54,12 @@ export const ParlamentoProvider = ({ children }) => {
       return todos;
     };
 
-    // Perfis AR
+    // Perfis AR — filtrar pela XVII Legislatura para não exceder o limite de 1000 linhas
+    // (a tabela tem ~1446 linhas de múltiplas legislaturas)
     supabase
       .from('ar_deputados')
       .select('id, cad_id, nome_parlamentar, nome_completo, partido_sigla, circulo, resumo_ia')
+      .eq('legislatura', 'XVII')
       .then(({ data }) => {
         if (!data) return;
         const mapa = new Map();

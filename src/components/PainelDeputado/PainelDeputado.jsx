@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { X, MapPin, FileText, Mic, ExternalLink, BookUser } from 'lucide-react';
+import { X, MapPin, FileText, Mic, ExternalLink, BookUser, CalendarCheck } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useParlamento } from '../../context/ParlamentoContext';
 import { partidos } from '../../data/mockPartidos';
@@ -337,6 +337,17 @@ export const PainelDeputado = () => {
               >
                 <BookUser size={16} className="text-gray-400" />
               </button>
+              {bio?.bid && (
+                <a
+                  href={`https://www.parlamento.pt/DeputadoGP/Paginas/PresencasReunioesPlenarias.aspx?BID=${bio.bid}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="p-1.5 rounded-full hover:bg-gray-100 transition-colors"
+                  aria-label="Ver presenças"
+                >
+                  <CalendarCheck size={16} className="text-gray-400" />
+                </a>
+              )}
               <span className="text-[10px] text-gray-400 text-right leading-tight">
                 {iniciativas.length} init.<br />{intervencoes.length} interv.
               </span>
@@ -422,15 +433,38 @@ export const PainelDeputado = () => {
               </div>
             </div>
 
-            <button
-              onClick={() => setBiografiaAberta(true)}
-              className="mt-5 w-full aspect-square rounded-2xl border-2 border-white/30 hover:border-white/60 hover:bg-white/10 transition-all flex flex-col items-center justify-center gap-2 group"
-            >
-              <BookUser size={28} className="text-white/60 group-hover:text-white transition-colors" />
-              <span className="text-white/70 group-hover:text-white text-xs font-semibold uppercase tracking-wider transition-colors">
-                Biografia
-              </span>
-            </button>
+            <div className="mt-5 flex gap-2">
+              <button
+                onClick={() => setBiografiaAberta(true)}
+                className="flex-1 aspect-square rounded-2xl border-2 border-white/30 hover:border-white/60 hover:bg-white/10 transition-all flex flex-col items-center justify-center gap-2 group"
+              >
+                <BookUser size={24} className="text-white/60 group-hover:text-white transition-colors" />
+                <span className="text-white/70 group-hover:text-white text-[10px] font-semibold uppercase tracking-wider transition-colors">
+                  Biografia
+                </span>
+              </button>
+
+              {bio?.bid ? (
+                <a
+                  href={`https://www.parlamento.pt/DeputadoGP/Paginas/PresencasReunioesPlenarias.aspx?BID=${bio.bid}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex-1 aspect-square rounded-2xl border-2 border-white/30 hover:border-white/60 hover:bg-white/10 transition-all flex flex-col items-center justify-center gap-2 group"
+                >
+                  <CalendarCheck size={24} className="text-white/60 group-hover:text-white transition-colors" />
+                  <span className="text-white/70 group-hover:text-white text-[10px] font-semibold uppercase tracking-wider transition-colors">
+                    Presenças
+                  </span>
+                </a>
+              ) : (
+                <div className="flex-1 aspect-square rounded-2xl border-2 border-white/10 flex flex-col items-center justify-center gap-2 opacity-40">
+                  <CalendarCheck size={24} className="text-white/40" />
+                  <span className="text-white/40 text-[10px] font-semibold uppercase tracking-wider">
+                    Presenças
+                  </span>
+                </div>
+              )}
+            </div>
           </div>
 
         </div>
