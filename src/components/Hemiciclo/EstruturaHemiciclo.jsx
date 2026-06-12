@@ -32,7 +32,7 @@ const EmblemaChao = () => {
 // Altere estas propriedades para colocar publicidade real.
 // ─────────────────────────────────────────────────────────────
 const BANNER_CONFIG = {
-  texto:      '  ★  SPOT PUBLICITÁRIO  —  Para anunciar contacte: dracoscompany@gmail.com  ★  ',
+  texto:      '  ★  SPOT PUBLICITÁRIO  —  Para anunciar contacte: parlamento3d@gmail.com  ★  ',
   corFundo:   '#eef2f7',   // fundo do banner (azul-acinzentado claro)
   corTexto:   '#2c5282',   // cor do texto (azul médio)
   velocidade: 0.04,        // velocidade de scroll (unidades/s); aumente para mais rápido
