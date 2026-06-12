@@ -11,6 +11,8 @@ import { useIsMobile } from '../../hooks/useIsMobile';
 import { ModalIniciativa } from './ModalIniciativa';
 import { ModalDebate } from './ModalDebate';
 import { ModalBiografia } from './ModalBiografia';
+import { ModalPresencas } from './ModalPresencas';
+import { usePresencasDeputado } from '../../hooks/usePresencasDeputado';
 
 const ABAS = [
   { id: 'iniciativas',  label: 'Iniciativas',  icon: FileText },
@@ -216,13 +218,15 @@ export const PainelDeputado = () => {
   const [abaAtiva, setAbaAtiva] = useState('iniciativas');
   const [iniciativaSelecionada, setIniciativaSelecionada] = useState(null);
   const [debateSelecionado, setDebateSelecionado] = useState(null);
-  const [biografiaAberta, setBiografiaAberta] = useState(false);
+  const [biografiaAberta, setBiografiaAberta]   = useState(false);
+  const [presencasAbertas, setPresencasAbertas] = useState(false);
   const { perfil, iniciativas, carregando } = useArDeputado(deputadoSelecionado);
   const nomeParlamentar = perfil?.nome_parlamentar ?? deputadoSelecionado?.nomeAbrev ?? '';
   const { intervencoes, carregando: carregandoInt } = useIntervencoesDeputado(nomeParlamentar);
   const { bio, carregando: carregandoBio } = useBiografiaDeputado(
     deputadoSelecionado.nomeAbrev ?? deputadoSelecionado.nome
   );
+  const { presencas, carregando: carregandoPresencas } = usePresencasDeputado(bio?.bid);
 
   if (!deputadoSelecionado) return null;
 
@@ -256,6 +260,15 @@ export const PainelDeputado = () => {
           nomeDeputado={deputadoSelecionado.nome}
           corPartido={partido?.cor}
           onFechar={() => setBiografiaAberta(false)}
+        />
+      )}
+      {presencasAbertas && (
+        <ModalPresencas
+          presencas={presencas}
+          carregando={carregandoPresencas}
+          nomeDeputado={deputadoSelecionado.nome}
+          corPartido={partido?.cor}
+          onFechar={() => setPresencasAbertas(false)}
         />
       )}
     </>
@@ -337,17 +350,13 @@ export const PainelDeputado = () => {
               >
                 <BookUser size={16} className="text-gray-400" />
               </button>
-              {bio?.bid && (
-                <a
-                  href={`https://www.parlamento.pt/DeputadoGP/Paginas/PresencasReunioesPlenarias.aspx?BID=${bio.bid}`}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="p-1.5 rounded-full hover:bg-gray-100 transition-colors"
-                  aria-label="Ver presenças"
-                >
-                  <CalendarCheck size={16} className="text-gray-400" />
-                </a>
-              )}
+              <button
+                onClick={() => setPresencasAbertas(true)}
+                className="p-1.5 rounded-full hover:bg-gray-100 transition-colors"
+                aria-label="Ver presenças"
+              >
+                <CalendarCheck size={16} className="text-gray-400" />
+              </button>
               <span className="text-[10px] text-gray-400 text-right leading-tight">
                 {iniciativas.length} init.<br />{intervencoes.length} interv.
               </span>
@@ -444,26 +453,15 @@ export const PainelDeputado = () => {
                 </span>
               </button>
 
-              {bio?.bid ? (
-                <a
-                  href={`https://www.parlamento.pt/DeputadoGP/Paginas/PresencasReunioesPlenarias.aspx?BID=${bio.bid}`}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="flex-1 aspect-square rounded-2xl border-2 border-white/30 hover:border-white/60 hover:bg-white/10 transition-all flex flex-col items-center justify-center gap-2 group"
-                >
-                  <CalendarCheck size={24} className="text-white/60 group-hover:text-white transition-colors" />
-                  <span className="text-white/70 group-hover:text-white text-[10px] font-semibold uppercase tracking-wider transition-colors">
-                    Presenças
-                  </span>
-                </a>
-              ) : (
-                <div className="flex-1 aspect-square rounded-2xl border-2 border-white/10 flex flex-col items-center justify-center gap-2 opacity-40">
-                  <CalendarCheck size={24} className="text-white/40" />
-                  <span className="text-white/40 text-[10px] font-semibold uppercase tracking-wider">
-                    Presenças
-                  </span>
-                </div>
-              )}
+              <button
+                onClick={() => setPresencasAbertas(true)}
+                className="flex-1 aspect-square rounded-2xl border-2 border-white/30 hover:border-white/60 hover:bg-white/10 transition-all flex flex-col items-center justify-center gap-2 group"
+              >
+                <CalendarCheck size={24} className="text-white/60 group-hover:text-white transition-colors" />
+                <span className="text-white/70 group-hover:text-white text-[10px] font-semibold uppercase tracking-wider transition-colors">
+                  Presenças
+                </span>
+              </button>
             </div>
           </div>
 
