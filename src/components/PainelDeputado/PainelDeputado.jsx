@@ -240,6 +240,7 @@ export const PainelDeputado = () => {
       <ModalIniciativa
         iniciativa={iniciativaSelecionada}
         onFechar={() => setIniciativaSelecionada(null)}
+        onClickDebate={deb => { setIniciativaSelecionada(null); setDebateSelecionado(deb); }}
       />
       <ModalDebate
         debate={debateSelecionado}

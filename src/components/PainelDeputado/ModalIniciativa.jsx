@@ -169,7 +169,7 @@ const SecaoVotacoes = ({ votacoes, carregando }) => {
   );
 };
 
-export const ModalIniciativa = ({ iniciativa, onFechar }) => {
+export const ModalIniciativa = ({ iniciativa, onFechar, onClickDebate }) => {
   const [votacoes,   setVotacoes]   = useState([]);
   const [eventos,    setEventos]    = useState([]);
   const [debates,    setDebates]    = useState([]);
@@ -332,7 +332,11 @@ export const ModalIniciativa = ({ iniciativa, onFechar }) => {
               </div>
               <div className="space-y-2">
                 {debates.map(d => (
-                  <div key={d.id} className="flex items-start gap-3 py-2 border-b border-gray-50 last:border-0">
+                  <button
+                    key={d.id}
+                    onClick={() => onClickDebate?.(d)}
+                    className="w-full text-left flex items-start gap-3 py-2 px-2 rounded-lg border-b border-gray-50 last:border-0 hover:bg-purple-50 transition-colors"
+                  >
                     <div className="w-1.5 h-1.5 rounded-full bg-purple-300 flex-shrink-0 mt-1.5" />
                     <div className="flex-1 min-w-0">
                       {d.tipo_debate && (
@@ -345,7 +349,7 @@ export const ModalIniciativa = ({ iniciativa, onFechar }) => {
                     {d.data_debate && (
                       <span className="text-xs text-gray-400 flex-shrink-0">{d.data_debate}</span>
                     )}
-                  </div>
+                  </button>
                 ))}
               </div>
             </div>
