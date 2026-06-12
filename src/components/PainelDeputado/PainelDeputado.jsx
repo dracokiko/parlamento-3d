@@ -1,11 +1,12 @@
 import { useState } from 'react';
-import { X, MapPin, FileText, Mic, ExternalLink } from 'lucide-react';
+import { X, MapPin, FileText, Mic, ExternalLink, User } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useParlamento } from '../../context/ParlamentoContext';
 import { partidos } from '../../data/mockPartidos';
 import { obterIniciais } from '../../utils/formatters';
 import { useArDeputado } from '../../hooks/useArDeputado';
 import { useIntervencoesDeputado } from '../../hooks/useIntervencoesDeputado';
+import { useBiografiaDeputado } from '../../hooks/useBiografiaDeputado';
 import { useIsMobile } from '../../hooks/useIsMobile';
 import { ModalIniciativa } from './ModalIniciativa';
 import { ModalDebate } from './ModalDebate';
@@ -13,6 +14,7 @@ import { ModalDebate } from './ModalDebate';
 const ABAS = [
   { id: 'iniciativas',  label: 'Iniciativas',  icon: FileText },
   { id: 'intervencoes', label: 'Intervenções', icon: Mic      },
+  { id: 'biografia',    label: 'Biografia',    icon: User     },
 ];
 
 const SecaoIniciativas = ({ iniciativas, carregando, onClickIniciativa }) => {
@@ -180,6 +182,52 @@ const SecaoIntervencoes = ({ intervencoes, carregando, corPartido }) => {
   );
 };
 
+const SecaoBiografia = ({ bio, carregando }) => {
+  if (carregando) return <p className="text-sm text-gray-400 italic">A carregar biografia...</p>;
+  if (!bio) return <p className="text-sm text-gray-400 italic">Sem dados biográficos disponíveis.</p>;
+
+  const Seccao = ({ titulo, items }) => {
+    if (!items?.length) return null;
+    return (
+      <div>
+        <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2">{titulo}</h3>
+        <ul className="space-y-1.5">
+          {items.map((item, i) => (
+            <li key={i} className="text-sm text-gray-700 flex items-start gap-2">
+              <span className="text-gray-300 mt-0.5 flex-shrink-0">·</span>
+              <span className="leading-snug">{item}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+    );
+  };
+
+  return (
+    <div className="space-y-5">
+      {(bio.data_nascimento || bio.profissao) && (
+        <div className="space-y-1.5">
+          {bio.data_nascimento && (
+            <div className="flex justify-between text-sm">
+              <span className="text-gray-400">Nascimento</span>
+              <span className="text-gray-700">{bio.data_nascimento}</span>
+            </div>
+          )}
+          {bio.profissao && (
+            <div className="flex justify-between text-sm">
+              <span className="text-gray-400">Profissão</span>
+              <span className="text-gray-700 text-right max-w-[60%]">{bio.profissao}</span>
+            </div>
+          )}
+        </div>
+      )}
+      <Seccao titulo="Habilitações literárias" items={bio.habilitacoes} />
+      <Seccao titulo="Cargos exercidos"        items={bio.cargos_exercidos} />
+      <Seccao titulo="Comissões parlamentares" items={bio.comissoes} />
+    </div>
+  );
+};
+
 // ── Abas partilhadas entre mobile e desktop ────────────────────
 const Abas = ({ abaAtiva, setAbaAtiva, contagens }) => (
   <div className="flex border-b border-gray-100 px-4 pt-3 gap-1 flex-shrink-0">
@@ -217,6 +265,9 @@ export const PainelDeputado = () => {
   const { perfil, iniciativas, carregando } = useArDeputado(deputadoSelecionado);
   const nomeParlamentar = perfil?.nome_parlamentar ?? deputadoSelecionado?.nomeAbrev ?? '';
   const { intervencoes, carregando: carregandoInt } = useIntervencoesDeputado(nomeParlamentar);
+  const { bio, carregando: carregandoBio } = useBiografiaDeputado(
+    deputadoSelecionado.nomeAbrev ?? deputadoSelecionado.nome
+  );
 
   if (!deputadoSelecionado) return null;
 
@@ -230,6 +281,7 @@ export const PainelDeputado = () => {
     <>
       {abaAtiva === 'iniciativas'  && <SecaoIniciativas  iniciativas={iniciativas}  carregando={carregando}    onClickIniciativa={setIniciativaSelecionada} />}
       {abaAtiva === 'intervencoes' && <SecaoIntervencoes intervencoes={intervencoes} carregando={carregandoInt} corPartido={partido?.cor} />}
+      {abaAtiva === 'biografia'    && <SecaoBiografia    bio={bio}                  carregando={carregandoBio} />}
     </>
   );
 
