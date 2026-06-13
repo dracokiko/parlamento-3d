@@ -142,7 +142,7 @@ export function Presencas() {
           .select('bid, nome_abrev, total_sessoes, presencas, faltas_just, ausencias_mp, outras, taxa_presenca'),
         supabase
           .from('deputados')
-          .select('id, partido, foto_url'),
+          .select('id, nome_abrev, partido, fotos'),
       ]);
 
       // Indexa por nome_abrev normalizado — o bid da AR não coincide com o id do Supabase
@@ -156,7 +156,7 @@ export function Presencas() {
         return {
           ...p,
           partido: dep?.partido ?? null,
-          foto:    dep?.foto_url ?? null,
+          foto:    dep?.fotos ?? null,
         };
       });
 
