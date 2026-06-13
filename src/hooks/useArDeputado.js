@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { useParlamento } from '../context/ParlamentoContext';
+import { nomeCorresponde } from '../utils/formatters';
 
 /**
  * Devolve perfil e iniciativas de um deputado a partir do cache pré-carregado.
@@ -13,11 +14,11 @@ export function useArDeputado(deputado) {
 
     const nomeAbrev = (deputado.nomeAbrev ?? '').toLowerCase();
 
-    // Perfil — correspondência exacta primeiro, depois parcial
+    // Perfil — exacto primeiro, depois primeiro+último token
     let perfil = perfisMapa.get(nomeAbrev) ?? null;
     if (!perfil) {
       for (const [key, p] of perfisMapa) {
-        if (key.includes(nomeAbrev) || nomeAbrev.includes(key)) { perfil = p; break; }
+        if (nomeCorresponde(key, nomeAbrev)) { perfil = p; break; }
       }
     }
 

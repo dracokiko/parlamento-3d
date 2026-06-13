@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { useParlamento } from '../context/ParlamentoContext';
+import { nomeCorresponde } from '../utils/formatters';
 
 /**
  * Devolve as intervenções de um deputado a partir do cache pré-carregado no contexto.
@@ -15,7 +16,7 @@ export function useIntervencoesDeputado(nomeParlamentar) {
     const resultado = [];
 
     for (const [key, ivs] of intervencoesMapa) {
-      if (key.includes(termo) || termo.includes(key)) {
+      if (key === termo || nomeCorresponde(key, termo)) {
         resultado.push(...ivs);
       }
     }

@@ -3,6 +3,23 @@
  */
 
 /**
+ * Compara dois nomes parlamentares de forma robusta.
+ *
+ * Regra: dois nomes "correspondem" se partilham o primeiro E o último
+ * token (palavras), e cada nome tem pelo menos 2 palavras. Isto cobre
+ * variações de nome completo vs. abreviado (ex: "Ana Rita Fonseca" ↔
+ * "Ana Fonseca") sem apanhar falsos positivos de substring.
+ */
+export const nomeCorresponde = (a, b) => {
+  if (!a || !b) return false;
+  if (a === b) return true;
+  const wa = a.split(/\s+/).filter(Boolean);
+  const wb = b.split(/\s+/).filter(Boolean);
+  if (wa.length < 2 || wb.length < 2) return false;
+  return wa[0] === wb[0] && wa.at(-1) === wb.at(-1);
+};
+
+/**
  * Formata uma data ISO para o formato português.
  * Ex: "2025-01-15T14:00:00" -> "15 de janeiro de 2025, 14:00"
  */
