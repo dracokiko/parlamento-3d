@@ -107,24 +107,28 @@ function parseBio(html, bid) {
   };
 }
 
-/** Lê todos os cad_id da tabela ar_deputados (XVII legislatura). */
+/** Lê todos os { cad_id, nome_parlamentar } da ar_deputados (XVII legislatura). */
 async function extrairBids() {
   const todos = [];
   const LOTE = 1000;
   for (let i = 0; ; i += LOTE) {
     const { data, error } = await db()
       .from('ar_deputados')
-      .select('cad_id')
+      .select('cad_id, nome_parlamentar')
       .eq('legislatura', 'XVII')
       .not('cad_id', 'is', null)
       .range(i, i + LOTE - 1);
     if (error) throw new Error(error.message);
     if (!data?.length) break;
-    todos.push(...data.map(d => parseInt(d.cad_id, 10)));
+    todos.push(...data.map(d => ({ bid: parseInt(d.cad_id, 10), nome: d.nome_parlamentar })));
     if (data.length < LOTE) break;
   }
-  // Remover duplicados (deputado pode ter várias entradas) e ordenar
-  return [...new Set(todos)].sort((a, b) => a - b);
+  // Remover duplicados por bid (deputado pode ter várias entradas) — manter o primeiro nome
+  const mapa = new Map();
+  for (const { bid, nome } of todos) {
+    if (!mapa.has(bid)) mapa.set(bid, nome);
+  }
+  return [...mapa.entries()].sort((a, b) => a[0] - b[0]).map(([bid, nome]) => ({ bid, nome }));
 }
 
 export async function crawlerBiografias() {
@@ -132,18 +136,21 @@ export async function crawlerBiografias() {
   console.log('  CRAWLER — BIOGRAFIAS DOS DEPUTADOS');
   console.log('='.repeat(55));
 
-  const bids = await extrairBids();
-  console.log(`  → ${bids.length} BIDs encontrados no catálogo`);
+  const deputados = await extrairBids();
+  console.log(`  → ${deputados.length} BIDs encontrados no catálogo`);
 
   let ok = 0, erros = 0;
 
-  for (const bid of bids) {
+  for (const { bid, nome: nomeFallback } of deputados) {
     try {
       const html = await fetchHtml(`${BIO_BASE}${bid}`);
       const bio  = parseBio(html, bid);
 
+      // Usar nome_parlamentar da ar_deputados como fallback se o HTML não tiver nome
+      if (!bio.nome_abrev) bio.nome_abrev = nomeFallback ?? null;
+
       if (!bio.nome_abrev) {
-        console.warn(`  ⚠ BID ${bid}: sem nome — a saltar`);
+        console.warn(`  ⚠ BID ${bid}: sem nome mesmo com fallback — a saltar`);
         erros++;
         continue;
       }
@@ -155,7 +162,7 @@ export async function crawlerBiografias() {
       if (error) throw new Error(error.message);
 
       ok++;
-      const linha = `  … ${ok}/${bids.length} — ${bio.nome_abrev}`;
+      const linha = `  … ${ok}/${deputados.length} — ${bio.nome_abrev}`;
       process.stdout.write(linha.padEnd(60) + '\r');
     } catch (err) {
       erros++;
