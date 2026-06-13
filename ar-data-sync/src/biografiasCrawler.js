@@ -19,11 +19,9 @@ if (!SUPABASE_URL || !SUPABASE_KEY) {
   process.exit(1);
 }
 
-const CATALOGO = 'https://debates.parlamento.pt/catalogo/r3/dar/01/17/01';
 const BIO_BASE  = 'https://www.parlamento.pt/DeputadoGP/Paginas/Biografia.aspx?BID=';
-const DELAY          = 800;
-const TIMEOUT_PAGINA = 60_000;   // catálogo é pesado
-const TIMEOUT_BIO    = 15_000;
+const DELAY       = 800;
+const TIMEOUT_BIO = 15_000;
 
 let _client = null;
 const db = () => {
@@ -109,15 +107,24 @@ function parseBio(html, bid) {
   };
 }
 
-/** Extrai todos os BIDs únicos da página do catálogo. */
+/** Lê todos os cad_id da tabela ar_deputados (XVII legislatura). */
 async function extrairBids() {
-  const html = await fetchHtml(CATALOGO, TIMEOUT_PAGINA);
-  const bids = new Set();
-  // Só extrai BIDs de links directos para Biografia.aspx, ignorando outras referências
-  for (const m of html.matchAll(/Biografia\.aspx\?BID=(\d+)/gi)) {
-    bids.add(parseInt(m[1], 10));
+  const todos = [];
+  const LOTE = 1000;
+  for (let i = 0; ; i += LOTE) {
+    const { data, error } = await db()
+      .from('ar_deputados')
+      .select('cad_id')
+      .eq('legislatura', 'XVII')
+      .not('cad_id', 'is', null)
+      .range(i, i + LOTE - 1);
+    if (error) throw new Error(error.message);
+    if (!data?.length) break;
+    todos.push(...data.map(d => parseInt(d.cad_id, 10)));
+    if (data.length < LOTE) break;
   }
-  return [...bids].sort((a, b) => a - b);
+  // Remover duplicados (deputado pode ter várias entradas) e ordenar
+  return [...new Set(todos)].sort((a, b) => a - b);
 }
 
 export async function crawlerBiografias() {
