@@ -91,19 +91,35 @@ export async function crawlerPresencas() {
   console.log('  CRAWLER — PRESENÇAS DOS DEPUTADOS');
   console.log('='.repeat(55));
 
-  // Buscar todos os BIDs + nomes da tabela ar_biografias
-  const { data: bios, error } = await db()
+  // Buscar todos os BIDs de ar_deputados (mesma fonte que o crawler de biografias)
+  const todos = [];
+  const LOTE = 1000;
+  for (let i = 0; ; i += LOTE) {
+    const { data, error } = await db()
+      .from('ar_deputados')
+      .select('cad_id')
+      .eq('legislatura', 'XVII')
+      .not('cad_id', 'is', null)
+      .range(i, i + LOTE - 1);
+    if (error) { console.error('❌', error.message); process.exit(1); }
+    if (!data?.length) break;
+    todos.push(...data.map(d => parseInt(d.cad_id, 10)));
+    if (data.length < LOTE) break;
+  }
+  const bids = [...new Set(todos)].sort((a, b) => a - b);
+
+  // Lookup de nomes a partir de ar_biografias (best-effort)
+  const { data: bioNomes } = await db()
     .from('ar_biografias')
-    .select('bid, nome_abrev')
-    .order('bid');
+    .select('bid, nome_abrev');
+  const nomeMap = Object.fromEntries((bioNomes ?? []).map(b => [b.bid, b.nome_abrev]));
 
-  if (error) { console.error('❌', error.message); process.exit(1); }
-
-  console.log(`  → ${bios.length} deputados em ar_biografias`);
+  console.log(`  → ${bids.length} BIDs em ar_deputados`);
 
   let ok = 0, erros = 0;
 
-  for (const { bid, nome_abrev } of bios) {
+  for (const bid of bids) {
+    const nome_abrev = nomeMap[bid] ?? `BID ${bid}`;
     try {
       const html     = await fetchHtml(`${BASE}${bid}`);
       const registo  = parsePresencas(html, bid, nome_abrev);

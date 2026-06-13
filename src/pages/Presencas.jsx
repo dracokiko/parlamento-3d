@@ -168,14 +168,6 @@ export function Presencas() {
       // Partir sempre dos 230 deputados (fonte da verdade) — ex-deputados ficam de fora
       const merged = (deps ?? []).map(dep => {
         const pres = presNome.get(norm(dep.nome)) ?? presInicio.get(primUlt(dep.nome));
-        if (!pres) {
-          const primeiro = norm(dep.nome).split(' ')[0];
-          const ultimo   = norm(dep.nome).split(' ').at(-1);
-          const candidatos = (presencas ?? [])
-            .filter(p => norm(p.nome_abrev).startsWith(primeiro) || norm(p.nome_abrev).endsWith(ultimo))
-            .map(p => p.nome_abrev);
-          console.log('SEM MATCH:', dep.nome, '→', candidatos.join(' | ') || '(nenhum)');
-        }
         return {
           bid:          dep.id,
           nome_abrev:   dep.nome,
