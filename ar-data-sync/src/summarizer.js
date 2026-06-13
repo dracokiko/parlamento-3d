@@ -28,14 +28,16 @@ const PAGINA = 50; // registos por página (evita timeout no Supabase)
 
 export async function resumirIniciativas() {
   console.log('\n  [IA] A resumir iniciativas novas...');
-  let offset = 0, total = 0, erros = 0;
+  let total = 0, erros = 0;
 
   while (true) {
+    // Offset sempre 0: registos processados saem do conjunto IS NULL,
+    // pelo que o "início" do conjunto muda a cada iteração.
     const { data, error } = await db()
       .from('ar_iniciativas')
       .select('id, titulo, epigrafe, tipo, desc_tipo, autores_dep, autores_gp')
       .is('resumo_ia', null)
-      .range(offset, offset + PAGINA - 1);
+      .range(0, PAGINA - 1);
 
     if (error) { console.error('  ✗ Erro ao buscar iniciativas:', error.message); break; }
     if (!data?.length) break;
@@ -52,7 +54,6 @@ export async function resumirIniciativas() {
     }
 
     if (data.length < PAGINA) break;
-    offset += PAGINA;
   }
 
   console.log(`\n  [IA] Iniciativas concluído — ${total} resumidas, ${erros} erros`);
@@ -62,22 +63,20 @@ export async function resumirIniciativas() {
 
 export async function resumirDeputados() {
   console.log('\n  [IA] A resumir perfis de deputados...');
-  let total = 0, erros = 0, offset = 0;
+  let total = 0, erros = 0;
 
   while (true) {
-    // Busca deputados activos sem resumo (tem pelo menos partido definido)
     const { data: deps, error } = await db()
       .from('ar_deputados')
       .select('id, cad_id, nome_parlamentar, partido_sigla, circulo')
       .is('resumo_ia', null)
       .not('partido_sigla', 'is', null)
-      .range(offset, offset + PAGINA - 1);
+      .range(0, PAGINA - 1);
 
     if (error) { console.error('  ✗ Erro ao buscar deputados:', error.message); break; }
     if (!deps?.length) break;
 
     for (const dep of deps) {
-      // Busca as iniciativas onde este deputado é autor (por cad_id)
       const { data: inis } = await db()
         .from('ar_iniciativas')
         .select('titulo, resumo_ia')
@@ -98,7 +97,6 @@ export async function resumirDeputados() {
     }
 
     if (deps.length < PAGINA) break;
-    offset += PAGINA;
   }
 
   console.log(`\n  [IA] Deputados concluído — ${total} processados, ${erros} erros`);
