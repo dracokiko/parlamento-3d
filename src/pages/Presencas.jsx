@@ -55,16 +55,17 @@ const CartaoDeputado = ({ deputado, rank, corPartido, onClick, isMobile }) => {
 
   return (
     <div
-      className="bg-white border border-gray-100 rounded-2xl px-4 py-3 shadow-sm hover:shadow-md transition-all cursor-pointer hover:border-gray-200 active:scale-[0.99]"
+      className="bg-white rounded-2xl shadow-sm hover:shadow-md transition-all cursor-pointer active:scale-[0.99] overflow-hidden flex"
+      style={{ borderLeft: `4px solid ${cor}` }}
       onClick={onClick}
     >
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 px-4 py-3 flex-1 min-w-0">
         {/* Rank */}
         {rank != null && <RankBadge n={rank} />}
 
         {/* Foto */}
         <div
-          className="w-9 h-9 rounded-full overflow-hidden flex-shrink-0 border-2"
+          className="w-12 h-12 rounded-full overflow-hidden flex-shrink-0 border-2"
           style={{ borderColor: cor }}
         >
           {deputado.foto ? (
@@ -75,7 +76,7 @@ const CartaoDeputado = ({ deputado, rank, corPartido, onClick, isMobile }) => {
             />
           ) : (
             <div
-              className="w-full h-full flex items-center justify-center text-white text-xs font-bold"
+              className="w-full h-full flex items-center justify-center text-white text-sm font-bold"
               style={{ background: cor }}
             >
               {(deputado.nome_abrev ?? '?').charAt(0)}
@@ -90,8 +91,8 @@ const CartaoDeputado = ({ deputado, rank, corPartido, onClick, isMobile }) => {
           </p>
           {deputado.partido && (
             <span
-              className="inline-block text-[10px] font-bold px-1.5 py-0.5 rounded mt-0.5"
-              style={{ backgroundColor: cor + '22', color: cor }}
+              className="inline-block text-[10px] font-bold px-2 py-0.5 rounded-full mt-1"
+              style={{ backgroundColor: cor, color: '#fff' }}
             >
               {deputado.partido}
             </span>
@@ -193,13 +194,7 @@ export function Presencas() {
     const validas = dados.filter(d => d.taxa_presenca != null);
     if (!validas.length) return null;
     const media = validas.reduce((s, d) => s + Number(d.taxa_presenca), 0) / validas.length;
-    const sorted = [...validas].sort((a, b) => b.taxa_presenca - a.taxa_presenca);
-    return {
-      total: validas.length,
-      media: media.toFixed(1),
-      melhor: sorted[0],
-      pior: sorted[sorted.length - 1],
-    };
+    return { total: validas.length, media: media.toFixed(1) };
   }, [dados]);
 
   const corDeputado = p => PARTIDOS[p]?.cor ?? '#6b7280';
@@ -235,21 +230,9 @@ export function Presencas() {
 
         {/* Stats */}
         {stats && (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 gap-3">
             <StatCard label="Deputados com dados" valor={stats.total} />
             <StatCard label="Presença média" valor={`${stats.media}%`} />
-            <StatCard
-              label="Mais assíduo"
-              valor={stats.melhor?.nome_abrev}
-              sub={`${Number(stats.melhor?.taxa_presenca).toFixed(1)}%`}
-              cor="#16a34a"
-            />
-            <StatCard
-              label="Menos assíduo"
-              valor={stats.pior?.nome_abrev}
-              sub={`${Number(stats.pior?.taxa_presenca).toFixed(1)}%`}
-              cor="#ef4444"
-            />
           </div>
         )}
 
