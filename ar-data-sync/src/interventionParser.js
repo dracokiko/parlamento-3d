@@ -32,6 +32,12 @@ const RE_DEPUTADO = new RegExp(
   'g'
 );
 
+// Marcador de orador inline — sem exigir \n, para truncar falas que contêm
+// mudanças de orador numa só linha (interjeiçõoes no meio do texto)
+const RE_INLINE_ORADOR = new RegExp(
+  `\\s+(?:${TITULOS})[^:]{0,80}?(?:\\([^)]{1,25}\\))?\\s*:\\s*[—\\-–]`
+);
+
 /**
  * Dado o texto completo de uma transcrição do DAR, devolve todas as intervenções
  * de deputados (com sigla de GP).
@@ -66,8 +72,11 @@ export function parsearIntervencoes(transcricao) {
     const partido = match[2].trim();
 
     // Texto da fala = tudo após o marcador "NOME (SIGLA): —"
+    // Truncar no primeiro marcador de orador inline (mudança de linha sem \n)
     const fimMarcador = match.index + match[0].length;
-    const texto       = fatia.slice(fimMarcador).trim();
+    const raw         = fatia.slice(fimMarcador);
+    const inlineCorte = raw.search(RE_INLINE_ORADOR);
+    const texto       = (inlineCorte > 0 ? raw.slice(0, inlineCorte) : raw).trim();
 
     if (!texto) continue;
 
