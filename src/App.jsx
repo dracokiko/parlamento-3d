@@ -15,6 +15,7 @@ import { DiretivaDetalhe } from './pages/DiretivaDetalhe';
 import { Votacoes } from './pages/Votacoes';
 import { VotacaoDetalhe } from './pages/VotacaoDetalhe';
 import { Sobre } from './pages/Sobre';
+import { Presencas } from './pages/Presencas';
 import { useIsMobile } from './hooks/useIsMobile';
 
 const MENSAGENS = [
@@ -113,6 +114,7 @@ const MobilePainel = () => {
 const NAV_LINKS = [
   { to: '/',             label: 'Hemiciclo'    },
   { to: '/votacoes',     label: 'Votações'     },
+  { to: '/presencas',    label: 'Presenças'    },
   { to: '/diretivas-eu', label: 'Diretivas UE' },
   { to: '/sobre',        label: 'Sobre'        },
 ];
@@ -258,6 +260,7 @@ function App() {
         <Route path="/votacoes"            element={<Votacoes />} />
         <Route path="/votacoes/:id"        element={<VotacaoDetalhe />} />
         <Route path="/sobre"               element={<Sobre />} />
+        <Route path="/presencas"           element={<Presencas />} />
       </Routes>
     </BrowserRouter>
   );
