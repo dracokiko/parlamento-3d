@@ -253,15 +253,17 @@ function HemicicloPage() {
 function App() {
   return (
     <BrowserRouter>
-      <Routes>
-        <Route path="/"                    element={<HemicicloPage />} />
-        <Route path="/diretivas-eu"        element={<DiretivasUE />} />
-        <Route path="/diretivas-eu/:celex" element={<DiretivaDetalhe />} />
-        <Route path="/votacoes"            element={<Votacoes />} />
-        <Route path="/votacoes/:id"        element={<VotacaoDetalhe />} />
-        <Route path="/sobre"               element={<Sobre />} />
-        <Route path="/presencas"           element={<Presencas />} />
-      </Routes>
+      <ParlamentoProvider>
+        <Routes>
+          <Route path="/"                    element={<HemicicloPage />} />
+          <Route path="/diretivas-eu"        element={<DiretivasUE />} />
+          <Route path="/diretivas-eu/:celex" element={<DiretivaDetalhe />} />
+          <Route path="/votacoes"            element={<Votacoes />} />
+          <Route path="/votacoes/:id"        element={<VotacaoDetalhe />} />
+          <Route path="/sobre"               element={<Sobre />} />
+          <Route path="/presencas"           element={<Presencas />} />
+        </Routes>
+      </ParlamentoProvider>
     </BrowserRouter>
   );
 }
