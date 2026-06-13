@@ -145,24 +145,23 @@ export function Presencas() {
           .select('id, nome, partido_sigla, foto'),
       ]);
 
-      // Indexa por nome normalizado — o bid da AR não coincide com o id do Supabase
-      const normalizar = s => (s ?? '').toLowerCase().trim();
+      // Indexa por nome sem acentos — o bid da AR não coincide com o id do Supabase
+      const normalizar = s =>
+        Array.from((s ?? '').toLowerCase().trim().normalize('NFD'))
+          .filter(c => { const n = c.charCodeAt(0); return n < 0x0300 || n > 0x036F; })
+          .join('');
+
       const depMap = Object.fromEntries(
         (deps ?? []).map(d => [normalizar(d.nome), d])
       );
 
-      const merged = (presencas ?? []).map(p => {
-        const dep = depMap[normalizar(p.nome_abrev)];
-        return {
-          ...p,
-          partido: dep?.partido_sigla ?? null,
-          foto:    dep?.foto ?? null,
-        };
-      });
-
-      console.log('ar_presencas total:', presencas?.length);
-      console.log('deputados total:', deps?.length);
-      console.log('Sem match de partido/foto:', merged.filter(m => !m.partido).map(m => m.nome_abrev));
+      const merged = (presencas ?? [])
+        .map(p => {
+          const dep = depMap[normalizar(p.nome_abrev)];
+          if (!dep) return null; // ex-deputado — não consta na tabela deputados
+          return { ...p, partido: dep.partido_sigla, foto: dep.foto ?? null };
+        })
+        .filter(Boolean);
       setDados(merged);
       setCarregando(false);
     }
