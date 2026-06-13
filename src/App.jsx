@@ -250,12 +250,19 @@ function HemicicloPage() {
   );
 }
 
-function App() {
+function AppInner() {
+  const { pathname } = useLocation();
+  const isHemiciclo = pathname === '/';
+
   return (
-    <BrowserRouter>
-      <ParlamentoProvider>
+    <>
+      {/* HemicicloPage nunca desmonta — WebGL fica vivo entre navegações */}
+      <div style={isHemiciclo ? undefined : { display: 'none' }}>
+        <HemicicloPage />
+      </div>
+
+      {!isHemiciclo && (
         <Routes>
-          <Route path="/"                    element={<HemicicloPage />} />
           <Route path="/diretivas-eu"        element={<DiretivasUE />} />
           <Route path="/diretivas-eu/:celex" element={<DiretivaDetalhe />} />
           <Route path="/votacoes"            element={<Votacoes />} />
@@ -263,6 +270,16 @@ function App() {
           <Route path="/sobre"               element={<Sobre />} />
           <Route path="/presencas"           element={<Presencas />} />
         </Routes>
+      )}
+    </>
+  );
+}
+
+function App() {
+  return (
+    <BrowserRouter>
+      <ParlamentoProvider>
+        <AppInner />
       </ParlamentoProvider>
     </BrowserRouter>
   );
