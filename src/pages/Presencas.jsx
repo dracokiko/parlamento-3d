@@ -174,7 +174,7 @@ export function Presencas() {
           const candidatos = (presencas ?? [])
             .filter(p => norm(p.nome_abrev).startsWith(primeiro) || norm(p.nome_abrev).endsWith(ultimo))
             .map(p => p.nome_abrev);
-          console.log('SEM MATCH:', dep.nome, '→ candidatos em ar_presencas:', candidatos);
+          console.log('SEM MATCH:', dep.nome, '→', candidatos.join(' | ') || '(nenhum)');
         }
         return {
           bid:          dep.id,
