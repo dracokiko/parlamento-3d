@@ -56,6 +56,8 @@ export const GLOSSARIO = {
   // Outros termos
   'Reunião plenária':
     'Sessão em que todos os deputados se reúnem no hemiciclo para debater e votar propostas.',
+  'Interjeições':
+    'Apartes, exclamações ou reações curtas (menos de 40 palavras) ditas durante o discurso de outro deputado. Estão ocultas por defeito para facilitar a leitura.',
 };
 
 import { useState, useRef } from 'react';

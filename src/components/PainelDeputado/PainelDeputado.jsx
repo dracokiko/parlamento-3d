@@ -13,6 +13,7 @@ import { ModalDebate } from './ModalDebate';
 import { ModalBiografia } from './ModalBiografia';
 import { ModalPresencas } from './ModalPresencas';
 import { usePresencasDeputado } from '../../hooks/usePresencasDeputado';
+import { InfoTooltip } from '../UI/InfoTooltip';
 
 const ABAS = [
   { id: 'iniciativas',  label: 'Iniciativas',  icon: FileText },
@@ -131,14 +132,9 @@ const SecaoIntervencoes = ({ intervencoes, carregando, corPartido }) => {
         <span className="flex items-center gap-1">
           {lista.length} intervenções
           {filtradas > 0 && !mostrarTodas && (
-            <span className="flex items-center gap-1">
+            <span className="flex items-center gap-0.5">
               {` (${filtradas} interjeições ocultas)`}
-              <span
-                title={`Interjeições são falas curtas — apartes, exclamações ou reações com menos de ${MIN_PALAVRAS} palavras. Estão ocultas por defeito para não poluir a leitura, mas podes vê-las todas clicando em "Ver todas".`}
-                className="inline-flex items-center justify-center w-3.5 h-3.5 rounded-full bg-gray-200 text-gray-500 cursor-help text-[9px] font-bold leading-none select-none"
-              >
-                i
-              </span>
+              <InfoTooltip termo="Interjeições" />
             </span>
           )}
         </span>
