@@ -145,13 +145,20 @@ export function Presencas() {
           .select('id, partido, foto_url'),
       ]);
 
-      const depMap = Object.fromEntries((deps ?? []).map(d => [d.id, d]));
+      // Indexa por nome_abrev normalizado — o bid da AR não coincide com o id do Supabase
+      const normalizar = s => (s ?? '').toLowerCase().trim();
+      const depMap = Object.fromEntries(
+        (deps ?? []).map(d => [normalizar(d.nome_abrev), d])
+      );
 
-      const merged = (presencas ?? []).map(p => ({
-        ...p,
-        partido: depMap[p.bid]?.partido ?? null,
-        foto:    depMap[p.bid]?.foto_url ?? null,
-      }));
+      const merged = (presencas ?? []).map(p => {
+        const dep = depMap[normalizar(p.nome_abrev)];
+        return {
+          ...p,
+          partido: dep?.partido ?? null,
+          foto:    dep?.foto_url ?? null,
+        };
+      });
 
       setDados(merged);
       setCarregando(false);
