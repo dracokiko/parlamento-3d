@@ -1,4 +1,5 @@
 import { Suspense, useState, useEffect } from 'react';
+import { Analytics } from '@vercel/analytics/react';
 import { BrowserRouter, Routes, Route, Link, useLocation } from 'react-router-dom';
 import { Menu, X } from 'lucide-react';
 import { ParlamentoProvider, useParlamento } from './context/ParlamentoContext';
@@ -281,6 +282,7 @@ function App() {
       <ParlamentoProvider>
         <AppInner />
       </ParlamentoProvider>
+      <Analytics />
     </BrowserRouter>
   );
 }
