@@ -83,6 +83,18 @@ const SecaoDebates = ({ debates, carregando, onClickDebate }) => {
 
 const MIN_PALAVRAS = 40;
 
+// Extrai a data de publicação do url_diario (dia em que saiu no DAR, pode diferir
+// da data_debate quando o debate foi na véspera da publicação).
+// Fallback para data_debate se o URL não tiver data reconhecível.
+const dataPublicacao = (iv) => {
+  const m = (iv.url_diario ?? '').match(/\/(\d{4}-\d{2}-\d{2})/);
+  return m ? m[1] : (iv.data_debate ?? 'Sem data');
+};
+
+// URL da página HTML do artigo: remove os query params ?pgs=...&org=... que
+// forçam o download do PDF. Sem eles, o site da AR abre a vista web.
+const urlPaginaAR = (url) => url ? url.split('?')[0] : null;
+
 const SecaoIntervencoes = ({ intervencoes, carregando, corPartido }) => {
   const [expandido, setExpandido]       = useState(null);
   const [textos, setTextos]             = useState({});
@@ -107,7 +119,7 @@ const SecaoIntervencoes = ({ intervencoes, carregando, corPartido }) => {
   const filtradas = intervencoes.length - lista.length;
 
   const porDia = lista.reduce((acc, iv) => {
-    const dia = iv.data_debate ?? 'Sem data';
+    const dia = dataPublicacao(iv);
     (acc[dia] ??= []).push(iv);
     return acc;
   }, {});
@@ -164,7 +176,7 @@ const SecaoIntervencoes = ({ intervencoes, carregando, corPartido }) => {
                     )}
                     {iv.url_diario && (
                       <a
-                        href={iv.url_diario}
+                        href={urlPaginaAR(iv.url_diario)}
                         target="_blank"
                         rel="noreferrer"
                         className="inline-flex items-center gap-1 text-xs text-blue-500 hover:text-blue-700 mt-2"
