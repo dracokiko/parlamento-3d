@@ -83,17 +83,31 @@ export const InfoTooltip = ({ termo }) => {
         i
       </span>
       {rect && createPortal(
-        <div
-          className="fixed w-56 bg-gray-900 text-white text-[11px] leading-relaxed rounded-xl px-3 py-2.5 shadow-2xl pointer-events-none z-[9999]"
-          style={{
-            bottom: window.innerHeight - rect.top + 8,
-            left:   rect.left + rect.width / 2,
-            transform: 'translateX(-50%)',
-          }}
-        >
-          {texto}
-          <span className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-900" />
-        </div>,
+        (() => {
+          const showBelow = rect.top < 150;
+          const rawLeft = rect.left + rect.width / 2;
+          const clampedLeft = Math.max(120, Math.min(rawLeft, window.innerWidth - 120));
+          return (
+            <div
+              className="fixed w-56 bg-gray-900 text-white text-[11px] leading-relaxed rounded-xl px-3 py-2.5 shadow-2xl pointer-events-none z-[9999]"
+              style={showBelow ? {
+                top:  rect.bottom + 8,
+                left: clampedLeft,
+                transform: 'translateX(-50%)',
+              } : {
+                bottom: window.innerHeight - rect.top + 8,
+                left:   clampedLeft,
+                transform: 'translateX(-50%)',
+              }}
+            >
+              {texto}
+              {showBelow
+                ? <span className="absolute bottom-full left-1/2 -translate-x-1/2 border-4 border-transparent border-b-gray-900" />
+                : <span className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-900" />
+              }
+            </div>
+          );
+        })(),
         document.body
       )}
     </span>

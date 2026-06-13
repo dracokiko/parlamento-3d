@@ -30,7 +30,18 @@ export async function upsertBatch(recurso, registos) {
     existentes = count ?? 0;
   } catch { /* continua sem contagem exacta */ }
 
-  await db.from(tabela).upsert(registos, { onConflict: 'id' });
+  const { error } = await db.from(tabela).upsert(registos, { onConflict: 'id' });
+  if (error) {
+    // Tentar lote a metade para isolar o registo problemático
+    if (registos.length > 1) {
+      const meio = Math.ceil(registos.length / 2);
+      const r1 = await upsertBatch(recurso, registos.slice(0, meio));
+      const r2 = await upsertBatch(recurso, registos.slice(meio));
+      return { inseridos: r1.inseridos + r2.inseridos, atualizados: r1.atualizados + r2.atualizados };
+    }
+    console.error(`  ✗ Upsert falhou para id=${registos[0]?.id}: ${error.message}`);
+    return { inseridos: 0, atualizados: 0 };
+  }
 
   return {
     inseridos:   Math.max(0, ids.length - existentes),

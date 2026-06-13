@@ -47,7 +47,11 @@ export const ParlamentoProvider = ({ children }) => {
         let q = supabase.from(tabela).select(campos).range(i, i + LOTE - 1);
         if (ordenar) q = q.order(ordenar, { ascending: false });
         if (filtrar) q = filtrar(q);
-        const { data } = await q;
+        const { data, error } = await q;
+        if (error) {
+          console.error(`[paginar] erro em ${tabela} offset=${i}:`, error.message);
+          break;
+        }
         if (!data?.length) break;
         todos.push(...data);
         if (data.length < LOTE) break;
