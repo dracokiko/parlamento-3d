@@ -168,6 +168,7 @@ export function Presencas() {
       // Partir sempre dos 230 deputados (fonte da verdade) — ex-deputados ficam de fora
       const merged = (deps ?? []).map(dep => {
         const pres = presNome.get(norm(dep.nome)) ?? presInicio.get(primUlt(dep.nome));
+        if (!pres) console.log('SEM MATCH | deputados.nome:', JSON.stringify(dep.nome), '| norm:', JSON.stringify(norm(dep.nome)), '| primUlt:', JSON.stringify(primUlt(dep.nome)));
         return {
           bid:          dep.id,
           nome_abrev:   dep.nome,
