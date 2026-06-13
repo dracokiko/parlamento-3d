@@ -145,23 +145,42 @@ export function Presencas() {
           .select('id, nome, partido_sigla, foto'),
       ]);
 
-      // Indexa por nome sem acentos — o bid da AR não coincide com o id do Supabase
-      const normalizar = s =>
+      // Normaliza removendo acentos e espaços extra
+      const norm = s =>
         Array.from((s ?? '').toLowerCase().trim().normalize('NFD'))
           .filter(c => { const n = c.charCodeAt(0); return n < 0x0300 || n > 0x036F; })
-          .join('');
+          .join('').replace(/\s+/g, ' ');
 
-      const depMap = Object.fromEntries(
-        (deps ?? []).map(d => [normalizar(d.nome), d])
-      );
+      // Fallback: primeiro + último token (lida com abreviaturas de nomes do meio)
+      const primUlt = s => {
+        const t = norm(s).split(' ').filter(Boolean);
+        return t.length > 1 ? `${t[0]} ${t[t.length - 1]}` : t[0] ?? '';
+      };
 
-      const merged = (presencas ?? [])
-        .map(p => {
-          const dep = depMap[normalizar(p.nome_abrev)];
-          if (!dep) return null; // ex-deputado — não consta na tabela deputados
-          return { ...p, partido: dep.partido_sigla, foto: dep.foto ?? null };
-        })
-        .filter(Boolean);
+      // Dois índices sobre ar_presencas
+      const presNome   = new Map((presencas ?? []).map(p => [norm(p.nome_abrev), p]));
+      const presInicio = new Map();
+      for (const p of (presencas ?? [])) {
+        const k = primUlt(p.nome_abrev);
+        if (!presInicio.has(k)) presInicio.set(k, p);
+      }
+
+      // Partir sempre dos 230 deputados (fonte da verdade) — ex-deputados ficam de fora
+      const merged = (deps ?? []).map(dep => {
+        const pres = presNome.get(norm(dep.nome)) ?? presInicio.get(primUlt(dep.nome));
+        return {
+          bid:          dep.id,
+          nome_abrev:   dep.nome,
+          partido:      dep.partido_sigla,
+          foto:         dep.foto ?? null,
+          total_sessoes: pres?.total_sessoes ?? null,
+          presencas:    pres?.presencas    ?? null,
+          faltas_just:  pres?.faltas_just  ?? null,
+          ausencias_mp: pres?.ausencias_mp ?? null,
+          outras:       pres?.outras       ?? null,
+          taxa_presenca: pres?.taxa_presenca ?? null,
+        };
+      }).filter(d => d.taxa_presenca != null);
       setDados(merged);
       setCarregando(false);
     }
