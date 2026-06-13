@@ -1,31 +1,13 @@
-import { useState, useEffect } from 'react';
-import { supabase } from '../lib/supabase';
+import { useMemo } from 'react';
+import { useParlamento } from '../context/ParlamentoContext';
 
 export function useBiografiaDeputado(nomeAbrev) {
-  const [bio, setBio] = useState(null);
-  const [carregando, setCarregando] = useState(false);
+  const { biografiasMapa } = useParlamento();
 
-  useEffect(() => {
-    if (!nomeAbrev) { setBio(null); return; }
+  const bio = useMemo(() => {
+    if (!nomeAbrev) return null;
+    return biografiasMapa.get(nomeAbrev.toLowerCase()) ?? null;
+  }, [biografiasMapa, nomeAbrev]);
 
-    let cancelado = false;
-    setCarregando(true);
-    setBio(null);
-
-    supabase
-      .from('ar_biografias')
-      .select('*')
-      .ilike('nome_abrev', nomeAbrev)
-      .maybeSingle()
-      .then(({ data }) => {
-        if (!cancelado) {
-          setBio(data ?? null);
-          setCarregando(false);
-        }
-      });
-
-    return () => { cancelado = true; };
-  }, [nomeAbrev]);
-
-  return { bio, carregando };
+  return { bio, carregando: false };
 }

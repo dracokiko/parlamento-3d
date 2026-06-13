@@ -142,21 +142,21 @@ export function Presencas() {
           .select('bid, nome_abrev, total_sessoes, presencas, faltas_just, ausencias_mp, outras, taxa_presenca'),
         supabase
           .from('deputados')
-          .select('id, nome_abrev, partido, fotos'),
+          .select('id, nome, partido_sigla, foto'),
       ]);
 
-      // Indexa por nome_abrev normalizado — o bid da AR não coincide com o id do Supabase
+      // Indexa por nome normalizado — o bid da AR não coincide com o id do Supabase
       const normalizar = s => (s ?? '').toLowerCase().trim();
       const depMap = Object.fromEntries(
-        (deps ?? []).map(d => [normalizar(d.nome_abrev), d])
+        (deps ?? []).map(d => [normalizar(d.nome), d])
       );
 
       const merged = (presencas ?? []).map(p => {
         const dep = depMap[normalizar(p.nome_abrev)];
         return {
           ...p,
-          partido: dep?.partido ?? null,
-          foto:    dep?.fotos ?? null,
+          partido: dep?.partido_sigla ?? null,
+          foto:    dep?.foto ?? null,
         };
       });
 

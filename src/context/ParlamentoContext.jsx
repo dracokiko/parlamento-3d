@@ -31,11 +31,15 @@ export const ParlamentoProvider = ({ children }) => {
   const [perfisMapa, setPerfisMapa]               = useState(new Map());
   const [intervencoesMapa, setIntervencoesMapa]   = useState(new Map());
   const [iniciativasMapa, setIniciativasMapa]     = useState(new Map());
+  const [biografiasMapa, setBiografiasMapa]       = useState(new Map());
+  const [presencasMapa, setPresencasMapa]         = useState(new Map());
 
   // Flags individuais para saber quando cada recurso terminou
   const [perfisProntos, setPerfisProntos]             = useState(false);
   const [intervencoesProntas, setIntervencoesProntas] = useState(false);
   const [iniciativasProntas, setIniciativasProntas]   = useState(false);
+  const [biografiasProntas, setBiografiasProntas]     = useState(false);
+  const [presencasProntas, setPresencasProntas]       = useState(false);
   const [cena3DPronta, setCena3DPronta]               = useState(false);
 
   useEffect(() => {
@@ -95,6 +99,24 @@ export const ParlamentoProvider = ({ children }) => {
         });
         setIniciativasMapa(mapa);
         setIniciativasProntas(true);
+      });
+
+    // Biografias — indexadas por nome_abrev em lowercase
+    paginar('ar_biografias', '*', null, null)
+      .then(todas => {
+        const mapa = new Map();
+        todas.forEach(b => { if (b.nome_abrev) mapa.set(b.nome_abrev.toLowerCase(), b); });
+        setBiografiasMapa(mapa);
+        setBiografiasProntas(true);
+      });
+
+    // Presenças — indexadas por bid
+    paginar('ar_presencas', '*', null, null)
+      .then(todas => {
+        const mapa = new Map();
+        todas.forEach(p => { if (p.bid) mapa.set(p.bid, p); });
+        setPresencasMapa(mapa);
+        setPresencasProntas(true);
       });
   }, []);
 
@@ -226,7 +248,9 @@ export const ParlamentoProvider = ({ children }) => {
     perfisMapa,
     intervencoesMapa,
     iniciativasMapa,
-    tudoCarregado: !carregando && perfisProntos && intervencoesProntas && iniciativasProntas && cena3DPronta,
+    biografiasMapa,
+    presencasMapa,
+    tudoCarregado: !carregando && perfisProntos && intervencoesProntas && iniciativasProntas && biografiasProntas && presencasProntas && cena3DPronta,
     setCena3DPronta,
     // UI
     deputadoSelecionado,
@@ -252,9 +276,13 @@ export const ParlamentoProvider = ({ children }) => {
     perfisMapa,
     intervencoesMapa,
     iniciativasMapa,
+    biografiasMapa,
+    presencasMapa,
     perfisProntos,
     intervencoesProntas,
     iniciativasProntas,
+    biografiasProntas,
+    presencasProntas,
     cena3DPronta,
     deputadoSelecionado,
     partidoDestaque,

@@ -1,31 +1,13 @@
-import { useState, useEffect } from 'react';
-import { supabase } from '../lib/supabase';
+import { useMemo } from 'react';
+import { useParlamento } from '../context/ParlamentoContext';
 
 export function usePresencasDeputado(bid) {
-  const [presencas, setPresencas] = useState(null);
-  const [carregando, setCarregando] = useState(false);
+  const { presencasMapa } = useParlamento();
 
-  useEffect(() => {
-    if (!bid) { setPresencas(null); return; }
+  const presencas = useMemo(() => {
+    if (!bid) return null;
+    return presencasMapa.get(bid) ?? null;
+  }, [presencasMapa, bid]);
 
-    let cancelado = false;
-    setCarregando(true);
-    setPresencas(null);
-
-    supabase
-      .from('ar_presencas')
-      .select('*')
-      .eq('bid', bid)
-      .maybeSingle()
-      .then(({ data }) => {
-        if (!cancelado) {
-          setPresencas(data ?? null);
-          setCarregando(false);
-        }
-      });
-
-    return () => { cancelado = true; };
-  }, [bid]);
-
-  return { presencas, carregando };
+  return { presencas, carregando: false };
 }
