@@ -160,6 +160,9 @@ export function Presencas() {
         };
       });
 
+      console.log('ar_presencas total:', presencas?.length);
+      console.log('deputados total:', deps?.length);
+      console.log('Sem match de partido/foto:', merged.filter(m => !m.partido).map(m => m.nome_abrev));
       setDados(merged);
       setCarregando(false);
     }
