@@ -107,28 +107,14 @@ function parseBio(html, bid) {
   };
 }
 
-/** Lê todos os { cad_id, nome_parlamentar } da ar_deputados (XVII legislatura). */
+/** Lê os 230 deputados actuais da tabela `deputados` (id = BID do site da AR). */
 async function extrairBids() {
-  const todos = [];
-  const LOTE = 1000;
-  for (let i = 0; ; i += LOTE) {
-    const { data, error } = await db()
-      .from('ar_deputados')
-      .select('cad_id, nome_parlamentar')
-      .eq('legislatura', 'XVII')
-      .not('cad_id', 'is', null)
-      .range(i, i + LOTE - 1);
-    if (error) throw new Error(error.message);
-    if (!data?.length) break;
-    todos.push(...data.map(d => ({ bid: parseInt(d.cad_id, 10), nome: d.nome_parlamentar })));
-    if (data.length < LOTE) break;
-  }
-  // Remover duplicados por bid (deputado pode ter várias entradas) — manter o primeiro nome
-  const mapa = new Map();
-  for (const { bid, nome } of todos) {
-    if (!mapa.has(bid)) mapa.set(bid, nome);
-  }
-  return [...mapa.entries()].sort((a, b) => a[0] - b[0]).map(([bid, nome]) => ({ bid, nome }));
+  const { data, error } = await db()
+    .from('deputados')
+    .select('id, nome')
+    .order('id');
+  if (error) throw new Error(error.message);
+  return (data ?? []).map(d => ({ bid: d.id, nome: d.nome }));
 }
 
 export async function crawlerBiografias() {

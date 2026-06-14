@@ -91,35 +91,19 @@ export async function crawlerPresencas() {
   console.log('  CRAWLER — PRESENÇAS DOS DEPUTADOS');
   console.log('='.repeat(55));
 
-  // Buscar todos os BIDs de ar_deputados (mesma fonte que o crawler de biografias)
-  const todos = [];
-  const LOTE = 1000;
-  for (let i = 0; ; i += LOTE) {
-    const { data, error } = await db()
-      .from('ar_deputados')
-      .select('cad_id')
-      .eq('legislatura', 'XVII')
-      .not('cad_id', 'is', null)
-      .range(i, i + LOTE - 1);
-    if (error) { console.error('❌', error.message); process.exit(1); }
-    if (!data?.length) break;
-    todos.push(...data.map(d => parseInt(d.cad_id, 10)));
-    if (data.length < LOTE) break;
-  }
-  const bids = [...new Set(todos)].sort((a, b) => a - b);
+  // Ler os 230 deputados actuais de `deputados` (id = BID do site da AR)
+  const { data: deps, error: errDeps } = await db()
+    .from('deputados')
+    .select('id, nome')
+    .order('id');
+  if (errDeps) { console.error('❌', errDeps.message); process.exit(1); }
 
-  // Lookup de nomes a partir de ar_biografias (best-effort)
-  const { data: bioNomes } = await db()
-    .from('ar_biografias')
-    .select('bid, nome_abrev');
-  const nomeMap = Object.fromEntries((bioNomes ?? []).map(b => [b.bid, b.nome_abrev]));
-
-  console.log(`  → ${bids.length} BIDs em ar_deputados`);
+  const deputados = deps ?? [];
+  console.log(`  → ${deputados.length} deputados em deputados`);
 
   let ok = 0, erros = 0;
 
-  for (const bid of bids) {
-    const nome_abrev = nomeMap[bid] ?? `BID ${bid}`;
+  for (const { id: bid, nome: nome_abrev } of deputados) {
     try {
       const html     = await fetchHtml(`${BASE}${bid}`);
       const registo  = parsePresencas(html, bid, nome_abrev);
@@ -137,7 +121,7 @@ export async function crawlerPresencas() {
       if (e) throw new Error(e.message);
 
       ok++;
-      const linha = `  … ${ok}/${bios.length} — ${nome_abrev} (${registo.taxa_presenca}%)`;
+      const linha = `  … ${ok}/${deputados.length} — ${nome_abrev} (${registo.taxa_presenca}%)`;
       process.stdout.write(linha.padEnd(65) + '\r');
     } catch (err) {
       erros++;
