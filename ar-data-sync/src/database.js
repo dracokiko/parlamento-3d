@@ -15,37 +15,40 @@ const getClient = () => {
 };
 
 export async function upsertBatch(recurso, registos) {
-  if (!registos.length) return { inseridos: 0, atualizados: 0 };
+  if (!registos.length) return { inseridos: 0, atualizados: 0, novos: [] };
 
   const db     = getClient();
   const tabela = TABELAS[recurso];
   const ids    = registos.map(r => r.id).filter(Boolean);
 
-  let existentes = 0;
+  let existentesSet = new Set();
   try {
-    const { count } = await db
-      .from(tabela)
-      .select('id', { count: 'exact', head: true })
-      .in('id', ids);
-    existentes = count ?? 0;
-  } catch { /* continua sem contagem exacta */ }
+    const { data } = await db.from(tabela).select('id').in('id', ids);
+    existentesSet = new Set((data || []).map(r => String(r.id)));
+  } catch { /* continua sem saber quais são novos */ }
+
+  const novos = registos.filter(r => !existentesSet.has(String(r.id)));
 
   const { error } = await db.from(tabela).upsert(registos, { onConflict: 'id' });
   if (error) {
-    // Tentar lote a metade para isolar o registo problemático
     if (registos.length > 1) {
       const meio = Math.ceil(registos.length / 2);
       const r1 = await upsertBatch(recurso, registos.slice(0, meio));
       const r2 = await upsertBatch(recurso, registos.slice(meio));
-      return { inseridos: r1.inseridos + r2.inseridos, atualizados: r1.atualizados + r2.atualizados };
+      return {
+        inseridos:   r1.inseridos   + r2.inseridos,
+        atualizados: r1.atualizados + r2.atualizados,
+        novos:       [...r1.novos,  ...r2.novos],
+      };
     }
     console.error(`  ✗ Upsert falhou para id=${registos[0]?.id}: ${error.message}`);
-    return { inseridos: 0, atualizados: 0 };
+    return { inseridos: 0, atualizados: 0, novos: [] };
   }
 
   return {
-    inseridos:   Math.max(0, ids.length - existentes),
-    atualizados: existentes,
+    inseridos:   novos.length,
+    atualizados: registos.length - novos.length,
+    novos,
   };
 }
 

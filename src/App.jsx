@@ -17,6 +17,7 @@ import { Votacoes } from './pages/Votacoes';
 import { VotacaoDetalhe } from './pages/VotacaoDetalhe';
 import { Sobre } from './pages/Sobre';
 import { Presencas } from './pages/Presencas';
+import { Sincronizacoes } from './pages/Sincronizacoes';
 import { useIsMobile } from './hooks/useIsMobile';
 
 const MENSAGENS = [
@@ -113,11 +114,12 @@ const MobilePainel = () => {
 };
 
 const NAV_LINKS = [
-  { to: '/',             label: 'Hemiciclo'    },
-  { to: '/votacoes',     label: 'Votações'     },
-  { to: '/presencas',    label: 'Presenças'    },
-  { to: '/diretivas-eu', label: 'Diretivas UE' },
-  { to: '/sobre',        label: 'Sobre'        },
+  { to: '/',                label: 'Hemiciclo'        },
+  { to: '/votacoes',        label: 'Votações'         },
+  { to: '/presencas',       label: 'Presenças'        },
+  { to: '/diretivas-eu',    label: 'Diretivas UE'     },
+  { to: '/sincronizacoes',  label: 'Sincronizações'   },
+  { to: '/sobre',           label: 'Sobre'            },
 ];
 
 function HemicicloPage() {
@@ -270,6 +272,7 @@ function AppInner() {
           <Route path="/votacoes/:id"        element={<VotacaoDetalhe />} />
           <Route path="/sobre"               element={<Sobre />} />
           <Route path="/presencas"           element={<Presencas />} />
+          <Route path="/sincronizacoes"      element={<Sincronizacoes />} />
         </Routes>
       )}
     </>

@@ -7,6 +7,21 @@ import { resumirIniciativas, resumirDeputados, resumirDebates, obterTranscricoes
 import { crawlerDebatesDAR } from './catalogueCrawler.js';
 import { syncVotacoes } from './votacoesSync.js';
 
+const MAX_AMOSTRAS = 50;
+
+function labelItem(recurso, reg) {
+  switch (recurso) {
+    case 'iniciativas':
+      return { id: reg.id, label: `${reg.numero || reg.id} — ${(reg.epigrafe || reg.titulo || '').slice(0, 90)}` };
+    case 'deputados':
+      return { id: reg.id, label: `${reg.nome_parlamentar || reg.nome_completo || reg.id} (${reg.partido_sigla || '?'})` };
+    case 'debates':
+      return { id: reg.id, label: `${(reg.assunto || reg.artigo || reg.id || '').slice(0, 90)}` };
+    default:
+      return { id: reg.id, label: String(reg.id).slice(0, 80) };
+  }
+}
+
 async function sincronizar(recurso) {
   const { url, path: nestedKey } = AR_ENDPOINTS[recurso];
   const normalizar = NORMALIZADORES[recurso];
@@ -21,10 +36,12 @@ async function sincronizar(recurso) {
     tmpPath = await downloadToTemp(url);
   } catch (err) {
     console.error(`  ✗ Falha no download: ${err.message}`);
+    await registarLog(recurso, { sucesso: false, total: 0, inseridos: 0, atualizados: 0, erros: 1, detalhes: [] });
     return false;
   }
 
   let batch = [], total = 0, inseridos = 0, atualizados = 0, erros = 0;
+  const amostras = [];
 
   try {
     for await (const raw of streamRecords(tmpPath, nestedKey)) {
@@ -36,7 +53,13 @@ async function sincronizar(recurso) {
 
         if (batch.length >= BATCH_SIZE) {
           const r = await upsertBatch(recurso, batch);
-          inseridos += r.inseridos; atualizados += r.atualizados;
+          inseridos   += r.inseridos;
+          atualizados += r.atualizados;
+          if (amostras.length < MAX_AMOSTRAS) {
+            r.novos.slice(0, MAX_AMOSTRAS - amostras.length).forEach(reg => {
+              amostras.push(labelItem(recurso, reg));
+            });
+          }
           batch = [];
           process.stdout.write(`  … ${total} processados\r`);
         }
@@ -48,16 +71,23 @@ async function sincronizar(recurso) {
 
     if (batch.length) {
       const r = await upsertBatch(recurso, batch);
-      inseridos += r.inseridos; atualizados += r.atualizados;
+      inseridos   += r.inseridos;
+      atualizados += r.atualizados;
+      if (amostras.length < MAX_AMOSTRAS) {
+        r.novos.slice(0, MAX_AMOSTRAS - amostras.length).forEach(reg => {
+          amostras.push(labelItem(recurso, reg));
+        });
+      }
     }
 
-    await registarLog(recurso, { total, inseridos, atualizados, erros });
+    await registarLog(recurso, { sucesso: true, total, inseridos, atualizados, erros, detalhes: amostras });
     const s = ((Date.now() - inicio) / 1000).toFixed(1);
     console.log(`\n  ✓ ${s}s | Total: ${total} | Inseridos: ${inseridos} | Atualizados: ${atualizados} | Erros: ${erros}`);
     return { ok: true, inseridos };
 
   } catch (err) {
     console.error(`\n  ✗ Erro fatal: ${err.message}`);
+    await registarLog(recurso, { sucesso: false, total, inseridos, atualizados, erros: erros + 1, detalhes: amostras });
     return { ok: false, inseridos: 0 };
   } finally {
     try { fs.unlinkSync(tmpPath); } catch {}
