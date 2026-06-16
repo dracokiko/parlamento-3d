@@ -7,7 +7,7 @@ import { resumirIniciativas, resumirDeputados, resumirDebates, obterTranscricoes
 import { crawlerDebatesDAR } from './catalogueCrawler.js';
 import { syncVotacoes } from './votacoesSync.js';
 
-const MAX_AMOSTRAS = 50;
+const MAX_AMOSTRAS = 500;
 
 function labelItem(recurso, reg) {
   switch (recurso) {
