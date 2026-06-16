@@ -7,6 +7,7 @@ import { resumirIniciativas, resumirDeputados, resumirDebates, obterTranscricoes
 import { crawlerDebatesDAR } from './catalogueCrawler.js';
 import { syncVotacoes } from './votacoesSync.js';
 import { crawlerPresencas } from './presencasCrawler.js';
+import { crawlerBiografias } from './biografiasCrawler.js';
 
 const MAX_AMOSTRAS = 500;
 
@@ -112,35 +113,70 @@ async function main() {
     if (!res.ok) falhas.push(r);
   }
 
-  // 2. Resumir com IA — só os recursos que correram com sucesso
+  // 2. Fase IA + scraping
   console.log(`\n${'='.repeat(55)}`);
   console.log('  FASE IA — RESUMOS AUTOMÁTICOS');
   console.log('='.repeat(55));
 
-  if (resultados.iniciativas?.ok) await resumirIniciativas();
-  if (resultados.deputados?.ok)   await resumirDeputados();
+  // Resumos IA (acumula iniciativas + deputados + debates num único log)
+  let aiTotal = 0, aiInseridos = 0, aiErros = 0;
+  const acumularAi = r => { aiTotal += r?.total ?? 0; aiInseridos += r?.inseridos ?? 0; aiErros += r?.erros ?? 0; };
 
-  // Descobrir artigos novos do catálogo DAR (independente da API)
+  if (resultados.iniciativas?.ok) acumularAi(await resumirIniciativas());
+  if (resultados.deputados?.ok)   acumularAi(await resumirDeputados());
+
+  // Catálogo DAR
+  let rDar = null;
   try {
-    await crawlerDebatesDAR();
+    rDar = await crawlerDebatesDAR();
   } catch (err) {
     console.warn(`\n  ⚠ Crawler DAR falhou (${err.message}) — a continuar pipeline`);
   }
+  await registarLog('dar', {
+    sucesso: rDar !== null,
+    total:       (rDar?.novos ?? 0) + (rDar?.erros ?? 0),
+    inseridos:    rDar?.novos  ?? 0,
+    atualizados:  0,
+    erros:        rDar?.erros  ?? (rDar === null ? 1 : 0),
+    detalhes:    [],
+  });
 
-  // Obter transcrições para todos os debates sem ela (API + catálogo)
-  await obterTranscricoesDebates();
+  // Transcrições (scraping DAR PDF)
+  const rTransc = await obterTranscricoesDebates();
+  await registarLog('transcricoes', {
+    sucesso: true, total: rTransc?.total ?? 0, inseridos: rTransc?.inseridos ?? 0,
+    atualizados: 0, erros: rTransc?.erros ?? 0, detalhes: [],
+  });
 
-  // Gerar resumos IA para debates com transcrição mas sem resumo
-  await resumirDebates();
+  // Resumos IA debates + log combinado
+  acumularAi(await resumirDebates());
+  await registarLog('resumos_ia', {
+    sucesso: true, total: aiTotal, inseridos: aiInseridos, atualizados: 0, erros: aiErros, detalhes: [],
+  });
 
-  // Indexar intervenções individuais de cada debate
-  await indexarIntervencoes();
+  // Intervenções
+  const rInt = await indexarIntervencoes();
+  await registarLog('intervencoes', {
+    sucesso: true, total: rInt?.total ?? 0, inseridos: rInt?.inseridos ?? 0,
+    atualizados: 0, erros: rInt?.erros ?? 0, detalhes: [],
+  });
 
-  // Extrair votações dos IniEventos das iniciativas já sincronizadas
+  // Votações
   if (resultados.iniciativas?.ok) await syncVotacoes();
 
-  // Presenças em plenário (usa cad_id da AR — crawling do site)
-  await crawlerPresencas();
+  // Biografias (scraping parlamento.pt)
+  const rBio = await crawlerBiografias();
+  await registarLog('biografias', {
+    sucesso: true, total: rBio?.total ?? 0, inseridos: rBio?.inseridos ?? 0,
+    atualizados: 0, erros: rBio?.erros ?? 0, detalhes: [],
+  });
+
+  // Presenças (scraping parlamento.pt)
+  const rPresencas = await crawlerPresencas();
+  await registarLog('presencas', {
+    sucesso: true, total: rPresencas?.total ?? 0, inseridos: rPresencas?.inseridos ?? 0,
+    atualizados: 0, erros: rPresencas?.erros ?? 0, detalhes: [],
+  });
 
   // 3. Resultado final
   console.log(`\n${'='.repeat(55)}`);

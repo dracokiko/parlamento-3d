@@ -11,10 +11,16 @@ import { useAdmin } from '../hooks/useAdmin';
 // ── Configuração de recursos ──────────────────────────────────────────────────
 
 const RECURSOS_CONFIG = {
-  iniciativas: { label: 'Iniciativas', cor: '#0066cc' },
-  deputados:   { label: 'Deputados',   cor: '#7c3aed' },
-  debates:     { label: 'Debates',     cor: '#059669' },
-  votacoes:    { label: 'Votações',    cor: '#d97706' },
+  iniciativas:  { label: 'Iniciativas',   cor: '#0066cc', fonte: 'API Dados Abertos AR' },
+  deputados:    { label: 'Deputados',     cor: '#7c3aed', fonte: 'API Dados Abertos AR' },
+  debates:      { label: 'Debates',       cor: '#059669', fonte: 'API Dados Abertos AR' },
+  votacoes:     { label: 'Votações',      cor: '#d97706', fonte: 'eventos das iniciativas' },
+  dar:          { label: 'Catálogo DAR',  cor: '#475569', fonte: 'debates.parlamento.pt' },
+  transcricoes: { label: 'Transcrições',  cor: '#0891b2', fonte: 'scraping DAR (PDF)' },
+  resumos_ia:   { label: 'Resumos IA',    cor: '#8b5cf6', fonte: 'Groq API' },
+  intervencoes: { label: 'Intervenções',  cor: '#0f766e', fonte: 'análise das transcrições' },
+  biografias:   { label: 'Biografias',    cor: '#b45309', fonte: 'scraping parlamento.pt' },
+  presencas:    { label: 'Presenças',     cor: '#be185d', fonte: 'scraping parlamento.pt' },
 };
 
 // ── Regras de sincronização (retiradas dos GitHub Actions) ────────────────────
@@ -350,7 +356,7 @@ function RecursoDetalhe({ recurso, runs, expandido, onToggle }) {
       >
         <div className="w-1 self-stretch rounded-full flex-shrink-0" style={{ backgroundColor: cfg.cor }} />
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-1">
+          <div className="flex items-center gap-2 mb-0.5">
             <span className="text-sm font-semibold text-gray-900">{cfg.label}</span>
             <IconeStatus status={status} size={13} />
             {runs.length > 1 && (
@@ -359,6 +365,7 @@ function RecursoDetalhe({ recurso, runs, expandido, onToggle }) {
               </span>
             )}
           </div>
+          {cfg.fonte && <p className="text-[10px] text-gray-400 mb-1">{cfg.fonte}</p>}
           <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-gray-500">
             <span>Total: <strong className="text-gray-700">{(ultimo.total ?? 0).toLocaleString('pt-PT')}</strong></span>
             <span style={{ color: totalIns > 0 ? '#16a34a' : '#9ca3af' }}>+{totalIns} novos</span>
@@ -669,7 +676,7 @@ function Dashboard({ onSair }) {
                         }}
                       >
                         <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: cfg.cor }} />
-                        <span className="text-xs font-medium text-gray-700 w-24 flex-shrink-0">{cfg.label}</span>
+                        <span className="text-xs font-medium text-gray-700 w-28 flex-shrink-0">{cfg.label}</span>
                         <span className="text-[11px] text-gray-400 flex-1">
                           {new Date(log.created_at).toLocaleDateString('pt-PT', { day: '2-digit', month: 'short', year: 'numeric' })}
                           {' · '}{formatarHora(log.created_at)}

@@ -134,6 +134,7 @@ export async function crawlerPresencas() {
   }
 
   console.log(`\n\n  ✓ Concluído | OK: ${ok} | Erros: ${erros}`);
+  return { total: ok + erros, inseridos: ok, atualizados: 0, erros };
 }
 
 // Auto-executa só quando chamado directamente (npm run sync:presencas)

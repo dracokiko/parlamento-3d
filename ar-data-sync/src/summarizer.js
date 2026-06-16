@@ -57,6 +57,7 @@ export async function resumirIniciativas() {
   }
 
   console.log(`\n  [IA] Iniciativas concluído — ${total} resumidas, ${erros} erros`);
+  return { total: total + erros, inseridos: total, atualizados: 0, erros };
 }
 
 // ── Deputados ─────────────────────────────────────────────────────────────────
@@ -100,6 +101,7 @@ export async function resumirDeputados() {
   }
 
   console.log(`\n  [IA] Deputados concluído — ${total} processados, ${erros} erros`);
+  return { total: total + erros, inseridos: total, atualizados: 0, erros };
 }
 
 // ── Resumos de Debates ────────────────────────────────────────────────────────
@@ -133,6 +135,7 @@ export async function resumirDebates() {
   }
 
   console.log(`\n  [IA] Debates concluído — ${total} resumidos, ${erros} erros`);
+  return { total: total + erros, inseridos: total, atualizados: 0, erros };
 }
 
 // ── Transcrições de Debates ───────────────────────────────────────────────────
@@ -169,6 +172,7 @@ export async function obterTranscricoesDebates() {
   }
 
   console.log(`\n  [DAR] Transcrições concluídas — ${total} obtidas, ${erros} erros`);
+  return { total: total + erros, inseridos: total, atualizados: 0, erros };
 }
 
 // ── Intervenções individuais ──────────────────────────────────────────────────
@@ -240,4 +244,5 @@ export async function indexarIntervencoes() {
   }
 
   console.log(`\n  [INT] Indexação concluída — ${totalDeb} debates, ${totalInt} intervenções`);
+  return { total: totalInt, inseridos: totalInt, atualizados: 0, erros: 0 };
 }

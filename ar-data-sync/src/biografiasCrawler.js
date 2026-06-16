@@ -107,14 +107,17 @@ function parseBio(html, bid) {
   };
 }
 
-/** Lê os 230 deputados actuais da tabela `deputados` (id = BID do site da AR). */
+/** Lê os deputados da XVII Legislatura usando cad_id (BID do site da AR). */
 async function extrairBids() {
   const { data, error } = await db()
-    .from('deputados')
-    .select('id, nome')
-    .order('id');
+    .from('ar_deputados')
+    .select('cad_id, nome_parlamentar')
+    .eq('legislatura', 'XVII')
+    .not('cad_id', 'is', null)
+    .order('cad_id');
   if (error) throw new Error(error.message);
-  return (data ?? []).map(d => ({ bid: d.id, nome: d.nome }));
+  const distintos = [...new Map((data ?? []).map(r => [r.cad_id, r])).values()];
+  return distintos.map(d => ({ bid: d.cad_id, nome: d.nome_parlamentar }));
 }
 
 export async function crawlerBiografias() {
@@ -158,10 +161,10 @@ export async function crawlerBiografias() {
   }
 
   console.log(`\n\n  ✓ Concluído | OK: ${ok} | Erros: ${erros}`);
+  return { total: ok + erros, inseridos: ok, atualizados: 0, erros };
 }
 
-// Execução directa
-crawlerBiografias().catch(err => {
-  console.error(err);
-  process.exit(1);
-});
+// Auto-executa só quando chamado directamente
+if (process.argv[1].endsWith('biografiasCrawler.js')) {
+  crawlerBiografias().catch(err => { console.error(err); process.exit(1); });
+}
