@@ -91,19 +91,22 @@ export async function crawlerPresencas() {
   console.log('  CRAWLER — PRESENÇAS DOS DEPUTADOS');
   console.log('='.repeat(55));
 
-  // Ler os 230 deputados actuais de `deputados` (id = BID do site da AR)
+  // Usar ar_deputados.cad_id como BID — é o identificador do site da AR
+  // (deputados.id contém DepId da API, que é diferente do DepCadId usado nos URLs)
   const { data: deps, error: errDeps } = await db()
-    .from('deputados')
-    .select('id, nome')
-    .order('id');
+    .from('ar_deputados')
+    .select('cad_id, nome_parlamentar')
+    .eq('legislatura', 'XVII')
+    .not('cad_id', 'is', null)
+    .order('cad_id');
   if (errDeps) { console.error('❌', errDeps.message); process.exit(1); }
 
   const deputados = deps ?? [];
-  console.log(`  → ${deputados.length} deputados em deputados`);
+  console.log(`  → ${deputados.length} deputados em ar_deputados`);
 
   let ok = 0, erros = 0;
 
-  for (const { id: bid, nome: nome_abrev } of deputados) {
+  for (const { cad_id: bid, nome_parlamentar: nome_abrev } of deputados) {
     try {
       const html     = await fetchHtml(`${BASE}${bid}`);
       const registo  = parsePresencas(html, bid, nome_abrev);
@@ -133,7 +136,10 @@ export async function crawlerPresencas() {
   console.log(`\n\n  ✓ Concluído | OK: ${ok} | Erros: ${erros}`);
 }
 
-crawlerPresencas().catch(err => {
-  console.error(err);
-  process.exit(1);
-});
+// Auto-executa só quando chamado directamente (npm run sync:presencas)
+if (process.argv[1].endsWith('presencasCrawler.js')) {
+  crawlerPresencas().catch(err => {
+    console.error(err);
+    process.exit(1);
+  });
+}

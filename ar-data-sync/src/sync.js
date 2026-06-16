@@ -6,6 +6,7 @@ import { upsertBatch, registarLog } from './database.js';
 import { resumirIniciativas, resumirDeputados, resumirDebates, obterTranscricoesDebates, indexarIntervencoes } from './summarizer.js';
 import { crawlerDebatesDAR } from './catalogueCrawler.js';
 import { syncVotacoes } from './votacoesSync.js';
+import { crawlerPresencas } from './presencasCrawler.js';
 
 const MAX_AMOSTRAS = 500;
 
@@ -137,6 +138,9 @@ async function main() {
 
   // Extrair votações dos IniEventos das iniciativas já sincronizadas
   if (resultados.iniciativas?.ok) await syncVotacoes();
+
+  // Presenças em plenário (usa cad_id da AR — crawling do site)
+  await crawlerPresencas();
 
   // 3. Resultado final
   console.log(`\n${'='.repeat(55)}`);
