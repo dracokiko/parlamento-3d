@@ -143,6 +143,7 @@ const BannerPublicitario = () => {
 
 const EstruturaHemicicloComponent = () => {
   const alturaUltimaDegrau = (NUM_FILAS - 1) * ALTURA_DEGRAU;
+  const isMobile = useIsMobile();
 
   return (
     <group>
