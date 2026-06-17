@@ -147,10 +147,24 @@ const EstruturaHemicicloComponent = () => {
   return (
     <group>
 
+      {/* ── Plano de base — tapa o gap branco no fundo em portrait/mobile ── */}
+      {isMobile && (
+        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.15, 0]}>
+          <planeGeometry args={[300, 300]} />
+          <meshStandardMaterial color={COR_SOALHO} roughness={0.5} metalness={0.05} />
+        </mesh>
+      )}
+
       {/* ── Soalho central — bege claro ─────────────────────── */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.05, 0]} receiveShadow>
         <circleGeometry args={[RAIO_INTERNO - 0.3, 80, RING_THETA_START, RING_THETA_LENGTH]} />
         <meshStandardMaterial color={COR_SOALHO} roughness={0.30} metalness={0.08} />
+      </mesh>
+
+      {/* ── Linha negra — delimita o chão bege das bancadas ─── */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.03, 0]}>
+        <ringGeometry args={[RAIO_INTERNO - 0.45, RAIO_INTERNO - 0.18, 80, 1, RING_THETA_START, RING_THETA_LENGTH]} />
+        <meshStandardMaterial color="#1a1a1a" roughness={0.7} />
       </mesh>
 
       {/* Emblema no chão */}
