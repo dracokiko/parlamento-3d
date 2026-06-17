@@ -93,7 +93,7 @@ export const CenaHemiciclo = () => {
           target={orbitTarget}
           enableRotate={false}
           enablePan={false}
-          enableZoom={isTouch}
+          enableZoom={false}
         />
 
         <ControladorCamara controlsRef={controlsRef} />

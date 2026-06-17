@@ -60,6 +60,15 @@ a:focus-visible {
   animation: slideInRight 250ms ease-out;
 }
 
+/* Zoom nativo do browser em touch: anula o touch-action:none que o R3F impõe */
+@media (pointer: coarse) {
+  .hemiciclo-canvas-wrap,
+  .hemiciclo-canvas-wrap > div,
+  .hemiciclo-canvas-wrap canvas {
+    touch-action: auto !important;
+  }
+}
+
 /* Tablets em portrait usam layout mobile */
 @media (min-width: 768px) and (orientation: portrait) {
   .md\:hidden { display: flex !important; }
