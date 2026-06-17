@@ -61,9 +61,9 @@ a:focus-visible {
 }
 
 /* Tablets em portrait usam layout mobile */
-@media (min-width: 768px) and (max-width: 1024px) and (orientation: portrait) {
-  .md\:hidden { display: flex; }
-  .md\:flex   { display: none; }
-  .md\:pt-0   { padding-top: 40px; }
-  .md\:top-3  { top: 3.5rem; }
+@media (min-width: 768px) and (orientation: portrait) {
+  .md\:hidden { display: flex !important; }
+  .md\:flex   { display: none !important; }
+  .md\:pt-0   { padding-top: 40px !important; }
+  .md\:top-3  { top: 3.5rem !important; }
 }

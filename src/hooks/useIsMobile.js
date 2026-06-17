@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 
-const QUERY = '(max-width: 767px), (max-width: 1024px) and (orientation: portrait)';
+const QUERY = '(max-width: 767px), (min-width: 768px) and (orientation: portrait)';
 
 export function useIsMobile() {
   const [isMobile, setIsMobile] = useState(() => {
