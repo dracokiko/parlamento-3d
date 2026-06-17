@@ -48,7 +48,7 @@ export const CenaHemiciclo = () => {
   // maxPolarAngle=π/2 em mobile permite câmara perfeitamente horizontal (dy=0).
   // Com camera Y=target Y, look-angle=0° (mais frontal possível).
   // floor_angle=atan(61/62)=44.5° → chão a ~0.6% da borda inferior.
-  const sceneScale      = isTabletPortrait ? 2.0 : (isMobile ? 2.8 : 1);
+  const sceneScale      = isTabletPortrait ? 2.2 : (isMobile ? 2.7 : 1);
   const cameraPos       = isMobile ? [0, 61, 62]     : [0, 12, 24];
   const cameraFov       = isMobile ? 90               : 48;
   const maxDist         = isMobile ? 85               : 42;
