@@ -34,18 +34,16 @@ export const CenaHemiciclo = () => {
   const { deputados, posicoes3D } = useParlamento();
   const isMobile = useIsMobile();
 
-  // Mobile: sceneScale=3.5 aumenta os assentos ~25% vs 2.8.
-  // Câmara em Y=14 (próxima do topo do hemiciclo em Y≈22) e target Y=8 → ângulo 4° para baixo.
-  // Z=50: câmara suficientemente recuada para cobrir a largura do hemiciclo escalado.
-  // Com fov=90° e aspect≈0.46 (telefone), largura visível ≈ ±46u → cobre as filas interiores.
-  // O hemiciclo ocupa ~27% da altura do ecrã, centrado no terço inferior — sem espaço branco excessivo.
-  const sceneScale      = isMobile ? 3.5              : 1;
-  const cameraPos       = isMobile ? [0, 14, 50]     : [0, 12, 24];
+  // Mobile: câmara em Y=61 olha horizontalmente → hemiciclo fica na base do ecrã.
+  // sceneScale=5.0 torna os bancos ~78% maiores vs 2.8.
+  // Z=100 garante que as filas da frente (Z≈89) ficam à frente da câmara (mínimo 11u).
+  const sceneScale      = isMobile ? 5.0              : 1;
+  const cameraPos       = isMobile ? [0, 61, 100]    : [0, 12, 24];
   const cameraFov       = isMobile ? 90               : 48;
-  const maxDist         = isMobile ? 80               : 42;
-  const fogNear         = isMobile ? 65               : 30;
-  const fogFar          = isMobile ? 175              : 90;
-  const orbitTarget     = isMobile ? [0, 8, -16]     : [0, 10, -16];
+  const maxDist         = isMobile ? 115              : 42;
+  const fogNear         = isMobile ? 88               : 30;
+  const fogFar          = isMobile ? 215              : 90;
+  const orbitTarget     = isMobile ? [0, 61, -16]    : [0, 10, -16];
   const maxPolarAngle   = isMobile ? Math.PI / 2      : Math.PI / 2.1;
 
   return (
