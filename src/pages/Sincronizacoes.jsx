@@ -21,6 +21,7 @@ const RECURSOS_CONFIG = {
   intervencoes: { label: 'Intervenções',  cor: '#0f766e', fonte: 'análise das transcrições' },
   biografias:   { label: 'Biografias',    cor: '#b45309', fonte: 'scraping parlamento.pt' },
   presencas:    { label: 'Presenças',     cor: '#be185d', fonte: 'scraping parlamento.pt' },
+  diretivas_ue: { label: 'Diretivas UE', cor: '#ca8a04', fonte: 'EUR-Lex SPARQL + scraping' },
 };
 
 // ── Regras de sincronização (retiradas dos GitHub Actions) ────────────────────

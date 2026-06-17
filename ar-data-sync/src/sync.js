@@ -162,7 +162,13 @@ async function main() {
   });
 
   // Votações
-  if (resultados.iniciativas?.ok) await syncVotacoes();
+  if (resultados.iniciativas?.ok) {
+    const rVot = await syncVotacoes();
+    await registarLog('votacoes', {
+      sucesso: rVot?.ok ?? true, total: rVot?.total ?? 0, inseridos: rVot?.total ?? 0,
+      atualizados: 0, erros: 0, detalhes: [],
+    });
+  }
 
   // Biografias (scraping parlamento.pt)
   const rBio = await crawlerBiografias();

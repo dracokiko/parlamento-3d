@@ -287,6 +287,14 @@ export async function syncDiretivasUE() {
   console.log(`    Em atraso (multa possível): ${emAtraso}`);
   console.log(`    Por transpor (no prazo)   : ${porTranspor}`);
   console.log(`    Sem prazo (delg./execução): ${semPrazo}`);
+
+  try {
+    await db.from('ar_sync_log').insert({
+      recurso: 'diretivas_ue', sucesso: true,
+      total: registos.length, inseridos: saved, atualizados: 0, erros: 0,
+      detalhes: [],
+    });
+  } catch {}
 }
 
 if (process.argv[1].includes('eurlexSync')) {
