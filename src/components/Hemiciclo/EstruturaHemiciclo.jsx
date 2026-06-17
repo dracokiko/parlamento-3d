@@ -14,10 +14,11 @@ class TexturaBoundary extends Component {
 const EmblemaChao = () => {
   const emblema = useTexture('/simbolo-republica.png');
   const isMobile = useIsMobile();
-  const tamanho = isMobile ? 5.5 : 4;
+  const largura = isMobile ? 7.5 : 4;
+  const altura  = isMobile ? 4.5 : 4;
   return (
     <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.03, -3]}>
-      <planeGeometry args={[tamanho, tamanho]} />
+      <planeGeometry args={[largura, altura]} />
       <meshStandardMaterial
         map={emblema} transparent alphaTest={0.05}
         opacity={0.80} roughness={0.55} depthWrite={false}
@@ -164,7 +165,7 @@ const EstruturaHemicicloComponent = () => {
 
       {/* ── Linha negra — delimita o chão bege das bancadas ─── */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.03, 0]}>
-        <ringGeometry args={[RAIO_INTERNO - 0.45, RAIO_INTERNO - 0.18, 80, 1, RING_THETA_START, RING_THETA_LENGTH]} />
+        <ringGeometry args={[RAIO_INTERNO - 0.38, RAIO_INTERNO - 0.25, 80, 1, RING_THETA_START, RING_THETA_LENGTH]} />
         <meshStandardMaterial color="#1a1a1a" roughness={0.7} />
       </mesh>
 
