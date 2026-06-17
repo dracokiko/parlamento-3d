@@ -59,3 +59,11 @@ a:focus-visible {
 [role="dialog"] {
   animation: slideInRight 250ms ease-out;
 }
+
+/* Tablets em portrait usam layout mobile */
+@media (min-width: 768px) and (max-width: 1024px) and (orientation: portrait) {
+  .md\:hidden { display: flex; }
+  .md\:flex   { display: none; }
+  .md\:pt-0   { padding-top: 40px; }
+  .md\:top-3  { top: 3.5rem; }
+}
