@@ -165,7 +165,7 @@ const EstruturaHemicicloComponent = () => {
 
       {/* ── Linha negra — delimita o chão bege das bancadas ─── */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.03, 0]}>
-        <ringGeometry args={[RAIO_INTERNO - 0.38, RAIO_INTERNO - 0.25, 80, 1, RING_THETA_START, RING_THETA_LENGTH]} />
+        <ringGeometry args={[RAIO_INTERNO - 0.34, RAIO_INTERNO - 0.28, 80, 1, RING_THETA_START, RING_THETA_LENGTH]} />
         <meshStandardMaterial color="#1a1a1a" roughness={0.7} />
       </mesh>
 
