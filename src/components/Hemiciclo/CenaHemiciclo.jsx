@@ -5,7 +5,7 @@ import PropTypes from 'prop-types';
 import { Assento } from './Assento';
 import { EstruturaHemiciclo } from './EstruturaHemiciclo';
 import { useParlamento } from '../../context/ParlamentoContext';
-import { useIsMobile } from '../../hooks/useIsMobile';
+import { useIsMobile, useIsTabletPortrait } from '../../hooks/useIsMobile';
 
 /** Sinaliza ao contexto que o Three.js renderizou pelo menos uma frame com deputados. */
 const SinalPronto = () => {
@@ -33,6 +33,7 @@ export const CenaHemiciclo = () => {
   const controlsRef = useRef();
   const { deputados, posicoes3D } = useParlamento();
   const isMobile = useIsMobile();
+  const isTabletPortrait = useIsTabletPortrait();
 
   // Mobile: a cena inteira é escalada 1.4× — aumenta posições E geometria (espaçamento + tamanho).
   // Câmara em Y=36 desce o hemiciclo para a borda inferior do ecrã portrait.
@@ -47,7 +48,7 @@ export const CenaHemiciclo = () => {
   // maxPolarAngle=π/2 em mobile permite câmara perfeitamente horizontal (dy=0).
   // Com camera Y=target Y, look-angle=0° (mais frontal possível).
   // floor_angle=atan(61/62)=44.5° → chão a ~0.6% da borda inferior.
-  const sceneScale      = isMobile ? 2.8              : 1;
+  const sceneScale      = isTabletPortrait ? 2.0 : (isMobile ? 2.8 : 1);
   const cameraPos       = isMobile ? [0, 61, 62]     : [0, 12, 24];
   const cameraFov       = isMobile ? 90               : 48;
   const maxDist         = isMobile ? 85               : 42;
