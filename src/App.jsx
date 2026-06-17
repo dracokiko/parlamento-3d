@@ -229,7 +229,7 @@ function HemicicloPage() {
           <BlocoInfo />
 
           {/* Canvas 3D — ocupa todo o espaço restante */}
-          <div className="relative flex-1 min-h-0">
+          <div className="hemiciclo-canvas-wrap relative flex-1 min-h-0">
             <BlocoHemiciclo />
             <ControlosCamara />
             {/* Pesquisa flutuante */}

@@ -66,4 +66,11 @@ a:focus-visible {
   .md\:flex   { display: none !important; }
   .md\:pt-0   { padding-top: 40px !important; }
   .md\:top-3  { top: 3.5rem !important; }
+
+  /* Canvas cobre o viewport completo para eliminar lacunas */
+  .hemiciclo-canvas-wrap {
+    position: fixed !important;
+    inset: 0 !important;
+    z-index: 0 !important;
+  }
 }
