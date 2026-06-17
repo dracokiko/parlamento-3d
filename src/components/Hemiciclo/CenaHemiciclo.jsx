@@ -52,6 +52,7 @@ export const CenaHemiciclo = () => {
   const sceneScale      = isTabletPortrait ? 2.2 : (isMobile ? 2.7 : 1);
   const cameraPos       = isMobile ? [0, 61, 62]     : [0, 12, 24];
   const cameraFov       = isMobile ? 90               : 48;
+  const minDist         = isMobile ? 30               : 10;
   const maxDist         = isMobile ? 85               : 42;
   const fogNear         = isMobile ? 72               : 30;
   const fogFar          = isMobile ? 188              : 90;
@@ -86,13 +87,13 @@ export const CenaHemiciclo = () => {
           ref={controlsRef}
           enableDamping
           dampingFactor={0.08}
-          minDistance={10}
+          minDistance={minDist}
           maxDistance={maxDist}
           maxPolarAngle={maxPolarAngle}
           target={orbitTarget}
           enableRotate={false}
           enablePan={false}
-          enableZoom={false}
+          enableZoom={isTouch}
         />
 
         <ControladorCamara controlsRef={controlsRef} />

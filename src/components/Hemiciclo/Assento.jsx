@@ -36,7 +36,11 @@ const AssentoComponent = ({ deputado, position, rotation, scale = 1 }) => {
     if (!meshRef.current) return;
 
     if (estaSelecionado) {
-      const pulse = Math.sin(clock.elapsedTime * 3) * 0.05 + 1.15;
+      // Touch: pulso mais amplo e escala maior para destacar bem num ecrã táctil
+      const amp    = isTouch ? 0.10 : 0.05;
+      const centro = isTouch ? 1.45 : 1.15;
+      const speed  = isTouch ? 4    : 3;
+      const pulse  = Math.sin(clock.elapsedTime * speed) * amp + centro;
       meshRef.current.scale.set(pulse, pulse, pulse);
     } else {
       const alvo = hovered ? 1.25 : 1;
@@ -46,7 +50,9 @@ const AssentoComponent = ({ deputado, position, rotation, scale = 1 }) => {
   });
 
   const opacity = partidoEstaDestaque ? 1 : 0.38;
-  const emissiveIntensity = estaSelecionado ? 0.8 : hovered ? 0.4 : (partidoEstaDestaque ? 0.05 : 0);
+  const emissiveIntensity = estaSelecionado
+    ? (isTouch ? 1.0 : 0.8)
+    : hovered ? 0.4 : (partidoEstaDestaque ? 0.05 : 0);
 
   const handlePointerOver = (e) => {
     e.stopPropagation();
