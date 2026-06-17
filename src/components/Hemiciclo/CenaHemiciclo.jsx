@@ -48,12 +48,12 @@ export const CenaHemiciclo = () => {
   // Com camera Y=target Y, look-angle=0° (mais frontal possível).
   // floor_angle=atan(61/62)=44.5° → chão a ~0.6% da borda inferior.
   const sceneScale      = isMobile ? 2.8              : 1;
-  const cameraPos       = isMobile ? [0, 30, 62]     : [0, 12, 24];
+  const cameraPos       = isMobile ? [0, 61, 62]     : [0, 12, 24];
   const cameraFov       = isMobile ? 90               : 48;
   const maxDist         = isMobile ? 85               : 42;
   const fogNear         = isMobile ? 72               : 30;
   const fogFar          = isMobile ? 188              : 90;
-  const orbitTarget     = isMobile ? [0, 8, -16]      : [0, 10, -16];
+  const orbitTarget     = isMobile ? [0, 61, -16]     : [0, 10, -16];
   const maxPolarAngle   = isMobile ? Math.PI / 2      : Math.PI / 2.1;
 
   return (
