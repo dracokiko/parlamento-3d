@@ -45,7 +45,7 @@ export const CoatOfArmsAR = () => {
         src="/Coat_of_arms_of_the_Assembly_of_the_Portuguese_Republic.svg.png"
         alt="Assembleia da República"
         style={{
-          width: isMobile ? '90px' : '160px',
+          width: isMobile ? '115px' : '160px',
           height: 'auto',
           opacity: isMobile ? 0.72 : 0.85,
         }}
@@ -66,7 +66,7 @@ export const TooltipDeputado = () => {
 
   // ── Dispositivos touch (telemóvel + tablet qualquer orientação) ───────────
   if (isTouch) {
-    const s = isTabletPortrait ? 2 : 1;
+    const s = isTabletPortrait ? 1.65 : 1;
     const topPos = isTabletPortrait ? '40%' : '50%';
 
     const handleAbrirPerfil = () => {
