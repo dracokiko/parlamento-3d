@@ -22,6 +22,7 @@ const AssentoComponent = ({ deputado, position, rotation, scale = 1 }) => {
 
   const {
     deputadoSelecionado,
+    deputadoHover,
     partidoDestaque,
     selecionarDeputado,
     setDeputadoHover
@@ -30,12 +31,13 @@ const AssentoComponent = ({ deputado, position, rotation, scale = 1 }) => {
 
   const corBase = getCorPartido(deputado?.partido);
   const estaSelecionado = deputadoSelecionado?.id === deputado?.id;
+  const estaEmPopup = isTouch && deputadoHover?.id === deputado?.id;
   const partidoEstaDestaque = partidoDestaque === null || partidoDestaque === deputado?.partido;
 
   useFrame(({ clock }) => {
     if (!meshRef.current) return;
 
-    if (estaSelecionado) {
+    if (estaSelecionado || estaEmPopup) {
       // Touch: pulso mais amplo e escala maior para destacar bem num ecrã táctil
       const amp    = isTouch ? 0.10 : 0.05;
       const centro = isTouch ? 1.45 : 1.15;
@@ -43,22 +45,24 @@ const AssentoComponent = ({ deputado, position, rotation, scale = 1 }) => {
       const pulse  = Math.sin(clock.elapsedTime * speed) * amp + centro;
       meshRef.current.scale.set(pulse, pulse, pulse);
     } else {
-      const alvo = hovered ? 1.25 : 1;
+      // Em touch não há efeito de hover ao deslizar o dedo
+      const alvo = (!isTouch && hovered) ? 1.25 : 1;
       escalaAlvo.current.set(alvo, alvo, alvo);
       meshRef.current.scale.lerp(escalaAlvo.current, 0.15);
     }
   });
 
   const opacity = partidoEstaDestaque ? 1 : 0.38;
-  const emissiveIntensity = estaSelecionado
+  const emissiveIntensity = (estaSelecionado || estaEmPopup)
     ? (isTouch ? 1.0 : 0.8)
-    : hovered ? 0.4 : (partidoEstaDestaque ? 0.05 : 0);
+    : (!isTouch && hovered) ? 0.4 : (partidoEstaDestaque ? 0.05 : 0);
 
   const handlePointerOver = (e) => {
     e.stopPropagation();
+    if (isTouch) return; // deslizar o dedo não faz nada em touch
     setHovered(true);
     setDeputadoHover(deputado);
-    if (!isTouch) document.body.style.cursor = 'pointer';
+    document.body.style.cursor = 'pointer';
   };
 
   const handlePointerOut = (e) => {
