@@ -1,20 +1,17 @@
 import { useState, useEffect } from 'react';
 
-const MOBILE_QUERY          = '(max-width: 767px), (min-width: 768px) and (orientation: portrait)';
-const TABLET_PORTRAIT_QUERY = '(min-width: 768px) and (orientation: portrait)';
+const QUERY = '(max-width: 767px), (min-width: 768px) and (orientation: portrait)';
 
-function useMql(query) {
-  const [matches, setMatches] = useState(() =>
-    typeof window !== 'undefined' ? window.matchMedia(query).matches : false
-  );
+export function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return window.matchMedia(QUERY).matches;
+  });
   useEffect(() => {
-    const mql = window.matchMedia(query);
-    const fn = (e) => setMatches(e.matches);
+    const mql = window.matchMedia(QUERY);
+    const fn = (e) => setIsMobile(e.matches);
     mql.addEventListener('change', fn);
     return () => mql.removeEventListener('change', fn);
-  }, [query]);
-  return matches;
+  }, []);
+  return isMobile;
 }
-
-export function useIsMobile()        { return useMql(MOBILE_QUERY); }
-export function useIsTabletPortrait() { return useMql(TABLET_PORTRAIT_QUERY); }
