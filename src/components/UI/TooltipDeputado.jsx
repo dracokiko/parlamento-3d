@@ -1,6 +1,6 @@
 import { useParlamento } from '../../context/ParlamentoContext';
 import { getCorPartido, partidos } from '../../data/mockPartidos';
-import { useIsMobile } from '../../hooks/useIsMobile';
+import { useIsMobile, useIsTabletPortrait, useIsTouch } from '../../hooks/useIsMobile';
 
 const POSICAO = {
   position: 'fixed',
@@ -55,41 +55,56 @@ export const CoatOfArmsAR = () => {
 };
 
 export const TooltipDeputado = () => {
-  const { deputadoHover } = useParlamento();
+  const { deputadoHover, selecionarDeputado, setDeputadoHover } = useParlamento();
   const isMobile = useIsMobile();
+  const isTouch = useIsTouch();
+  const isTabletPortrait = useIsTabletPortrait();
 
   if (!deputadoHover) return null;
 
   const corBase = getCorPartido(deputadoHover.partido);
 
-  if (isMobile) {
+  // ── Dispositivos touch (telemóvel + tablet qualquer orientação) ───────────
+  if (isTouch) {
+    const s = isTabletPortrait ? 2 : 1;
+    const topPos = isTabletPortrait ? '40%' : '50%';
+
+    const handleAbrirPerfil = () => {
+      selecionarDeputado(deputadoHover);
+      setDeputadoHover(null);
+    };
+
     return (
-      <div style={{
-        position: 'fixed',
-        top: '50%',
-        left: '50%',
-        transform: 'translate(-50%, -50%)',
-        zIndex: 100,
-        pointerEvents: 'none',
-        background: 'white',
-        borderRadius: '16px',
-        boxShadow: '0 12px 40px rgba(0,0,0,0.22)',
-        border: '1px solid #e5e7eb',
-        padding: '14px 18px',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        gap: '7px',
-        width: '180px',
-        color: '#111827',
-      }}>
+      <div
+        onClick={handleAbrirPerfil}
+        style={{
+          position: 'fixed',
+          top: topPos,
+          left: '50%',
+          transform: 'translate(-50%, -50%)',
+          zIndex: 100,
+          pointerEvents: 'auto',
+          cursor: 'pointer',
+          background: 'white',
+          borderRadius: `${16 * s}px`,
+          boxShadow: '0 12px 40px rgba(0,0,0,0.22)',
+          border: '1px solid #e5e7eb',
+          padding: `${14 * s}px ${18 * s}px`,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: `${7 * s}px`,
+          width: `${180 * s}px`,
+          color: '#111827',
+        }}
+      >
         {/* Fotografia */}
         <div style={{
-          width: '96px',
-          height: '114px',
-          borderRadius: '10px',
+          width: `${96 * s}px`,
+          height: `${114 * s}px`,
+          borderRadius: `${10 * s}px`,
           overflow: 'hidden',
-          border: '2px solid #e5e7eb',
+          border: `${2 * s}px solid #e5e7eb`,
           background: '#f3f4f6',
           flexShrink: 0,
         }}>
@@ -103,7 +118,8 @@ export const TooltipDeputado = () => {
             <div style={{
               width: '100%', height: '100%',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              background: corBase, color: 'white', fontSize: '28px', fontWeight: 700,
+              background: corBase, color: 'white',
+              fontSize: `${28 * s}px`, fontWeight: 700,
             }}>
               {(deputadoHover.nomeAbrev ?? deputadoHover.nome ?? '?').charAt(0)}
             </div>
@@ -111,22 +127,33 @@ export const TooltipDeputado = () => {
         </div>
 
         <div style={{
-          fontWeight: 700, fontSize: '12px', textAlign: 'center', lineHeight: 1.2,
+          fontWeight: 700, fontSize: `${12 * s}px`, textAlign: 'center', lineHeight: 1.2,
           width: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
         }}>
           {deputadoHover.nomeAbrev ?? deputadoHover.nome ?? '—'}
         </div>
 
         <div style={{
-          fontSize: '11px', color: '#4b5563', textAlign: 'center',
+          fontSize: `${11 * s}px`, color: '#4b5563', textAlign: 'center',
           width: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
         }}>
           {partidos[deputadoHover.partido]?.nome ?? deputadoHover.partido ?? '—'}
+        </div>
+
+        <div style={{
+          marginTop: `${4 * s}px`,
+          fontSize: `${10 * s}px`,
+          color: '#3b82f6',
+          fontWeight: 600,
+          letterSpacing: '0.03em',
+        }}>
+          Toque para ver perfil →
         </div>
       </div>
     );
   }
 
+  // ── Desktop (hover) ───────────────────────────────────────────────────────
   return (
     <div style={{
       position: 'fixed',

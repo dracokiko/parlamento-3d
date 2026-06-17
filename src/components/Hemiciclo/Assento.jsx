@@ -5,6 +5,7 @@ import { Edges } from '@react-three/drei';
 import PropTypes from 'prop-types';
 import { getCorPartido } from '../../data/mockPartidos';
 import { useParlamento } from '../../context/ParlamentoContext';
+import { useIsTouch } from '../../hooks/useIsMobile';
 
 /**
  * Componente Assento — representa um deputado no hemiciclo 3D.
@@ -25,6 +26,7 @@ const AssentoComponent = ({ deputado, position, rotation, scale = 1 }) => {
     selecionarDeputado,
     setDeputadoHover
   } = useParlamento();
+  const isTouch = useIsTouch();
 
   const corBase = getCorPartido(deputado?.partido);
   const estaSelecionado = deputadoSelecionado?.id === deputado?.id;
@@ -50,19 +52,27 @@ const AssentoComponent = ({ deputado, position, rotation, scale = 1 }) => {
     e.stopPropagation();
     setHovered(true);
     setDeputadoHover(deputado);
-    document.body.style.cursor = 'pointer';
+    if (!isTouch) document.body.style.cursor = 'pointer';
   };
 
   const handlePointerOut = (e) => {
     e.stopPropagation();
     setHovered(false);
-    setDeputadoHover(null);
-    document.body.style.cursor = 'default';
+    // Em touch o tooltip persiste até clicar nele ou fora — não limpar aqui
+    if (!isTouch) {
+      setDeputadoHover(null);
+      document.body.style.cursor = 'default';
+    }
   };
 
   const handleClick = (e) => {
     e.stopPropagation();
-    selecionarDeputado(deputado);
+    if (isTouch) {
+      // 1.º toque: mostrar tooltip; a navegação acontece ao clicar no tooltip
+      setDeputadoHover(deputado);
+    } else {
+      selecionarDeputado(deputado);
+    }
   };
 
   return (

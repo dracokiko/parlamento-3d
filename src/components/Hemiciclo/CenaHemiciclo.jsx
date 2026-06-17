@@ -5,7 +5,7 @@ import PropTypes from 'prop-types';
 import { Assento } from './Assento';
 import { EstruturaHemiciclo } from './EstruturaHemiciclo';
 import { useParlamento } from '../../context/ParlamentoContext';
-import { useIsMobile, useIsTabletPortrait } from '../../hooks/useIsMobile';
+import { useIsMobile, useIsTabletPortrait, useIsTouch } from '../../hooks/useIsMobile';
 
 /** Sinaliza ao contexto que o Three.js renderizou pelo menos uma frame com deputados. */
 const SinalPronto = () => {
@@ -31,9 +31,10 @@ ControladorCamara.propTypes = { controlsRef: PropTypes.object.isRequired };
 
 export const CenaHemiciclo = () => {
   const controlsRef = useRef();
-  const { deputados, posicoes3D } = useParlamento();
+  const { deputados, posicoes3D, setDeputadoHover } = useParlamento();
   const isMobile = useIsMobile();
   const isTabletPortrait = useIsTabletPortrait();
+  const isTouch = useIsTouch();
 
   // Mobile: a cena inteira é escalada 1.4× — aumenta posições E geometria (espaçamento + tamanho).
   // Câmara em Y=36 desce o hemiciclo para a borda inferior do ecrã portrait.
@@ -64,6 +65,7 @@ export const CenaHemiciclo = () => {
       gl={{ antialias: true, alpha: false }}
       style={{ background: BG }}
       onCreated={({ gl }) => gl.setClearColor(BG, 1)}
+      onPointerMissed={() => { if (isTouch) setDeputadoHover(null); }}
       aria-label="Visualização 3D do hemiciclo da Assembleia da República"
     >
       <Suspense fallback={null}>
