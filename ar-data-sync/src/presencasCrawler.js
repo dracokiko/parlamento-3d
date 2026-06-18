@@ -91,18 +91,23 @@ export async function crawlerPresencas() {
   console.log('  CRAWLER — PRESENÇAS DOS DEPUTADOS');
   console.log('='.repeat(55));
 
-  // Usar ar_deputados.cad_id como BID — é o identificador do site da AR
-  // (deputados.id contém DepId da API, que é diferente do DepCadId usado nos URLs)
-  const { data: deps, error: errDeps } = await db()
-    .from('ar_deputados')
-    .select('cad_id, nome_parlamentar')
-    .eq('legislatura', 'XVII')
-    .not('cad_id', 'is', null)
-    .order('cad_id');
-  if (errDeps) { console.error('❌', errDeps.message); process.exit(1); }
+  // Só os 230 deputados actuais: cruzar deputados.id com ar_deputados.id para obter cad_id (BID do site)
+  const { data: activos, error: errActivos } = await db().from('deputados').select('id, nome');
+  if (errActivos) { console.error('❌', errActivos.message); process.exit(1); }
+  const idsActivos = (activos ?? []).map(d => d.id);
 
-  const deputados = deps ?? [];
-  console.log(`  → ${deputados.length} deputados em ar_deputados`);
+  const { data: arDeps, error: errAr } = await db()
+    .from('ar_deputados')
+    .select('id, cad_id, nome_parlamentar')
+    .in('id', idsActivos)
+    .not('cad_id', 'is', null);
+  if (errAr) { console.error('❌', errAr.message); process.exit(1); }
+
+  const porId = new Map((arDeps ?? []).map(r => [r.id, r]));
+  const deputados = (activos ?? [])
+    .map(d => { const ar = porId.get(d.id); return ar ? { cad_id: ar.cad_id, nome_parlamentar: ar.nome_parlamentar ?? d.nome } : null; })
+    .filter(Boolean);
+  console.log(`  → ${deputados.length} deputados activos`);
 
   let ok = 0, erros = 0;
 

@@ -107,17 +107,26 @@ function parseBio(html, bid) {
   };
 }
 
-/** Lê os deputados da XVII Legislatura usando cad_id (BID do site da AR). */
+/** Lê apenas os 230 deputados actuais, cruzando deputados.id com ar_deputados.id para obter cad_id. */
 async function extrairBids() {
+  const { data: activos, error: e1 } = await db().from('deputados').select('id, nome');
+  if (e1) throw new Error(e1.message);
+  const ids = (activos ?? []).map(d => d.id);
+
   const { data, error } = await db()
     .from('ar_deputados')
-    .select('cad_id, nome_parlamentar')
-    .eq('legislatura', 'XVII')
-    .not('cad_id', 'is', null)
-    .order('cad_id');
+    .select('id, cad_id, nome_parlamentar')
+    .in('id', ids)
+    .not('cad_id', 'is', null);
   if (error) throw new Error(error.message);
-  const distintos = [...new Map((data ?? []).map(r => [r.cad_id, r])).values()];
-  return distintos.map(d => ({ bid: d.cad_id, nome: d.nome_parlamentar }));
+
+  const porId = new Map((data ?? []).map(r => [r.id, r]));
+  return (activos ?? [])
+    .map(d => {
+      const ar = porId.get(d.id);
+      return ar ? { bid: ar.cad_id, nome: ar.nome_parlamentar ?? d.nome } : null;
+    })
+    .filter(Boolean);
 }
 
 export async function crawlerBiografias() {
