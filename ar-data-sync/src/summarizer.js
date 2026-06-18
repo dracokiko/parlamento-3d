@@ -66,12 +66,17 @@ export async function resumirDeputados() {
   console.log('\n  [IA] A resumir perfis de deputados...');
   let total = 0, erros = 0;
 
+  // Só os 230 deputados actuais (tabela deputados) — exclui suplentes históricos
+  const { data: activos, error: errActivos } = await db().from('deputados').select('id');
+  if (errActivos) { console.error('  ✗ Erro ao buscar deputados activos:', errActivos.message); return { total: 0, inseridos: 0, atualizados: 0, erros: 1 }; }
+  const idsActivos = (activos ?? []).map(d => d.id);
+
   while (true) {
     const { data: deps, error } = await db()
       .from('ar_deputados')
       .select('id, cad_id, nome_parlamentar, partido_sigla, circulo')
       .is('resumo_ia', null)
-      .not('partido_sigla', 'is', null)
+      .in('id', idsActivos)
       .range(0, PAGINA - 1);
 
     if (error) { console.error('  ✗ Erro ao buscar deputados:', error.message); break; }
