@@ -1,13 +1,13 @@
 import { useMemo } from 'react';
 import { useParlamento } from '../context/ParlamentoContext';
 
-export function useBiografiaDeputado(nomeAbrev) {
+export function useBiografiaDeputado(cadId) {
   const { biografiasMapa } = useParlamento();
 
   const bio = useMemo(() => {
-    if (!nomeAbrev) return null;
-    return biografiasMapa.get(nomeAbrev.toLowerCase()) ?? null;
-  }, [biografiasMapa, nomeAbrev]);
+    if (cadId == null) return null;
+    return biografiasMapa.get(String(cadId)) ?? null;
+  }, [biografiasMapa, cadId]);
 
   return { bio, carregando: false };
 }

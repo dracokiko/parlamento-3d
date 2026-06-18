@@ -244,10 +244,8 @@ export const PainelDeputado = () => {
   const { perfil, iniciativas, carregando } = useArDeputado(deputadoSelecionado);
   const nomeParlamentar = perfil?.nome_parlamentar ?? deputadoSelecionado?.nomeAbrev ?? '';
   const { intervencoes, carregando: carregandoInt } = useIntervencoesDeputado(nomeParlamentar, deputadoSelecionado.partido);
-  const { bio, carregando: carregandoBio } = useBiografiaDeputado(
-    deputadoSelecionado.nomeAbrev ?? deputadoSelecionado.nome
-  );
-  const { presencas, carregando: carregandoPresencas } = usePresencasDeputado(bio?.bid);
+  const { bio, carregando: carregandoBio } = useBiografiaDeputado(perfil?.cad_id);
+  const { presencas, carregando: carregandoPresencas } = usePresencasDeputado(perfil?.cad_id);
 
   if (!deputadoSelecionado) return null;
 

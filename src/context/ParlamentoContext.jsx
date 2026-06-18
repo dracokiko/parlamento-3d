@@ -101,11 +101,11 @@ export const ParlamentoProvider = ({ children }) => {
         setIniciativasProntas(true);
       });
 
-    // Biografias — indexadas por nome_abrev em lowercase
+    // Biografias — indexadas por bid (cad_id)
     paginar('ar_biografias', '*', null, null)
       .then(todas => {
         const mapa = new Map();
-        todas.forEach(b => { if (b.nome_abrev) mapa.set(b.nome_abrev.toLowerCase(), b); });
+        todas.forEach(b => { if (b.bid != null) mapa.set(String(b.bid), b); });
         setBiografiasMapa(mapa);
         setBiografiasProntas(true);
       });
@@ -114,7 +114,7 @@ export const ParlamentoProvider = ({ children }) => {
     paginar('ar_presencas', '*', null, null)
       .then(todas => {
         const mapa = new Map();
-        todas.forEach(p => { if (p.bid) mapa.set(p.bid, p); });
+        todas.forEach(p => { if (p.bid != null) mapa.set(String(p.bid), p); });
         setPresencasMapa(mapa);
         setPresencasProntas(true);
       });
