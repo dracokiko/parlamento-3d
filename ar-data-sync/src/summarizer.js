@@ -84,8 +84,12 @@ export async function resumirDeputados() {
         .contains('autores_dep', JSON.stringify([{ idCadastro: dep.cad_id }]))
         .limit(30);
 
-      // Só resume se tiver pelo menos 2 iniciativas (senão o resumo não tem valor)
-      if (!inis || inis.length < 2) { total++; continue; }
+      // Sem iniciativas suficientes: marcar resumo_ia='' para sair da fila IS NULL
+      if (!inis || inis.length < 2) {
+        await db().from('ar_deputados').update({ resumo_ia: '' }).eq('id', dep.id);
+        total++;
+        continue;
+      }
 
       const resumo = await resumir(promptDeputado(dep, inis));
       if (resumo) {
