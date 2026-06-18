@@ -122,16 +122,16 @@ async function main() {
   let aiTotal = 0, aiInseridos = 0, aiErros = 0;
   const acumularAi = r => { aiTotal += r?.total ?? 0; aiInseridos += r?.inseridos ?? 0; aiErros += r?.erros ?? 0; };
 
-  if (resultados.iniciativas?.ok) acumularAi(await resumirIniciativas());
-  if (resultados.deputados?.ok)   acumularAi(await resumirDeputados());
+  try { if (resultados.iniciativas?.ok) acumularAi(await resumirIniciativas()); }
+  catch (err) { console.warn(`\n  ⚠ resumirIniciativas falhou (${err.message})`); }
+
+  try { if (resultados.deputados?.ok) acumularAi(await resumirDeputados()); }
+  catch (err) { console.warn(`\n  ⚠ resumirDeputados falhou (${err.message})`); }
 
   // Catálogo DAR
   let rDar = null;
-  try {
-    rDar = await crawlerDebatesDAR();
-  } catch (err) {
-    console.warn(`\n  ⚠ Crawler DAR falhou (${err.message}) — a continuar pipeline`);
-  }
+  try { rDar = await crawlerDebatesDAR(); }
+  catch (err) { console.warn(`\n  ⚠ Crawler DAR falhou (${err.message})`); }
   await registarLog('dar', {
     sucesso: rDar !== null,
     total:       (rDar?.novos ?? 0) + (rDar?.erros ?? 0),
@@ -142,46 +142,57 @@ async function main() {
   });
 
   // Transcrições (scraping DAR PDF)
-  const rTransc = await obterTranscricoesDebates();
+  let rTransc = null;
+  try { rTransc = await obterTranscricoesDebates(); }
+  catch (err) { console.warn(`\n  ⚠ obterTranscricoesDebates falhou (${err.message})`); }
   await registarLog('transcricoes', {
-    sucesso: true, total: rTransc?.total ?? 0, inseridos: rTransc?.inseridos ?? 0,
-    atualizados: 0, erros: rTransc?.erros ?? 0, detalhes: [],
+    sucesso: rTransc !== null, total: rTransc?.total ?? 0, inseridos: rTransc?.inseridos ?? 0,
+    atualizados: 0, erros: rTransc?.erros ?? (rTransc === null ? 1 : 0), detalhes: [],
   });
 
   // Resumos IA debates + log combinado
-  acumularAi(await resumirDebates());
+  try { acumularAi(await resumirDebates()); }
+  catch (err) { console.warn(`\n  ⚠ resumirDebates falhou (${err.message})`); }
   await registarLog('resumos_ia', {
     sucesso: true, total: aiTotal, inseridos: aiInseridos, atualizados: 0, erros: aiErros, detalhes: [],
   });
 
   // Intervenções
-  const rInt = await indexarIntervencoes();
+  let rInt = null;
+  try { rInt = await indexarIntervencoes(); }
+  catch (err) { console.warn(`\n  ⚠ indexarIntervencoes falhou (${err.message})`); }
   await registarLog('intervencoes', {
-    sucesso: true, total: rInt?.total ?? 0, inseridos: rInt?.inseridos ?? 0,
-    atualizados: 0, erros: rInt?.erros ?? 0, detalhes: [],
+    sucesso: rInt !== null, total: rInt?.total ?? 0, inseridos: rInt?.inseridos ?? 0,
+    atualizados: 0, erros: rInt?.erros ?? (rInt === null ? 1 : 0), detalhes: [],
   });
 
   // Votações
   if (resultados.iniciativas?.ok) {
-    const rVot = await syncVotacoes();
+    let rVot = null;
+    try { rVot = await syncVotacoes(); }
+    catch (err) { console.warn(`\n  ⚠ syncVotacoes falhou (${err.message})`); }
     await registarLog('votacoes', {
-      sucesso: rVot?.ok ?? true, total: rVot?.total ?? 0, inseridos: rVot?.total ?? 0,
-      atualizados: 0, erros: 0, detalhes: [],
+      sucesso: rVot?.ok ?? rVot !== null, total: rVot?.total ?? 0, inseridos: rVot?.total ?? 0,
+      atualizados: 0, erros: rVot === null ? 1 : 0, detalhes: [],
     });
   }
 
   // Biografias (scraping parlamento.pt)
-  const rBio = await crawlerBiografias();
+  let rBio = null;
+  try { rBio = await crawlerBiografias(); }
+  catch (err) { console.warn(`\n  ⚠ crawlerBiografias falhou (${err.message})`); }
   await registarLog('biografias', {
-    sucesso: true, total: rBio?.total ?? 0, inseridos: rBio?.inseridos ?? 0,
-    atualizados: 0, erros: rBio?.erros ?? 0, detalhes: [],
+    sucesso: rBio !== null, total: rBio?.total ?? 0, inseridos: rBio?.inseridos ?? 0,
+    atualizados: 0, erros: rBio?.erros ?? (rBio === null ? 1 : 0), detalhes: [],
   });
 
   // Presenças (scraping parlamento.pt)
-  const rPresencas = await crawlerPresencas();
+  let rPresencas = null;
+  try { rPresencas = await crawlerPresencas(); }
+  catch (err) { console.warn(`\n  ⚠ crawlerPresencas falhou (${err.message})`); }
   await registarLog('presencas', {
-    sucesso: true, total: rPresencas?.total ?? 0, inseridos: rPresencas?.inseridos ?? 0,
-    atualizados: 0, erros: rPresencas?.erros ?? 0, detalhes: [],
+    sucesso: rPresencas !== null, total: rPresencas?.total ?? 0, inseridos: rPresencas?.inseridos ?? 0,
+    atualizados: 0, erros: rPresencas?.erros ?? (rPresencas === null ? 1 : 0), detalhes: [],
   });
 
   // 3. Resultado final
