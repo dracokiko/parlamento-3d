@@ -68,6 +68,27 @@ Iniciativas apresentadas:
 ${lista}`;
 }
 
+export function promptVotacao(vot, ini) {
+  const gp = vot.detalhe_gp ?? {};
+  const favor      = (gp.favor      ?? []).join(', ') || '—';
+  const contra     = (gp.contra     ?? []).join(', ') || '—';
+  const abstencao  = (gp.abstencao  ?? []).join(', ') || '—';
+  const contexto   = ini?.resumo_ia ?? ini?.titulo ?? '—';
+
+  return `${INSTRUCOES_BASE}
+
+Resume em 2-3 frases o resultado desta votação parlamentar. Explica o que foi votado, o resultado e as posições dos partidos.
+
+Iniciativa: ${ini?.titulo ?? '—'}
+Tipo: ${ini?.desc_tipo ?? '—'}
+Contexto: ${contexto}
+Fase: ${vot.fase ?? '—'}
+Resultado: ${vot.resultado ?? '—'}${vot.unanime ? ' (unânime)' : ''}
+A Favor: ${favor}
+Contra: ${contra}
+Abstenção: ${abstencao}`;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 
 async function chamarGroq(prompt) {

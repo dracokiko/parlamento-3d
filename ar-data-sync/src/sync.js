@@ -3,7 +3,7 @@ import { AR_ENDPOINTS, BATCH_SIZE } from './config.js';
 import { downloadToTemp, streamRecords } from './downloader.js';
 import { NORMALIZADORES } from './processor.js';
 import { upsertBatch, registarLog } from './database.js';
-import { resumirIniciativas, resumirDeputados, resumirDebates, obterTranscricoesDebates, indexarIntervencoes } from './summarizer.js';
+import { resumirIniciativas, resumirDeputados, resumirDebates, resumirVotacoes, obterTranscricoesDebates, indexarIntervencoes } from './summarizer.js';
 import { crawlerDebatesDAR } from './catalogueCrawler.js';
 import { syncVotacoes } from './votacoesSync.js';
 import { crawlerPresencas } from './presencasCrawler.js';
@@ -166,7 +166,7 @@ async function main() {
     atualizados: 0, erros: rInt?.erros ?? (rInt === null ? 1 : 0), detalhes: [],
   });
 
-  // Votações
+  // Votações (extracção + resumos IA)
   if (resultados.iniciativas?.ok) {
     let rVot = null;
     try { rVot = await syncVotacoes(); }
@@ -175,6 +175,11 @@ async function main() {
       sucesso: rVot?.ok ?? rVot !== null, total: rVot?.total ?? 0, inseridos: rVot?.total ?? 0,
       atualizados: 0, erros: rVot === null ? 1 : 0, detalhes: [],
     });
+
+    let rVotAi = null;
+    try { rVotAi = await resumirVotacoes(); }
+    catch (err) { console.warn(`\n  ⚠ resumirVotacoes falhou (${err.message})`); }
+    acumularAi(rVotAi);
   }
 
   // Biografias (scraping parlamento.pt)

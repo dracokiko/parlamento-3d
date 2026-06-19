@@ -150,6 +150,13 @@ export function VotacaoDetalhe() {
           {voto.unanime && <span className="text-green-600 font-medium">Votação unânime</span>}
         </div>
 
+        {voto.resumo_ia && (
+          <div className="bg-blue-50 rounded-2xl p-4 border border-blue-100">
+            <p className="text-sm text-gray-800 leading-relaxed">{voto.resumo_ia}</p>
+            <p className="text-[10px] text-gray-400 mt-2">Gerado automaticamente · pode conter imprecisões</p>
+          </div>
+        )}
+
         {temBreakdown && (
           <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
             <BarraVotos favor={favor} contra={contra} abstencao={abstencao} />
