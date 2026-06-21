@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { X, MapPin, FileText, Mic, ExternalLink, BookUser, CalendarCheck } from 'lucide-react';
+import { X, MapPin, FileText, Mic, ExternalLink, BookUser, CalendarCheck, AlertTriangle } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { useParlamento } from '../../context/ParlamentoContext';
 import { partidos } from '../../data/mockPartidos';
@@ -7,6 +8,7 @@ import { obterIniciais } from '../../utils/formatters';
 import { useArDeputado } from '../../hooks/useArDeputado';
 import { useIntervencoesDeputado } from '../../hooks/useIntervencoesDeputado';
 import { useBiografiaDeputado } from '../../hooks/useBiografiaDeputado';
+import { useVotosRebelde } from '../../hooks/useVotosRebelde';
 import { useIsMobile } from '../../hooks/useIsMobile';
 import { ModalIniciativa } from './ModalIniciativa';
 import { ModalDebate } from './ModalDebate';
@@ -232,6 +234,81 @@ const Abas = ({ abaAtiva, setAbaAtiva, contagens }) => (
   </div>
 );
 
+// ── Modal de votos divergentes ────────────────────────────────
+
+const POSICAO_COR_MODAL = {
+  favor:     { bg: 'bg-green-100',  text: 'text-green-700'  },
+  contra:    { bg: 'bg-red-100',    text: 'text-red-700'    },
+  abstencao: { bg: 'bg-yellow-100', text: 'text-yellow-700' },
+};
+const POSICAO_LABEL_MODAL = { favor: 'A favor', contra: 'Contra', abstencao: 'Abstenção' };
+
+function ModalVotosDivergentes({ votos, titulos, nomeDeputado, corPartido, onFechar }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[80vh] flex flex-col overflow-hidden">
+
+        {/* Header */}
+        <div className="flex items-center gap-3 px-5 py-4 border-b border-gray-100" style={{ borderTopColor: corPartido }}>
+          <AlertTriangle size={16} className="text-amber-500 shrink-0" />
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-bold text-gray-900">Votos divergentes</p>
+            <p className="text-xs text-gray-500 truncate">{nomeDeputado}</p>
+          </div>
+          <button onClick={onFechar} className="p-1.5 rounded-full hover:bg-gray-100 transition-colors">
+            <X size={16} className="text-gray-400" />
+          </button>
+        </div>
+
+        {/* Lista */}
+        <div className="overflow-y-auto flex-1 divide-y divide-gray-50">
+          {votos.map(v => {
+            const dep = (v.deputados_isolados ?? []).find(d => d.nome === nomeDeputado);
+            const posP = POSICAO_COR_MODAL[dep?.posicao_partido];
+            const posD = POSICAO_COR_MODAL[dep?.posicao];
+            return (
+              <Link
+                key={v.id}
+                to={`/votacoes/${v.id}`}
+                onClick={onFechar}
+                className="block px-5 py-3.5 hover:bg-gray-50 transition-colors"
+              >
+                <p className="text-xs font-medium text-gray-800 line-clamp-2 mb-2">
+                  {titulos[v.iniciativa_id] ?? `Votação ${v.id}`}
+                </p>
+                <div className="flex items-center gap-2 flex-wrap">
+                  {v.data_votacao && (
+                    <span className="text-[10px] text-gray-400">
+                      {new Date(v.data_votacao).toLocaleDateString('pt-PT', { day: '2-digit', month: 'short', year: 'numeric' })}
+                    </span>
+                  )}
+                  {dep && (
+                    <>
+                      <span className={`text-[10px] font-semibold rounded-full px-2 py-0.5 ${posP?.bg} ${posP?.text}`}>
+                        Partido: {POSICAO_LABEL_MODAL[dep.posicao_partido] ?? '?'}
+                      </span>
+                      <span className="text-[10px] text-gray-400">→</span>
+                      <span className={`text-[10px] font-semibold rounded-full px-2 py-0.5 ${posD?.bg} ${posD?.text}`}>
+                        Votou: {POSICAO_LABEL_MODAL[dep.posicao] ?? '?'}
+                      </span>
+                    </>
+                  )}
+                </div>
+              </Link>
+            );
+          })}
+        </div>
+
+        <div className="px-5 py-3 bg-gray-50 border-t border-gray-100">
+          <p className="text-[10px] text-gray-400 text-center">
+            Apenas votações com registo individual do deputado no detalhe oficial
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Componente principal ──────────────────────────────────────
 export const PainelDeputado = () => {
   const { deputadoSelecionado, fecharPainel } = useParlamento();
@@ -241,11 +318,13 @@ export const PainelDeputado = () => {
   const [debateSelecionado, setDebateSelecionado] = useState(null);
   const [biografiaAberta, setBiografiaAberta]   = useState(false);
   const [presencasAbertas, setPresencasAbertas] = useState(false);
+  const [rebeldesAbertos, setRebeldesAbertos]   = useState(false);
   const { perfil, iniciativas, carregando } = useArDeputado(deputadoSelecionado);
   const nomeParlamentar = perfil?.nome_parlamentar ?? deputadoSelecionado?.nomeAbrev ?? '';
   const { intervencoes, carregando: carregandoInt } = useIntervencoesDeputado(nomeParlamentar, deputadoSelecionado.partido);
   const { bio, carregando: carregandoBio } = useBiografiaDeputado(perfil?.cad_id);
   const { presencas, carregando: carregandoPresencas } = usePresencasDeputado(perfil?.cad_id);
+  const { votos: votosRebelde, titulos: titulosRebelde } = useVotosRebelde(nomeParlamentar);
 
   if (!deputadoSelecionado) return null;
 
@@ -288,6 +367,15 @@ export const PainelDeputado = () => {
           nomeDeputado={deputadoSelecionado.nome}
           corPartido={partido?.cor}
           onFechar={() => setPresencasAbertas(false)}
+        />
+      )}
+      {rebeldesAbertos && (
+        <ModalVotosDivergentes
+          votos={votosRebelde}
+          titulos={titulosRebelde}
+          nomeDeputado={deputadoSelecionado.nome}
+          corPartido={partido?.cor}
+          onFechar={() => setRebeldesAbertos(false)}
         />
       )}
     </>
@@ -459,6 +547,14 @@ export const PainelDeputado = () => {
                 <span>Intervenções</span>
                 <span className="font-bold text-white">{intervencoes.length}</span>
               </div>
+              {votosRebelde.length > 0 && (
+                <div className="flex justify-between text-xs text-amber-200/80 mt-1 pt-1 border-t border-white/10">
+                  <span className="flex items-center gap-1">
+                    <AlertTriangle size={10} />Votos divergentes
+                  </span>
+                  <span className="font-bold text-amber-200">{votosRebelde.length}</span>
+                </div>
+              )}
             </div>
 
             <div className="mt-5 flex gap-2">
@@ -481,6 +577,21 @@ export const PainelDeputado = () => {
                   Presenças
                 </span>
               </button>
+
+              {votosRebelde.length > 0 && (
+                <button
+                  onClick={() => setRebeldesAbertos(true)}
+                  className="flex-1 aspect-square rounded-2xl border-2 border-amber-300/50 hover:border-amber-300 hover:bg-amber-400/10 transition-all flex flex-col items-center justify-center gap-2 group relative"
+                >
+                  <AlertTriangle size={24} className="text-amber-300/70 group-hover:text-amber-300 transition-colors" />
+                  <span className="text-amber-200/70 group-hover:text-amber-200 text-[10px] font-semibold uppercase tracking-wider transition-colors">
+                    Divergente
+                  </span>
+                  <span className="absolute -top-1 -right-1 w-5 h-5 bg-amber-400 text-white text-[9px] font-bold rounded-full flex items-center justify-center">
+                    {votosRebelde.length}
+                  </span>
+                </button>
+              )}
             </div>
           </div>
 

@@ -396,6 +396,132 @@ function MatrizConcordancia({ votacoes }) {
   );
 }
 
+// ── Tab Rebeldes ──────────────────────────────────────────────────────────────
+
+const POSICAO_LABEL_CURTO = { favor: 'A favor', contra: 'Contra', abstencao: 'Abstenção' };
+const POSICAO_COR = {
+  favor:     { bg: 'bg-green-100',  text: 'text-green-700'  },
+  contra:    { bg: 'bg-red-100',    text: 'text-red-700'    },
+  abstencao: { bg: 'bg-yellow-100', text: 'text-yellow-700' },
+};
+
+function CartaoRebelde({ dep, titulos }) {
+  const [expandido, setExpandido] = useState(false);
+  const cor = GP_COR[dep.partido] ?? '#888';
+
+  return (
+    <div className="bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden">
+      <button
+        onClick={() => setExpandido(e => !e)}
+        className="w-full flex items-center gap-3 px-5 py-4 hover:bg-gray-50 transition-colors text-left"
+      >
+        <div
+          className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold shrink-0"
+          style={{ backgroundColor: cor + '22', color: cor, border: `2px solid ${cor}55` }}
+        >
+          {dep.partido}
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-semibold text-gray-900">{dep.nome}</p>
+          <p className="text-xs text-gray-400">{dep.partido}</p>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          <span className="text-xs font-bold bg-amber-100 text-amber-700 rounded-full px-2.5 py-0.5">
+            {dep.votos.length}× divergente
+          </span>
+          {expandido ? <ChevronRight size={15} className="text-gray-300 rotate-90" /> : <ChevronRight size={15} className="text-gray-300" />}
+        </div>
+      </button>
+
+      {expandido && (
+        <div className="border-t border-gray-50 divide-y divide-gray-50">
+          {dep.votos.map(v => {
+            const ini = titulos[v.iniciativa_id];
+            const posP = POSICAO_COR[v.posicao_partido] ?? {};
+            const posD = POSICAO_COR[v.posicao] ?? {};
+            return (
+              <Link key={v.id} to={`/votacoes/${v.id}`}
+                className="block px-5 py-3 hover:bg-gray-50 transition-colors">
+                <p className="text-xs font-medium text-gray-800 line-clamp-2 mb-1.5">
+                  {ini?.titulo ?? `Votação ${v.id}`}
+                </p>
+                <div className="flex items-center gap-2 flex-wrap">
+                  {v.data_votacao && (
+                    <span className="text-[10px] text-gray-400">
+                      {new Date(v.data_votacao).toLocaleDateString('pt-PT', { day: '2-digit', month: 'short', year: 'numeric' })}
+                    </span>
+                  )}
+                  <span className={`text-[10px] font-semibold rounded-full px-2 py-0.5 ${posP.bg} ${posP.text}`}>
+                    {dep.partido}: {POSICAO_LABEL_CURTO[v.posicao_partido] ?? '?'}
+                  </span>
+                  <span className="text-[10px] text-gray-400">→</span>
+                  <span className={`text-[10px] font-semibold rounded-full px-2 py-0.5 ${posD.bg} ${posD.text}`}>
+                    Votou: {POSICAO_LABEL_CURTO[v.posicao] ?? '?'}
+                  </span>
+                </div>
+              </Link>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function TabRebeldes({ votacoes, titulos, carregando }) {
+  const rebeldes = useMemo(() => {
+    const map = new Map();
+    for (const v of votacoes) {
+      for (const dep of (v.deputados_isolados ?? [])) {
+        if (!dep.rebelde) continue;
+        const key = `${dep.nome}|${dep.partido}`;
+        if (!map.has(key)) map.set(key, { nome: dep.nome, partido: dep.partido, votos: [] });
+        map.get(key).votos.push({
+          id:              v.id,
+          iniciativa_id:   v.iniciativa_id,
+          data_votacao:    v.data_votacao,
+          resultado:       v.resultado,
+          fase:            v.fase,
+          posicao:         dep.posicao,
+          posicao_partido: dep.posicao_partido,
+        });
+      }
+    }
+    return [...map.values()].sort((a, b) => b.votos.length - a.votos.length);
+  }, [votacoes]);
+
+  if (carregando) return null;
+
+  if (!rebeldes.length) {
+    return (
+      <div className="bg-white rounded-2xl p-8 shadow-sm border border-gray-100 text-center">
+        <AlertTriangle size={32} className="text-gray-300 mx-auto mb-3" />
+        <p className="text-sm text-gray-500">Nenhum voto divergente encontrado nos dados actuais.</p>
+        <p className="text-xs text-gray-400 mt-1">
+          Apenas votações com deputados identificados individualmente no detalhe da votação são contabilizadas.
+        </p>
+      </div>
+    );
+  }
+
+  const totalVotacoes = rebeldes.reduce((s, d) => s + d.votos.length, 0);
+
+  return (
+    <div className="space-y-4">
+      <div className="bg-amber-50 border border-amber-100 rounded-2xl px-5 py-3 flex flex-wrap gap-x-6 gap-y-1 text-xs text-amber-800">
+        <span><strong>{rebeldes.length}</strong> deputados com votos divergentes</span>
+        <span><strong>{totalVotacoes}</strong> votos fora da disciplina partidária</span>
+        <span className="text-amber-500">Apenas votações em que o nome do deputado é registado individualmente</span>
+      </div>
+      <div className="space-y-2">
+        {rebeldes.map(dep => (
+          <CartaoRebelde key={`${dep.nome}|${dep.partido}`} dep={dep} titulos={titulos} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // ── Página principal ───────────────────────────────────────────────────────────
 
 const RESULTADO_FILTROS = [
@@ -421,7 +547,7 @@ export function Votacoes() {
       setCarregando(true);
       const { data } = await supabase
         .from('ar_votacoes')
-        .select('id, iniciativa_id, fase, data_votacao, resultado, unanime, reuniao, tipo_reuniao, detalhe_gp, publicacao')
+        .select('id, iniciativa_id, fase, data_votacao, resultado, unanime, reuniao, tipo_reuniao, detalhe_gp, publicacao, deputados_isolados')
         .order('data_votacao', { ascending: false })
         .limit(3000);
 
@@ -507,7 +633,7 @@ export function Votacoes() {
           {[
             { id: 'lista',        label: 'Votações',     icon: Vote },
             { id: 'concordancia', label: 'Concordância', icon: BarChart2 },
-            { id: 'rebeldes',     label: 'Rebeldes',     icon: AlertTriangle },
+            { id: 'rebeldes',     label: 'Divergentes',  icon: AlertTriangle },
           ].map(({ id, label, icon: TabIcon }) => (
             <button
               key={id}
@@ -665,40 +791,7 @@ export function Votacoes() {
 
         {/* ── Tab: rebeldes ──────────────────────────────────────────────────── */}
         {aba === 'rebeldes' && (
-          <div className="space-y-4">
-            <div className="bg-amber-50 border border-amber-200 rounded-2xl p-5">
-              <div className="flex gap-3">
-                <AlertTriangle size={18} className="text-amber-500 shrink-0 mt-0.5" />
-                <div>
-                  <p className="text-sm font-semibold text-amber-900 mb-1">Dados indisponíveis nesta versão</p>
-                  <p className="text-xs text-amber-700 leading-relaxed">
-                    O API de Dados Abertos da AR regista votações apenas ao nível do grupo parlamentar
-                    (partido), não ao nível individual do deputado. Para mostrar deputados que votaram
-                    de forma diferente do seu partido precisamos de scraping adicional das páginas de
-                    <em> votação nominal</em> em parlamento.pt, onde o voto de cada deputado é registado
-                    individualmente.
-                  </p>
-                  <p className="text-xs text-amber-600 mt-2 font-medium">
-                    Esta funcionalidade será activada assim que a fonte de dados estiver disponível.
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 opacity-50 pointer-events-none select-none">
-              <h3 className="text-sm font-bold text-gray-700 mb-3">Deputados com mais votos contra a disciplina partidária</h3>
-              {[1,2,3].map(i => (
-                <div key={i} className="flex items-center gap-3 py-2.5 border-b border-gray-50 last:border-0">
-                  <div className="w-8 h-8 rounded-full bg-gray-200" />
-                  <div className="flex-1">
-                    <div className="h-3 bg-gray-200 rounded w-32 mb-1" />
-                    <div className="h-2.5 bg-gray-100 rounded w-20" />
-                  </div>
-                  <div className="h-5 w-14 bg-gray-100 rounded-full" />
-                </div>
-              ))}
-            </div>
-          </div>
+          <TabRebeldes votacoes={votacoes} titulos={titulos} carregando={carregando} />
         )}
 
         {carregando && (

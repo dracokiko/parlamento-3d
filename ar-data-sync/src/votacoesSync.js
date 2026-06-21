@@ -29,7 +29,6 @@ function parseSecaoGPs(texto, secao) {
 // Processa o campo "detalhe" HTML em estrutura limpa
 function parseDetalhe(detalhe) {
   if (!detalhe) return null;
-  // Substituir <BR> por newline ANTES de remover HTML
   const comNewlines = detalhe.replace(/<BR\s*\/?>/gi, '\n');
   const txt = stripHtml(comNewlines);
   return {
@@ -38,6 +37,65 @@ function parseDetalhe(detalhe) {
     contra:    parseSecaoGPs(txt, 'Contra'),
     abstencao: parseSecaoGPs(txt, 'Absten'),
   };
+}
+
+// Siglas de partidos conhecidos (para distinguir de nomes de deputados)
+const SIGLAS_GP = new Set(['PSD','PS','CH','IL','BE','PCP','L','JPP','PAN','CDS-PP','CDS','PEV','PPD','PPM']);
+
+// RE para "Nome Apelido (PARTIDO)" — o nome pode ter 2+ palavras com iniciais maiúsculas
+const RE_NOME_DEP = /^(.+?)\s*\(([A-Z][\w-]+)\)$/;
+// RE para "N-PARTIDO" — deputados anónimos em dissidência
+const RE_ANON     = /^(\d+)-([A-Z][\w-]+)$/;
+
+/**
+ * Extrai deputados que votaram de forma diferente do seu grupo parlamentar.
+ * Retorna array de { nome, partido, posicao, posicao_partido, rebelde }.
+ */
+export function parseDeputadosIsolados(detalheRaw) {
+  if (!detalheRaw) return [];
+
+  const comNewlines = detalheRaw.replace(/<BR\s*\/?>/gi, '\n');
+  const txt = stripHtml(comNewlines);
+
+  const SECOES = [
+    { key: 'favor',     re: /A Favor[^:\n]*:(.*?)(?=Contra:|Absten|$)/is },
+    { key: 'contra',    re: /Contra[^:\n]*:(.*?)(?=A Favor:|Absten|$)/is },
+    { key: 'abstencao', re: /Absten[^:\n]*:(.*?)(?=A Favor:|Contra:|$)/is },
+  ];
+
+  // 1. Determinar posição do grupo de cada partido
+  const posGrupo = {};
+  for (const { key, re } of SECOES) {
+    const m = txt.match(re);
+    if (!m) continue;
+    for (const item of m[1].split(',').map(s => s.trim()).filter(Boolean)) {
+      if (SIGLAS_GP.has(item)) posGrupo[item] = key;
+    }
+  }
+
+  // 2. Extrair deputados nomeados em dissidência
+  const isolados = [];
+  for (const { key, re } of SECOES) {
+    const m = txt.match(re);
+    if (!m) continue;
+    for (const item of m[1].split(',').map(s => s.trim()).filter(Boolean)) {
+      const mNome = item.match(RE_NOME_DEP);
+      if (mNome) {
+        const nome    = mNome[1].trim();
+        const partido = mNome[2].trim();
+        const posP    = posGrupo[partido] ?? null;
+        isolados.push({
+          nome,
+          partido,
+          posicao:         key,
+          posicao_partido: posP,
+          rebelde:         posP !== null && posP !== key,
+        });
+      }
+    }
+  }
+
+  return isolados;
 }
 
 function safeDate(v) {
@@ -95,10 +153,11 @@ function extrairVotacoes(iniciativaId, eventos) {
         ausencias:     parseInt2(vot.ausencias),
         reuniao:       vot.reuniao ?? null,
         tipo_reuniao:  vot.tipoReuniao ?? null,
-        detalhe_raw:   vot.detalhe ?? null,
-        detalhe_gp:    parseDetalhe(vot.detalhe),
-        publicacao:    evt.PublicacaoFase ?? null,
-        json_raw:      vot,
+        detalhe_raw:         vot.detalhe ?? null,
+        detalhe_gp:          parseDetalhe(vot.detalhe),
+        deputados_isolados:  parseDeputadosIsolados(vot.detalhe ?? null),
+        publicacao:          evt.PublicacaoFase ?? null,
+        json_raw:            vot,
       });
     }
   }
