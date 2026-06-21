@@ -10,18 +10,20 @@ import { useAdmin } from '../hooks/useAdmin';
 
 // ── Configuração de recursos ──────────────────────────────────────────────────
 
+const AR_API_URL = 'https://www.parlamento.pt/Cidadania/Paginas/DadosAbertos.aspx';
+
 const RECURSOS_CONFIG = {
-  iniciativas:  { label: 'Iniciativas',   cor: '#0066cc', fonte: 'API Dados Abertos AR' },
-  deputados:    { label: 'Deputados',     cor: '#7c3aed', fonte: 'API Dados Abertos AR' },
-  debates:      { label: 'Debates',       cor: '#059669', fonte: 'API Dados Abertos AR' },
-  votacoes:     { label: 'Votações',      cor: '#d97706', fonte: 'eventos das iniciativas' },
-  dar:          { label: 'Catálogo DAR',  cor: '#475569', fonte: 'debates.parlamento.pt' },
-  transcricoes: { label: 'Transcrições',  cor: '#0891b2', fonte: 'scraping DAR (PDF)' },
-  resumos_ia:   { label: 'Resumos IA',    cor: '#8b5cf6', fonte: 'Groq API' },
-  intervencoes: { label: 'Intervenções',  cor: '#0f766e', fonte: 'análise das transcrições' },
-  biografias:   { label: 'Biografias',    cor: '#b45309', fonte: 'scraping parlamento.pt' },
-  presencas:    { label: 'Presenças',     cor: '#be185d', fonte: 'scraping parlamento.pt' },
-  diretivas_ue: { label: 'Diretivas UE', cor: '#ca8a04', fonte: 'EUR-Lex SPARQL + scraping' },
+  iniciativas:  { label: 'Iniciativas',   cor: '#0066cc', fonte: 'API Dados Abertos AR',        url: AR_API_URL },
+  deputados:    { label: 'Deputados',     cor: '#7c3aed', fonte: 'API Dados Abertos AR',        url: AR_API_URL },
+  debates:      { label: 'Debates',       cor: '#059669', fonte: 'API Dados Abertos AR',        url: AR_API_URL },
+  votacoes:     { label: 'Votações',      cor: '#d97706', fonte: 'eventos das iniciativas',     url: AR_API_URL },
+  dar:          { label: 'Catálogo DAR',  cor: '#475569', fonte: 'debates.parlamento.pt',       url: 'https://debates.parlamento.pt/catalogo/r3/dar/01/17/01' },
+  transcricoes: { label: 'Transcrições',  cor: '#0891b2', fonte: 'scraping DAR (PDF)',          url: 'https://debates.parlamento.pt/catalogo/r3/dar/01/17/01' },
+  resumos_ia:   { label: 'Resumos IA',    cor: '#8b5cf6', fonte: 'Groq API (llama-3.1-8b)',     url: 'https://console.groq.com' },
+  intervencoes: { label: 'Intervenções',  cor: '#0f766e', fonte: 'análise das transcrições',    url: null },
+  biografias:   { label: 'Biografias',    cor: '#b45309', fonte: 'scraping parlamento.pt',      url: 'https://www.parlamento.pt/DeputadoGP/Paginas/Biografia.aspx' },
+  presencas:    { label: 'Presenças',     cor: '#be185d', fonte: 'scraping parlamento.pt',      url: 'https://www.parlamento.pt/DeputadoGP/Paginas/PresencasReunioesPlenarias.aspx' },
+  diretivas_ue: { label: 'Diretivas UE', cor: '#ca8a04', fonte: 'EUR-Lex SPARQL + scraping',   url: 'https://eur-lex.europa.eu/search.html?type=named&name=CURRENT_ACTS&qid=1' },
 };
 
 // ── Regras de sincronização (retiradas dos GitHub Actions) ────────────────────
@@ -236,13 +238,18 @@ function PainelRegras() {
             {/* Recursos */}
             <div className="px-4 py-3 space-y-1.5">
               <p className="text-[10px] text-gray-400 uppercase tracking-wide mb-2">Recursos sincronizados</p>
-              {job.recursos.map(r => (
-                <div key={r.nome} className="flex items-center gap-2">
-                  <div className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ backgroundColor: r.cor }} />
-                  <span className="text-xs font-medium text-gray-700 w-24 flex-shrink-0">{r.nome}</span>
-                  <span className="text-[10px] text-gray-400 truncate">{r.fonte}</span>
-                </div>
-              ))}
+              {job.recursos.map(r => {
+                const url = Object.values(RECURSOS_CONFIG).find(c => c.label === r.nome)?.url ?? null;
+                return (
+                  <div key={r.nome} className="flex items-center gap-2">
+                    <div className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ backgroundColor: r.cor }} />
+                    <span className="text-xs font-medium text-gray-700 w-24 flex-shrink-0">{r.nome}</span>
+                    {url
+                      ? <a href={url} target="_blank" rel="noreferrer" className="text-[10px] text-gray-400 truncate hover:underline hover:text-blue-500 transition-colors">{r.fonte} ↗</a>
+                      : <span className="text-[10px] text-gray-400 truncate">{r.fonte}</span>}
+                  </div>
+                );
+              })}
             </div>
 
             {/* Próxima ocorrência */}
@@ -366,7 +373,13 @@ function RecursoDetalhe({ recurso, runs, expandido, onToggle }) {
               </span>
             )}
           </div>
-          {cfg.fonte && <p className="text-[10px] text-gray-400 mb-1">{cfg.fonte}</p>}
+          {cfg.fonte && (
+            <p className="text-[10px] text-gray-400 mb-1">
+              {cfg.url
+                ? <a href={cfg.url} target="_blank" rel="noreferrer" className="hover:underline hover:text-blue-500 transition-colors">{cfg.fonte} ↗</a>
+                : cfg.fonte}
+            </p>
+          )}
           <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-gray-500">
             <span>Total: <strong className="text-gray-700">{(ultimo.total ?? 0).toLocaleString('pt-PT')}</strong></span>
             <span style={{ color: totalIns > 0 ? '#16a34a' : '#9ca3af' }}>+{totalIns} novos</span>
