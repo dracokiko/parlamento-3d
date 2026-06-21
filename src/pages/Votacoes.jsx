@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import {
   ArrowLeft, Vote, ExternalLink, CheckCircle2, XCircle, MinusCircle,
-  ChevronRight, X, BarChart2,
+  ChevronRight, X, BarChart2, AlertTriangle,
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { partidos as PARTIDOS } from '../data/mockPartidos';
@@ -61,11 +61,25 @@ function calcularConcordancia(votacoes) {
 }
 
 function corConcordancia(pct) {
-  if (pct === null) return { bg: '#f3f4f6', text: '#9ca3af' };
-  const hue = Math.round(pct * 120); // 0=vermelho 120=verde
+  if (pct === null) return { bg: '#e5e7eb', text: '#9ca3af' };
+  // 0% → vermelho vivo, 50% → âmbar, 100% → verde vivo
+  // Três pontos de cor para gradiente mais expressivo
+  let r, g, b;
+  if (pct < 0.5) {
+    const t = pct * 2; // 0→1
+    r = Math.round(220 + (250 - 220) * t);  // 220→250
+    g = Math.round(38  + (176 - 38)  * t);  // 38→176
+    b = Math.round(38  + (9   - 38)  * t);  // 38→9
+  } else {
+    const t = (pct - 0.5) * 2; // 0→1
+    r = Math.round(250 + (22  - 250) * t);  // 250→22
+    g = Math.round(176 + (163 - 176) * t);  // 176→163
+    b = Math.round(9   + (74  - 9)   * t);  // 9→74
+  }
   return {
-    bg:   `hsl(${hue}, 65%, 92%)`,
-    text: `hsl(${hue}, 55%, 28%)`,
+    bg:   `rgba(${r},${g},${b},0.22)`,
+    text: `rgb(${Math.round(r*0.6)},${Math.round(g*0.55)},${Math.round(b*0.55)})`,
+    border: `rgba(${r},${g},${b},0.55)`,
   };
 }
 
@@ -353,10 +367,10 @@ function MatrizConcordancia({ votacoes }) {
                       </td>
                     );
                   }
-                  const { bg, text } = corConcordancia(p);
+                  const { bg, text, border } = corConcordancia(p);
                   return (
                     <td key={b} className="text-center rounded-lg font-bold transition-all"
-                      style={{ width: 46, height: 38, backgroundColor: bg, color: text }}>
+                      style={{ width: 46, height: 38, backgroundColor: bg, color: text, border: `1.5px solid ${border}` }}>
                       {p !== null ? `${Math.round(p * 100)}%` : '·'}
                     </td>
                   );
@@ -491,8 +505,9 @@ export function Votacoes() {
       <div className="bg-white border-b border-gray-100">
         <div className="max-w-4xl mx-auto px-6 flex gap-0">
           {[
-            { id: 'lista',        label: 'Votações',        icon: Vote },
-            { id: 'concordancia', label: 'Concordância',    icon: BarChart2 },
+            { id: 'lista',        label: 'Votações',     icon: Vote },
+            { id: 'concordancia', label: 'Concordância', icon: BarChart2 },
+            { id: 'rebeldes',     label: 'Rebeldes',     icon: AlertTriangle },
           ].map(({ id, label, icon: TabIcon }) => (
             <button
               key={id}
@@ -645,6 +660,44 @@ export function Votacoes() {
           <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
             <h2 className="text-base font-bold text-gray-900 mb-1">Concordância entre partidos</h2>
             <MatrizConcordancia votacoes={votacoes} />
+          </div>
+        )}
+
+        {/* ── Tab: rebeldes ──────────────────────────────────────────────────── */}
+        {aba === 'rebeldes' && (
+          <div className="space-y-4">
+            <div className="bg-amber-50 border border-amber-200 rounded-2xl p-5">
+              <div className="flex gap-3">
+                <AlertTriangle size={18} className="text-amber-500 shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-sm font-semibold text-amber-900 mb-1">Dados indisponíveis nesta versão</p>
+                  <p className="text-xs text-amber-700 leading-relaxed">
+                    O API de Dados Abertos da AR regista votações apenas ao nível do grupo parlamentar
+                    (partido), não ao nível individual do deputado. Para mostrar deputados que votaram
+                    de forma diferente do seu partido precisamos de scraping adicional das páginas de
+                    <em> votação nominal</em> em parlamento.pt, onde o voto de cada deputado é registado
+                    individualmente.
+                  </p>
+                  <p className="text-xs text-amber-600 mt-2 font-medium">
+                    Esta funcionalidade será activada assim que a fonte de dados estiver disponível.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 opacity-50 pointer-events-none select-none">
+              <h3 className="text-sm font-bold text-gray-700 mb-3">Deputados com mais votos contra a disciplina partidária</h3>
+              {[1,2,3].map(i => (
+                <div key={i} className="flex items-center gap-3 py-2.5 border-b border-gray-50 last:border-0">
+                  <div className="w-8 h-8 rounded-full bg-gray-200" />
+                  <div className="flex-1">
+                    <div className="h-3 bg-gray-200 rounded w-32 mb-1" />
+                    <div className="h-2.5 bg-gray-100 rounded w-20" />
+                  </div>
+                  <div className="h-5 w-14 bg-gray-100 rounded-full" />
+                </div>
+              ))}
+            </div>
           </div>
         )}
 
