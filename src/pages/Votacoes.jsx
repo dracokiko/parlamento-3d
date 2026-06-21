@@ -8,6 +8,7 @@ import { supabase } from '../lib/supabase';
 import { partidos as PARTIDOS } from '../data/mockPartidos';
 import { InfoTooltip } from '../components/UI/InfoTooltip';
 import { useIsMobile } from '../hooks/useIsMobile';
+import { useParlamento } from '../context/ParlamentoContext';
 
 const GP_COR  = Object.fromEntries(Object.entries(PARTIDOS).map(([k, v]) => [k, v.cor]));
 const GP_DEPS = Object.fromEntries(Object.entries(PARTIDOS).map(([k, v]) => [k, v.deputados ?? 0]));
@@ -405,7 +406,7 @@ const POSICAO_COR = {
   abstencao: { bg: 'bg-yellow-100', text: 'text-yellow-700' },
 };
 
-function CartaoRebelde({ dep, titulos }) {
+function CartaoRebelde({ dep, titulos, foto }) {
   const [expandido, setExpandido] = useState(false);
   const cor = GP_COR[dep.partido] ?? '#888';
 
@@ -416,10 +417,14 @@ function CartaoRebelde({ dep, titulos }) {
         className="w-full flex items-center gap-3 px-5 py-4 hover:bg-gray-50 transition-colors text-left"
       >
         <div
-          className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold shrink-0"
-          style={{ backgroundColor: cor + '22', color: cor, border: `2px solid ${cor}55` }}
+          className="w-9 h-9 rounded-full shrink-0 overflow-hidden border-2"
+          style={{ borderColor: cor + '88' }}
         >
-          {dep.partido}
+          {foto
+            ? <img src={foto} alt={dep.nome} className="w-full h-full object-cover object-top" />
+            : <div className="w-full h-full flex items-center justify-center text-xs font-bold"
+                style={{ backgroundColor: cor + '22', color: cor }}>{dep.partido}</div>
+          }
         </div>
         <div className="flex-1 min-w-0">
           <p className="text-sm font-semibold text-gray-900">{dep.nome}</p>
@@ -469,6 +474,16 @@ function CartaoRebelde({ dep, titulos }) {
 }
 
 function TabRebeldes({ votacoes, titulos, carregando }) {
+  const { deputados } = useParlamento();
+
+  const fotosMapa = useMemo(() => {
+    const m = new Map();
+    for (const d of deputados) {
+      if (d.foto) m.set(d.nomeAbrev, d.foto);
+    }
+    return m;
+  }, [deputados]);
+
   const rebeldes = useMemo(() => {
     const map = new Map();
     for (const v of votacoes) {
@@ -515,7 +530,7 @@ function TabRebeldes({ votacoes, titulos, carregando }) {
       </div>
       <div className="space-y-2">
         {rebeldes.map(dep => (
-          <CartaoRebelde key={`${dep.nome}|${dep.partido}`} dep={dep} titulos={titulos} />
+          <CartaoRebelde key={`${dep.nome}|${dep.partido}`} dep={dep} titulos={titulos} foto={fotosMapa.get(dep.nome)} />
         ))}
       </div>
     </div>
