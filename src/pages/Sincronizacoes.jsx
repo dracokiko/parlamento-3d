@@ -11,10 +11,10 @@ import { useAdmin } from '../hooks/useAdmin';
 // ── Configuração de recursos ──────────────────────────────────────────────────
 
 const RECURSOS_CONFIG = {
-  iniciativas:  { label: 'Iniciativas',   cor: '#0066cc', fonte: 'parlamento.pt · Iniciativas Legislativas',           url: 'https://www.parlamento.pt/ActividadeParlamentar/Paginas/IniciativasLegislativas.aspx' },
+  iniciativas:  { label: 'Iniciativas',   cor: '#0066cc', fonte: 'parlamento.pt · Últimas Iniciativas Entradas',        url: 'https://www.parlamento.pt/Paginas/UltimasIniciativasEntradas.aspx' },
   deputados:    { label: 'Deputados',     cor: '#7c3aed', fonte: 'parlamento.pt · Lista de Deputados',                 url: 'https://www.parlamento.pt/DeputadoGP/Paginas/Deputados.aspx' },
   debates:      { label: 'Debates',       cor: '#059669', fonte: 'debates.parlamento.pt · Catálogo DAR',               url: 'https://debates.parlamento.pt/catalogo/r3/dar/01/17/01' },
-  votacoes:     { label: 'Votações',      cor: '#d97706', fonte: 'parlamento.pt · Iniciativas (campo eventos/Votacao)', url: 'https://www.parlamento.pt/ActividadeParlamentar/Paginas/IniciativasLegislativas.aspx' },
+  votacoes:     { label: 'Votações',      cor: '#d97706', fonte: 'parlamento.pt · extraídas dos eventos de cada iniciativa', url: 'https://www.parlamento.pt/Paginas/UltimasIniciativasEntradas.aspx' },
   dar:          { label: 'Catálogo DAR',  cor: '#475569', fonte: 'debates.parlamento.pt · Catálogo DAR XVII Leg.',      url: 'https://debates.parlamento.pt/catalogo/r3/dar/01/17/01' },
   transcricoes: { label: 'Transcrições',  cor: '#0891b2', fonte: 'debates.parlamento.pt · PDF de cada sessão',         url: 'https://debates.parlamento.pt/catalogo/r3/dar/01/17/01' },
   resumos_ia:   { label: 'Resumos IA',    cor: '#8b5cf6', fonte: 'Groq API · llama-3.1-8b-instant',                   url: 'https://console.groq.com' },
