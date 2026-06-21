@@ -10,22 +10,18 @@ import { useAdmin } from '../hooks/useAdmin';
 
 // ── Configuração de recursos ──────────────────────────────────────────────────
 
-const AR_INICIATIVAS_URL = 'https://app.parlamento.pt/webutils/docs/doc.txt?path=vT4NKYCAcAkVhsxkek0X9GR7eZ0OofLhvaamIHFKZGIIYlhnxu7zKIsblH59KL72h98Zu1N1YTqN8DXZMgmt3EbdPgzlwhrmIMsaAAVbmHdJph0ajupa9JllbEogo%2fqScLfsVIOicGp1PUvXnG1iXa7YUCL7474EaFm4dv0QL6fNQlcFkI97C0SXv5ry3OgJC8HCmkJqINrPay1OF9uNI4iJaHCchWhK0Z2ojcLFwyJz7YF0bimXQgilgr3eE5OFAFyTax77Lv8ioecHw7ZXt%2fJppcfvF0%2bPRnNoPelExY4Q36mLd%2fmOQxfNwa3clarGoyTjcrzuDlexcc%2bpWM0RUy51EQt2FjJqLFwjbLFDw2E%3d&fich=IniciativasXVII_json.txt&Inline=true';
-const AR_DEPUTADOS_URL  = 'https://app.parlamento.pt/webutils/docs/doc.txt?path=5zyAbVC5P5iHxLFX4dvvYn4459K3M9lWQH%2fDcO4IKLXMkN5Hq425yPeRcYFgb%2bc9DlwE0R6cUU5It3LijJBhLPUtaTjLFF9s8dGGHH0M4uqbYAe%2fs5fZg%2fUtcGhKciBr2UtOK4Ni3dUZ7gP9e5liyqHrAZAq7gSTC0sOd09nqPmhcE4irF1LnPUOWEkBTMZ0vShEUbCe7xVRvZrVB92ezvEC1kU%2bR97%2f0dzjL1wDss6Axa1dI2UbSwuzK3uQ3NGl%2feA6BlJaGr3k3zpVIsFoUskWmsgn6ZiIAfMLO1mKE8pmm%2bwMQT7ymW8%2bOSPw51PEFpUPFEU6KqvWL%2bkPKgv9qt4MytM%2fqFtBAbe4DDF%2f3sXzYYGU6GO2UASQhaA2ESwUMofHxV52YK52uXEunzHZZg%3d%3d&fich=InformacaoBaseXVII_json.txt&Inline=true';
-const AR_DEBATES_URL    = 'https://app.parlamento.pt/webutils/docs/doc.txt?path=MvC%2beisjw0NRM%2b5VPH%2bMQs5Gt2qv74TPZF5glj1aifwO0zMmLlbffto8DV6i%2bOqsFwvUGB1aoK1MS0SUSBj6QdbFHywkApglmKeKfi2BmkQARJ5ySv5SIETQTYxHz5PxIX%2fGM693nC1O0q4rroauUdKupOi8zzMeCFNuYpl6Kt1BTDwkV%2fBz%2fHQg8JCYa5Jauy53%2bdAiC2ePgjFzCqAK8HZHByoUg0bgVvKEBzx4VzNV0dXT1JM6UaKOI3DxVyer61k2d6PBzqopQNLIcybR%2fjqPwQopwp58n3uXv1x3sAEhwsNyV8rVL%2bAuz%2biUEk1Y%2bb6mW2UH0SsJCHdsEq150IMI6F1Qp9kEPjopgvYcqgQmjbMlqAEmnSNn6kleSQm4&fich=AtividadesXVII_json.txt&Inline=true';
-
 const RECURSOS_CONFIG = {
-  iniciativas:  { label: 'Iniciativas',   cor: '#0066cc', fonte: 'IniciativasXVII_json.txt',    url: AR_INICIATIVAS_URL },
-  deputados:    { label: 'Deputados',     cor: '#7c3aed', fonte: 'InformacaoBaseXVII_json.txt', url: AR_DEPUTADOS_URL  },
-  debates:      { label: 'Debates',       cor: '#059669', fonte: 'AtividadesXVII_json.txt',     url: AR_DEBATES_URL    },
-  votacoes:     { label: 'Votações',      cor: '#d97706', fonte: 'IniciativasXVII_json.txt',    url: AR_INICIATIVAS_URL },
-  dar:          { label: 'Catálogo DAR',  cor: '#475569', fonte: 'debates.parlamento.pt',       url: 'https://debates.parlamento.pt/catalogo/r3/dar/01/17/01' },
-  transcricoes: { label: 'Transcrições',  cor: '#0891b2', fonte: 'debates.parlamento.pt (PDF)', url: 'https://debates.parlamento.pt/catalogo/r3/dar/01/17/01' },
-  resumos_ia:   { label: 'Resumos IA',    cor: '#8b5cf6', fonte: 'Groq API (llama-3.1-8b)',     url: 'https://console.groq.com' },
-  intervencoes: { label: 'Intervenções',  cor: '#0f766e', fonte: 'análise das transcrições',    url: null },
-  biografias:   { label: 'Biografias',    cor: '#b45309', fonte: 'parlamento.pt/Biografia',     url: 'https://www.parlamento.pt/DeputadoGP/Paginas/Biografia.aspx' },
-  presencas:    { label: 'Presenças',     cor: '#be185d', fonte: 'parlamento.pt/Presenças',     url: 'https://www.parlamento.pt/DeputadoGP/Paginas/PresencasReunioesPlenarias.aspx' },
-  diretivas_ue: { label: 'Diretivas UE', cor: '#ca8a04', fonte: 'EUR-Lex SPARQL + scraping',   url: 'https://eur-lex.europa.eu/search.html?type=named&name=CURRENT_ACTS&qid=1' },
+  iniciativas:  { label: 'Iniciativas',   cor: '#0066cc', fonte: 'parlamento.pt · Iniciativas Legislativas',           url: 'https://www.parlamento.pt/ActividadeParlamentar/Paginas/IniciativasLegislativas.aspx' },
+  deputados:    { label: 'Deputados',     cor: '#7c3aed', fonte: 'parlamento.pt · Lista de Deputados',                 url: 'https://www.parlamento.pt/DeputadoGP/Paginas/Deputados.aspx' },
+  debates:      { label: 'Debates',       cor: '#059669', fonte: 'debates.parlamento.pt · Catálogo DAR',               url: 'https://debates.parlamento.pt/catalogo/r3/dar/01/17/01' },
+  votacoes:     { label: 'Votações',      cor: '#d97706', fonte: 'parlamento.pt · Iniciativas (campo eventos/Votacao)', url: 'https://www.parlamento.pt/ActividadeParlamentar/Paginas/IniciativasLegislativas.aspx' },
+  dar:          { label: 'Catálogo DAR',  cor: '#475569', fonte: 'debates.parlamento.pt · Catálogo DAR XVII Leg.',      url: 'https://debates.parlamento.pt/catalogo/r3/dar/01/17/01' },
+  transcricoes: { label: 'Transcrições',  cor: '#0891b2', fonte: 'debates.parlamento.pt · PDF de cada sessão',         url: 'https://debates.parlamento.pt/catalogo/r3/dar/01/17/01' },
+  resumos_ia:   { label: 'Resumos IA',    cor: '#8b5cf6', fonte: 'Groq API · llama-3.1-8b-instant',                   url: 'https://console.groq.com' },
+  intervencoes: { label: 'Intervenções',  cor: '#0f766e', fonte: 'derivado das transcrições (processamento interno)',  url: null },
+  biografias:   { label: 'Biografias',    cor: '#b45309', fonte: 'parlamento.pt · Biografia por BID',                  url: 'https://www.parlamento.pt/DeputadoGP/Paginas/Biografia.aspx' },
+  presencas:    { label: 'Presenças',     cor: '#be185d', fonte: 'parlamento.pt · Presenças em Plenário por BID',      url: 'https://www.parlamento.pt/DeputadoGP/Paginas/PresencasReunioesPlenarias.aspx' },
+  diretivas_ue: { label: 'Diretivas UE', cor: '#ca8a04', fonte: 'EUR-Lex · SPARQL endpoint + scraping de fichas',     url: 'https://eur-lex.europa.eu/search.html?type=named&name=CURRENT_ACTS' },
 };
 
 // ── Regras de sincronização (retiradas dos GitHub Actions) ────────────────────
