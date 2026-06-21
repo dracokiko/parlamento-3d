@@ -21,7 +21,9 @@ const RECURSOS_CONFIG = {
   intervencoes: { label: 'Intervenções',  cor: '#0f766e', fonte: 'derivado das transcrições (processamento interno)',  url: null },
   biografias:   { label: 'Biografias',    cor: '#b45309', fonte: 'parlamento.pt · Biografia por BID',                  url: 'https://www.parlamento.pt/DeputadoGP/Paginas/Biografia.aspx' },
   presencas:    { label: 'Presenças',     cor: '#be185d', fonte: 'parlamento.pt · Presenças em Plenário por BID',      url: 'https://www.parlamento.pt/DeputadoGP/Paginas/PresencasReunioesPlenarias.aspx' },
-  diretivas_ue: { label: 'Diretivas UE', cor: '#ca8a04', fonte: 'EUR-Lex · SPARQL endpoint + scraping de fichas',     url: 'https://eur-lex.europa.eu/search.html?type=named&name=CURRENT_ACTS' },
+  diretivas_ue:          { label: 'Diretivas UE',         cor: '#ca8a04', fonte: 'EUR-Lex · SPARQL endpoint + scraping de fichas',       url: 'https://eur-lex.europa.eu/search.html?type=named&name=CURRENT_ACTS' },
+  deputados_divergentes: { label: 'Votos Divergentes',    cor: '#f59e0b', fonte: 'derivado de ar_votacoes.detalhe_raw (processamento interno)', url: null },
+  dar_links:             { label: 'Ligações DAR↔Iniciativas', cor: '#6366f1', fonte: 'debates.parlamento.pt · Catálogo DAR XVII Leg.',       url: 'https://debates.parlamento.pt/catalogo/r3/dar/01/17/01' },
 };
 
 // ── Regras de sincronização (retiradas dos GitHub Actions) ────────────────────
@@ -44,8 +46,10 @@ const SYNC_JOBS = [
       { nome: 'Transcrições',  fonte: 'scraping DAR (PDF)',        cor: '#64748b' },
       { nome: 'Resumos IA',    fonte: 'Groq API',                  cor: '#64748b' },
       { nome: 'Intervenções',  fonte: 'análise das transcrições',  cor: '#64748b' },
-      { nome: 'Biografias',    fonte: 'scraping parlamento.pt',    cor: '#64748b' },
-      { nome: 'Presenças',     fonte: 'scraping parlamento.pt',    cor: '#64748b' },
+      { nome: 'Biografias',         fonte: 'scraping parlamento.pt',      cor: '#64748b' },
+      { nome: 'Presenças',          fonte: 'scraping parlamento.pt',      cor: '#64748b' },
+      { nome: 'Votos Divergentes',  fonte: 'análise de votações',         cor: '#f59e0b' },
+      { nome: 'Ligações DAR↔Init.', fonte: 'eventos das iniciativas',     cor: '#6366f1' },
     ],
   },
   {

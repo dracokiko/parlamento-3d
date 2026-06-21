@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { X, Sparkles, Users, Calendar, GitBranch, Vote, ExternalLink } from 'lucide-react';
+import { X, Sparkles, Users, Calendar, GitBranch, Vote, ExternalLink, BookOpen, ChevronRight, Mic } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { partidos as PARTIDOS } from '../../data/mockPartidos';
 import { InfoTooltip } from '../UI/InfoTooltip';
@@ -169,15 +169,144 @@ const SecaoVotacoes = ({ votacoes, carregando }) => {
   );
 };
 
+// ── Secção de debates / intervenções no DAR ────────────────────────────────
+
+const FASE_LABEL = fase => {
+  if (!fase) return null;
+  const f = fase.toLowerCase();
+  if (f.includes('discuss') || f.includes('debate') || f.includes('aprecia')) return fase;
+  return null; // filtrar só fases de debate
+};
+
+function CartaoDar({ link, intervencoes }) {
+  const [expandido, setExpandido] = useState(false);
+  const nInt = intervencoes?.length ?? 0;
+  const label = FASE_LABEL(link.fase);
+
+  return (
+    <div className="border border-gray-100 rounded-xl overflow-hidden">
+      <div className="flex items-start gap-3 px-4 py-3">
+        <div className="w-1 rounded-full self-stretch bg-blue-200 flex-shrink-0 mt-0.5" />
+        <div className="flex-1 min-w-0">
+          {label && (
+            <p className="text-xs font-semibold text-gray-700 mb-0.5">{label}</p>
+          )}
+          <div className="flex items-center gap-3 text-xs text-gray-400 flex-wrap">
+            {link.data && <span>{new Date(link.data).toLocaleDateString('pt-PT', { day:'2-digit', month:'short', year:'numeric' })}</span>}
+            {link.darNr && <span>DAR nº {parseInt(link.darNr, 10)}</span>}
+            {link.paginaInicio && (
+              <span>pp. {link.paginaInicio}{link.paginaFim && link.paginaFim !== link.paginaInicio ? `–${link.paginaFim}` : ''}</span>
+            )}
+            <a
+              href={link.url}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-0.5 text-blue-500 hover:text-blue-700"
+            >
+              <ExternalLink size={10} /> Ver no DAR
+            </a>
+          </div>
+        </div>
+        {nInt > 0 && (
+          <button
+            onClick={() => setExpandido(e => !e)}
+            className="flex items-center gap-1 text-[10px] font-semibold text-indigo-600 bg-indigo-50 rounded-full px-2.5 py-1 hover:bg-indigo-100 transition-colors shrink-0"
+          >
+            <Mic size={9} />
+            {nInt} intervenç{nInt === 1 ? 'ão' : 'ões'}
+            <ChevronRight size={10} className={expandido ? 'rotate-90' : ''} />
+          </button>
+        )}
+      </div>
+
+      {expandido && nInt > 0 && (
+        <div className="border-t border-gray-50 divide-y divide-gray-50 max-h-64 overflow-y-auto">
+          {intervencoes.map((iv, i) => (
+            <div key={i} className="px-4 py-2.5">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-xs font-semibold text-gray-800">{iv.nome_dep}</span>
+                {iv.partido && (
+                  <span className="text-[10px] text-gray-400 bg-gray-100 rounded px-1.5 py-0.5">{iv.partido}</span>
+                )}
+              </div>
+              <p className="text-xs text-gray-600 line-clamp-3 leading-relaxed">{iv.texto}</p>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function SecaoDar({ darLinks, carregando }) {
+  const [intencoesPorDar, setIntencoesPorDar] = useState({});
+
+  useEffect(() => {
+    if (!darLinks?.length) return;
+    const darIds = [...new Set(darLinks.map(l => l.darId))];
+    supabase
+      .from('ar_intervencoes')
+      .select('debate_id, nome_dep, partido, texto, num_palavras')
+      .in('debate_id', darIds)
+      .order('id')
+      .then(({ data }) => {
+        const mapa = {};
+        for (const iv of data ?? []) {
+          (mapa[iv.debate_id] ??= []).push(iv);
+        }
+        setIntencoesPorDar(mapa);
+      });
+  }, [darLinks]);
+
+  if (carregando) return null;
+  if (!darLinks?.length) return null;
+
+  // Mostrar só fases de debate/discussão, depois restantes
+  const comFase = darLinks.filter(l => FASE_LABEL(l.fase));
+  const semFase = darLinks.filter(l => !FASE_LABEL(l.fase));
+  const ordenados = [...comFase, ...semFase];
+
+  const totalInt = Object.values(intencoesPorDar).reduce((s, a) => s + a.length, 0);
+
+  return (
+    <div>
+      <div className="flex items-center gap-1.5 mb-3">
+        <BookOpen size={13} className="text-gray-400" />
+        <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+          Debates no DAR{totalInt > 0 ? ` · ${totalInt} intervenções` : ''}
+        </span>
+      </div>
+      <div className="space-y-2">
+        {ordenados.map((link, i) => (
+          <CartaoDar
+            key={i}
+            link={link}
+            intervencoes={intencoesPorDar[link.darId]}
+          />
+        ))}
+      </div>
+      {totalInt === 0 && (
+        <p className="text-xs text-gray-400 mt-2 italic">
+          As transcrições das sessões referenciadas ainda estão a ser importadas.
+        </p>
+      )}
+    </div>
+  );
+}
+
+// ── Modal principal ─────────────────────────────────────────────────────────
+
 export const ModalIniciativa = ({ iniciativa, onFechar, onClickDebate }) => {
   const [votacoes,   setVotacoes]   = useState([]);
   const [eventos,    setEventos]    = useState([]);
+  const [darLinks,   setDarLinks]   = useState([]);
   const [carregando, setCarregando] = useState(false);
 
   useEffect(() => {
     if (!iniciativa?.id) return;
     setVotacoes([]);
     setEventos([]);
+    setDarLinks([]);
     setCarregando(true);
 
     Promise.all([
@@ -188,12 +317,13 @@ export const ModalIniciativa = ({ iniciativa, onFechar, onClickDebate }) => {
         .order('data_votacao', { ascending: true }),
       supabase
         .from('ar_iniciativas')
-        .select('eventos')
+        .select('eventos, dar_links')
         .eq('id', iniciativa.id)
         .single(),
     ]).then(([{ data: vots }, { data: ini }]) => {
       setVotacoes(vots ?? []);
       setEventos(ini?.eventos ?? []);
+      setDarLinks(ini?.dar_links ?? []);
     }).finally(() => setCarregando(false));
   }, [iniciativa?.id]);
 
@@ -321,6 +451,9 @@ export const ModalIniciativa = ({ iniciativa, onFechar, onClickDebate }) => {
             </div>
             <SecaoVotacoes votacoes={votacoes} carregando={carregando} />
           </div>
+
+          {/* Debates no DAR */}
+          <SecaoDar darLinks={darLinks} carregando={carregando} />
 
           {/* Fases / Eventos */}
           {eventos.length > 0 && (

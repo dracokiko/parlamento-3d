@@ -3,6 +3,8 @@
  * Campos confirmados inspeccionando os JSONs reais da XVII Legislatura.
  */
 
+import { extrairDarLinks } from './linkDarIniciativas.js';
+
 const safeStr  = (v, max = 5000) => v == null ? null : String(v).slice(0, max);
 
 // Data real de entrada da iniciativa — evento CodigoFase "10" ou Fase "Entrada"
@@ -31,6 +33,7 @@ const safeDate = v => {
 export function normalizarIniciativa(raw) {
   const id = safeStr(raw.IniId);
   if (!id) return null;
+  const eventos = raw.IniEventos ?? null;
   return {
     id,
     numero:       safeStr(raw.IniNr),
@@ -39,11 +42,12 @@ export function normalizarIniciativa(raw) {
     titulo:       safeStr(raw.IniTitulo, 1000),
     epigrafe:     safeStr(raw.IniEpigrafe, 1000),
     legislatura:  safeStr(raw.IniLeg),
-    data_inicio:  dataEntrada(raw.IniEventos) ?? safeDate(raw.DataInicioleg),
-    data_fim:     dataFim(raw.IniEventos) ?? safeDate(raw.DataFimleg),
+    data_inicio:  dataEntrada(eventos) ?? safeDate(raw.DataInicioleg),
+    data_fim:     dataFim(eventos) ?? safeDate(raw.DataFimleg),
     autores_dep:  raw.IniAutorDeputados   ?? null,
     autores_gp:   raw.IniAutorGruposParlamentares ?? null,
-    eventos:      raw.IniEventos          ?? null,
+    eventos,
+    dar_links:    extrairDarLinks(eventos),
     link_texto:   safeStr(raw.IniLinkTexto),
     json_raw:     raw,
   };

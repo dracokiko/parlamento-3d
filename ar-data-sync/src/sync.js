@@ -6,6 +6,7 @@ import { upsertBatch, registarLog } from './database.js';
 import { resumirIniciativas, resumirDeputados, resumirDebates, resumirVotacoes, obterTranscricoesDebates, indexarIntervencoes } from './summarizer.js';
 import { crawlerDebatesDAR } from './catalogueCrawler.js';
 import { syncVotacoes } from './votacoesSync.js';
+import { syncDarLinks } from './linkDarIniciativas.js';
 import { crawlerPresencas } from './presencasCrawler.js';
 import { crawlerBiografias } from './biografiasCrawler.js';
 
@@ -166,7 +167,7 @@ async function main() {
     atualizados: 0, erros: rInt?.erros ?? (rInt === null ? 1 : 0), detalhes: [],
   });
 
-  // Votações (extracção + resumos IA)
+  // Votações (extracção + resumos IA) + deputados divergentes + dar_links
   if (resultados.iniciativas?.ok) {
     let rVot = null;
     try { rVot = await syncVotacoes(); }
@@ -174,6 +175,29 @@ async function main() {
     await registarLog('votacoes', {
       sucesso: rVot?.ok ?? rVot !== null, total: rVot?.total ?? 0, inseridos: rVot?.total ?? 0,
       atualizados: 0, erros: rVot === null ? 1 : 0, detalhes: [],
+    });
+
+    // Deputados divergentes — log separado com contagem
+    await registarLog('deputados_divergentes', {
+      sucesso: rVot !== null,
+      total:       rVot?.comDivergentes ?? 0,
+      inseridos:   rVot?.comDivergentes ?? 0,
+      atualizados: 0,
+      erros:       rVot === null ? 1 : 0,
+      detalhes:    [],
+    });
+
+    // Ligação DAR ↔ Iniciativas
+    let rDarLinks = null;
+    try { rDarLinks = await syncDarLinks(); }
+    catch (err) { console.warn(`\n  ⚠ syncDarLinks falhou (${err.message})`); }
+    await registarLog('dar_links', {
+      sucesso:     rDarLinks?.ok ?? rDarLinks !== null,
+      total:       rDarLinks?.total       ?? 0,
+      inseridos:   rDarLinks?.inseridos   ?? 0,
+      atualizados: rDarLinks?.atualizados ?? 0,
+      erros:       rDarLinks === null ? 1 : 0,
+      detalhes:    [],
     });
 
     let rVotAi = null;

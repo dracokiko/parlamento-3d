@@ -173,6 +173,7 @@ export async function syncVotacoes() {
   let offset = 0;
   let totalIniciativas = 0;
   let totalVotacoes = 0;
+  let totalComDivergentes = 0;
 
   while (true) {
     const { data, error } = await db
@@ -187,7 +188,11 @@ export async function syncVotacoes() {
     const batch = [];
     for (const ini of data) {
       totalIniciativas++;
-      batch.push(...extrairVotacoes(ini.id, ini.eventos));
+      const vots = extrairVotacoes(ini.id, ini.eventos);
+      batch.push(...vots);
+      for (const v of vots) {
+        if (v.deputados_isolados?.some(d => d.rebelde)) totalComDivergentes++;
+      }
     }
 
     totalVotacoes += batch.length;
@@ -206,9 +211,10 @@ export async function syncVotacoes() {
     offset += PAGE;
   }
 
-  console.log(`\n  ✓ Iniciativas processadas : ${totalIniciativas}`);
-  console.log(`  ✓ Votações extraídas       : ${totalVotacoes}`);
-  return { ok: true, total: totalVotacoes };
+  console.log(`\n  ✓ Iniciativas processadas  : ${totalIniciativas}`);
+  console.log(`  ✓ Votações extraídas        : ${totalVotacoes}`);
+  console.log(`  ✓ Com votos divergentes     : ${totalComDivergentes}`);
+  return { ok: true, total: totalVotacoes, comDivergentes: totalComDivergentes };
 }
 
 async function diagnosticarVotacoes() {
