@@ -3,7 +3,7 @@ import { AR_ENDPOINTS, BATCH_SIZE } from './config.js';
 import { downloadToTemp, streamRecords } from './downloader.js';
 import { NORMALIZADORES } from './processor.js';
 import { upsertBatch, registarLog } from './database.js';
-import { resumirIniciativas, resumirDeputados, resumirDebates, resumirVotacoes, obterTranscricoesDebates, indexarIntervencoes } from './summarizer.js';
+import { resumirIniciativas, resumirDeputados, resumirDebates, resumirVotacoes, obterTranscricoesDebates, indexarIntervencoes, classificarTemas } from './summarizer.js';
 import { crawlerDebatesDAR } from './catalogueCrawler.js';
 import { syncVotacoes } from './votacoesSync.js';
 import { syncDarLinks } from './linkDarIniciativas.js';
@@ -125,6 +125,19 @@ async function main() {
 
   try { if (resultados.iniciativas?.ok) acumularAi(await resumirIniciativas()); }
   catch (err) { console.warn(`\n  ⚠ resumirIniciativas falhou (${err.message})`); }
+
+  // Classificação temática (corre após resumirIniciativas para garantir que temas novos são processados)
+  let rTemas = null;
+  try { rTemas = await classificarTemas(); }
+  catch (err) { console.warn(`\n  ⚠ classificarTemas falhou (${err.message})`); }
+  await registarLog('temas', {
+    sucesso:     rTemas !== null,
+    total:       rTemas?.total       ?? 0,
+    inseridos:   rTemas?.inseridos   ?? 0,
+    atualizados: 0,
+    erros:       rTemas?.erros       ?? (rTemas === null ? 1 : 0),
+    detalhes:    rTemas?.detalhes    ?? [],
+  });
 
   try { if (resultados.deputados?.ok) acumularAi(await resumirDeputados()); }
   catch (err) { console.warn(`\n  ⚠ resumirDeputados falhou (${err.message})`); }

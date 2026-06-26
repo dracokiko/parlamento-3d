@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import {
   ArrowLeft, Vote, ExternalLink, CheckCircle2, XCircle, MinusCircle,
-  ChevronRight, X, BarChart2, AlertTriangle, Sparkles,
+  ChevronRight, ChevronLeft, X, BarChart2, AlertTriangle, Sparkles, Search,
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { partidos as PARTIDOS } from '../data/mockPartidos';
@@ -13,7 +13,9 @@ import { useParlamento } from '../context/ParlamentoContext';
 const GP_COR  = Object.fromEntries(Object.entries(PARTIDOS).map(([k, v]) => [k, v.cor]));
 const GP_DEPS = Object.fromEntries(Object.entries(PARTIDOS).map(([k, v]) => [k, v.deputados ?? 0]));
 const SIGLAS  = Object.keys(PARTIDOS);
-const DISPLAY_STEP = 40;
+
+// Códigos de fase que correspondem a votos procedimentais (não sobre o mérito da proposta)
+const CODIGOS_PROCEDIMENTAIS = new Set(['160', '180', '195', '225', '237', '280', '341', '345']);
 
 const totalDeps = siglas => siglas.reduce((a, s) => a + (GP_DEPS[s.trim()] ?? 0), 0);
 
@@ -129,9 +131,10 @@ const CartaoVotacao = ({ voto, tituloIni, descTipo, autoresGp, partidoFiltrado }
   const { bg, text, icon: Icon } = corResultado(voto.resultado);
   const temBreakdown = favor.length + contra.length + abstencao.length > 0;
 
-  const posicao = posicaoPartido(gp, partidoFiltrado);
-  const posInfo = posicao ? POSICAO_LABEL[posicao] : null;
-  const autores = (autoresGp ?? []).filter(a => a?.GP);
+  const posicao        = posicaoPartido(gp, partidoFiltrado);
+  const posInfo        = posicao ? POSICAO_LABEL[posicao] : null;
+  const autores        = (autoresGp ?? []).filter(a => a?.GP);
+  const isProcedimental = CODIGOS_PROCEDIMENTAIS.has(voto.codigo_fase);
 
   return (
     <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm hover:shadow-md transition-shadow">
@@ -173,9 +176,16 @@ const CartaoVotacao = ({ voto, tituloIni, descTipo, autoresGp, partidoFiltrado }
             {tituloIni ?? <span className="text-gray-400 italic">Iniciativa #{voto.iniciativa_id}</span>}
           </p>
         </div>
-        <div className={`flex items-center gap-1.5 shrink-0 rounded-full px-3 py-1 ${bg}`}>
-          <Icon size={13} className={text} />
-          <span className={`text-xs font-bold ${text}`}>{voto.resultado ?? '—'}</span>
+        <div className="flex items-center gap-2 shrink-0">
+          {isProcedimental && (
+            <span className="inline-flex items-center text-[10px] font-semibold text-gray-500 bg-gray-100 rounded-full px-2 py-0.5">
+              Procedimental<InfoTooltip termo="Voto Procedimental" />
+            </span>
+          )}
+          <div className={`flex items-center gap-1.5 rounded-full px-3 py-1 ${bg}`}>
+            <Icon size={13} className={text} />
+            <span className={`text-xs font-bold ${text}`}>{voto.resultado ?? '—'}</span>
+          </div>
         </div>
       </div>
 
@@ -253,7 +263,8 @@ const CartaoVotacaoMobile = ({ voto, tituloIni, descTipo, autoresGp, partidoFilt
   const gp      = voto.detalhe_gp ?? {};
   const posicao = posicaoPartido(gp, partidoFiltrado);
   const posInfo = posicao ? POSICAO_LABEL[posicao] : null;
-  const autores = (autoresGp ?? []).filter(a => a?.GP);
+  const autores         = (autoresGp ?? []).filter(a => a?.GP);
+  const isProcedimental = CODIGOS_PROCEDIMENTAIS.has(voto.codigo_fase);
   const { bg, text, icon: Icon } = corResultado(voto.resultado);
 
   return (
@@ -296,6 +307,11 @@ const CartaoVotacaoMobile = ({ voto, tituloIni, descTipo, autoresGp, partidoFilt
           </p>
         </div>
         <div className="flex items-center gap-1 shrink-0">
+          {isProcedimental && (
+            <span className="inline-flex items-center text-[9px] font-semibold text-gray-500 bg-gray-100 rounded-full px-1.5 py-0.5">
+              Proc.<InfoTooltip termo="Voto Procedimental" />
+            </span>
+          )}
           <div className={`flex items-center gap-1 rounded-full px-2.5 py-1 ${bg}`}>
             <Icon size={11} className={text} />
             <span className={`text-xs font-bold ${text}`}>{voto.resultado ?? '—'}</span>
@@ -564,6 +580,67 @@ function TabRebeldes({ votacoes, titulos, carregando }) {
   );
 }
 
+// ── Paginação ──────────────────────────────────────────────────────────────────
+
+const POR_PAGINA = 40;
+
+function gerarPaginas(atual, total) {
+  if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
+  const conjunto = new Set([1, total]);
+  for (let i = Math.max(2, atual - 2); i <= Math.min(total - 1, atual + 2); i++) conjunto.add(i);
+  const ordenadas = [...conjunto].sort((a, b) => a - b);
+  const resultado = [];
+  for (let i = 0; i < ordenadas.length; i++) {
+    if (i > 0 && ordenadas[i] - ordenadas[i - 1] > 1) resultado.push('…');
+    resultado.push(ordenadas[i]);
+  }
+  return resultado;
+}
+
+function Paginacao({ pagina, total, onChange }) {
+  const totalPaginas = Math.ceil(total / POR_PAGINA);
+  if (totalPaginas <= 1) return null;
+  const paginas = gerarPaginas(pagina, totalPaginas);
+
+  return (
+    <div className="flex items-center justify-center gap-1 mt-8 flex-wrap">
+      <button
+        onClick={() => onChange(pagina - 1)}
+        disabled={pagina === 1}
+        className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm text-gray-500 bg-white border border-gray-200 hover:border-blue-300 hover:text-blue-600 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+      >
+        <ChevronLeft size={14} />Anterior
+      </button>
+
+      {paginas.map((p, i) =>
+        p === '…' ? (
+          <span key={`e-${i}`} className="px-1 text-gray-400 text-sm">…</span>
+        ) : (
+          <button
+            key={p}
+            onClick={() => onChange(p)}
+            className={`w-9 h-9 rounded-lg text-sm font-medium transition-colors ${
+              p === pagina
+                ? 'bg-blue-600 text-white shadow-sm'
+                : 'bg-white text-gray-600 border border-gray-200 hover:border-blue-300 hover:text-blue-600'
+            }`}
+          >
+            {p}
+          </button>
+        )
+      )}
+
+      <button
+        onClick={() => onChange(pagina + 1)}
+        disabled={pagina === totalPaginas}
+        className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm text-gray-500 bg-white border border-gray-200 hover:border-blue-300 hover:text-blue-600 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+      >
+        Próxima<ChevronRight size={14} />
+      </button>
+    </div>
+  );
+}
+
 // ── Página principal ───────────────────────────────────────────────────────────
 
 const RESULTADO_FILTROS = [
@@ -582,14 +659,16 @@ export function Votacoes() {
   const [filtroPartido, setFiltroPartido] = useState('');
   const [filtroData,    setFiltroData]    = useState('');
   const [filtroProposta,setFiltroProposta]= useState(false);
-  const [displayCount,  setDisplayCount]  = useState(DISPLAY_STEP);
+  const [filtroTema,      setFiltroTema]      = useState('');
+  const [filtroCategoria, setFiltroCategoria] = useState('');
+  const [pagina,          setPagina]          = useState(1);
 
   useEffect(() => {
     async function carregar() {
       setCarregando(true);
       const { data } = await supabase
         .from('ar_votacoes')
-        .select('id, iniciativa_id, fase, data_votacao, resultado, unanime, reuniao, tipo_reuniao, detalhe_gp, publicacao, deputados_isolados, resumo_ia')
+        .select('id, iniciativa_id, fase, codigo_fase, data_votacao, resultado, unanime, reuniao, tipo_reuniao, detalhe_gp, publicacao, deputados_isolados, resumo_ia')
         .order('data_votacao', { ascending: false })
         .limit(3000);
 
@@ -600,10 +679,10 @@ export function Votacoes() {
       if (ids.length) {
         const { data: inis } = await supabase
           .from('ar_iniciativas')
-          .select('id, titulo, desc_tipo, autores_gp')
+          .select('id, titulo, epigrafe, desc_tipo, autores_gp, temas')
           .in('id', ids);
         setTitulos(Object.fromEntries(
-          (inis ?? []).map(i => [i.id, { titulo: i.titulo, desc_tipo: i.desc_tipo, autores_gp: i.autores_gp }])
+          (inis ?? []).map(i => [i.id, { titulo: i.titulo, epigrafe: i.epigrafe, desc_tipo: i.desc_tipo, autores_gp: i.autores_gp, temas: i.temas }])
         ));
       }
       setCarregando(false);
@@ -611,12 +690,14 @@ export function Votacoes() {
     carregar();
   }, []);
 
-  useEffect(() => { setDisplayCount(DISPLAY_STEP); }, [filtroResult, filtroPartido, filtroData, filtroProposta]);
+  // Reset página quando qualquer filtro muda
+  useEffect(() => { setPagina(1); }, [filtroResult, filtroPartido, filtroData, filtroProposta, filtroTema, filtroCategoria]);
 
   // Reset sub-filtro proposta quando partido muda
   useEffect(() => { setFiltroProposta(false); }, [filtroPartido]);
 
   const filtrados = useMemo(() => {
+    const tema = filtroTema.trim().toLowerCase();
     return votacoes.filter(v => {
       if (filtroResult !== 'todos' && v.resultado !== filtroResult) return false;
       if (filtroData && v.data_votacao?.slice(0, 10) !== filtroData) return false;
@@ -629,18 +710,42 @@ export function Votacoes() {
         const ini = titulos[v.iniciativa_id];
         if (!(ini?.autores_gp ?? []).some(a => a?.GP?.trim() === filtroPartido)) return false;
       }
+      if (tema) {
+        const ini = titulos[v.iniciativa_id];
+        const haystack = [ini?.titulo ?? '', ini?.epigrafe ?? '', v.fase ?? ''].join(' ').toLowerCase();
+        if (!haystack.includes(tema)) return false;
+      }
+      if (filtroCategoria) {
+        const ini = titulos[v.iniciativa_id];
+        if (!(ini?.temas ?? []).includes(filtroCategoria)) return false;
+      }
       return true;
     });
-  }, [votacoes, filtroResult, filtroData, filtroPartido, filtroProposta, titulos]);
+  }, [votacoes, filtroResult, filtroData, filtroPartido, filtroProposta, filtroTema, filtroCategoria, titulos]);
 
-  const visiveis = filtrados.slice(0, displayCount);
-  const temFiltroAtivo = filtroPartido || filtroData || filtroResult !== 'todos';
+  const totalPaginas  = Math.ceil(filtrados.length / POR_PAGINA);
+  const visiveis      = filtrados.slice((pagina - 1) * POR_PAGINA, pagina * POR_PAGINA);
+  const temFiltroAtivo = filtroPartido || filtroData || filtroResult !== 'todos' || filtroTema || filtroCategoria;
+
+  // Categorias com pelo menos uma votação nos dados carregados
+  const categoriasDisponiveis = useMemo(() => {
+    const contagem = {};
+    for (const v of votacoes) {
+      const temas = titulos[v.iniciativa_id]?.temas ?? [];
+      for (const t of temas) contagem[t] = (contagem[t] ?? 0) + 1;
+    }
+    return Object.entries(contagem)
+      .sort((a, b) => b[1] - a[1])
+      .map(([t]) => t);
+  }, [votacoes, titulos]);
 
   const limparFiltros = () => {
     setFiltroResult('todos');
     setFiltroPartido('');
     setFiltroData('');
     setFiltroProposta(false);
+    setFiltroTema('');
+    setFiltroCategoria('');
   };
 
   return (
@@ -721,6 +826,42 @@ export function Votacoes() {
                   </button>
                 );
               })}
+            </div>
+
+            {/* Pills de categoria temática */}
+            {categoriasDisponiveis.length > 0 && (
+              <div className="flex gap-1.5 mb-3 flex-wrap">
+                {categoriasDisponiveis.map(cat => (
+                  <button
+                    key={cat}
+                    onClick={() => setFiltroCategoria(c => c === cat ? '' : cat)}
+                    className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+                      filtroCategoria === cat
+                        ? 'bg-violet-600 text-white shadow-sm'
+                        : 'bg-white text-gray-600 border border-gray-200 hover:border-violet-300 hover:text-violet-600'
+                    }`}
+                  >
+                    {cat}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* Pesquisa por tema */}
+            <div className="relative mb-3">
+              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+              <input
+                type="text"
+                value={filtroTema}
+                onChange={e => setFiltroTema(e.target.value)}
+                placeholder="Pesquisar por tema ou palavra-chave…"
+                className="w-full pl-8 pr-8 py-2 rounded-xl border border-gray-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-transparent transition-all"
+              />
+              {filtroTema && (
+                <button onClick={() => setFiltroTema('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700">
+                  <X size={14} />
+                </button>
+              )}
             </div>
 
             {/* Filtro partido + data */}
@@ -810,16 +951,7 @@ export function Votacoes() {
               })}
             </div>
 
-            {displayCount < filtrados.length && (
-              <div className="flex justify-center mt-8">
-                <button
-                  onClick={() => setDisplayCount(c => c + DISPLAY_STEP)}
-                  className="flex items-center gap-2 px-6 py-2.5 bg-white border border-gray-200 rounded-full text-sm font-medium text-gray-700 hover:border-blue-300 hover:text-blue-600 transition-colors"
-                >
-                  Carregar mais ({filtrados.length - displayCount} restantes)
-                </button>
-              </div>
-            )}
+            <Paginacao pagina={pagina} total={filtrados.length} onChange={p => { setPagina(p); window.scrollTo({ top: 0, behavior: 'smooth' }); }} />
           </>
         )}
 

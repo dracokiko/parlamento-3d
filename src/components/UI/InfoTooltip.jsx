@@ -53,6 +53,10 @@ export const GLOSSARIO = {
   'Publicação em Diário da República':
     'A lei é publicada oficialmente e entra em vigor.',
 
+  // Votações
+  'Voto Procedimental':
+    'Não é uma votação sobre o conteúdo da proposta. É uma decisão sobre o processo — por exemplo, enviá-la a uma comissão, adiar a votação, ou contestar uma decisão do Presidente. O "Aprovado" refere-se a esta moção, não à proposta em si.',
+
   // Outros termos
   'Reunião plenária':
     'Sessão em que todos os deputados se reúnem no hemiciclo para debater e votar propostas.',

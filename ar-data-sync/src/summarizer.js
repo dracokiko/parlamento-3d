@@ -10,7 +10,7 @@
  */
 import { createClient } from '@supabase/supabase-js';
 import { SUPABASE_URL, SUPABASE_KEY } from './config.js';
-import { resumir, promptIniciativa, promptDeputado, promptDebate, promptVotacao } from './ai.js';
+import { resumir, promptIniciativa, promptDeputado, promptDebate, promptVotacao, promptTemas, TEMAS_DISPONIVEIS } from './ai.js';
 import { obterTranscricao } from './scraper.js';
 import { parsearIntervencoes } from './interventionParser.js';
 
@@ -191,6 +191,60 @@ export async function resumirVotacoes() {
 
   console.log(`\n  [IA] Votações concluído — ${total} resumidas, ${erros} erros`);
   return { total: total + erros, inseridos: total, atualizados: 0, erros };
+}
+
+// ── Classificação temática ────────────────────────────────────────────────────
+
+function parseTemas(raw) {
+  if (!raw) return null;
+  const match = raw.match(/\[[\s\S]*?\]/);
+  if (!match) return null;
+  try {
+    const arr = JSON.parse(match[0]);
+    if (!Array.isArray(arr)) return null;
+    const validos = arr.filter(t => TEMAS_DISPONIVEIS.includes(t));
+    return validos.length ? validos : null;
+  } catch { return null; }
+}
+
+export async function classificarTemas() {
+  console.log('\n  [IA] A classificar temas de iniciativas...');
+  let total = 0, erros = 0;
+  const detalhes = [];
+
+  while (true) {
+    const { data, error } = await db()
+      .from('ar_iniciativas')
+      .select('id, titulo, epigrafe, tipo, desc_tipo')
+      .is('temas', null)
+      .range(0, PAGINA - 1);
+
+    if (error) { console.error('  ✗ Erro ao buscar iniciativas:', error.message); break; }
+    if (!data?.length) break;
+
+    for (const ini of data) {
+      const raw    = await resumir(promptTemas(ini));
+      const temas  = parseTemas(raw);
+      if (temas) {
+        await db().from('ar_iniciativas').update({ temas }).eq('id', ini.id);
+        total++;
+        if (detalhes.length < 200) {
+          const ref = [ini.desc_tipo ?? ini.tipo, ini.titulo?.slice(0, 70)].filter(Boolean).join(' · ');
+          detalhes.push({ label: `[${temas.join(', ')}] ${ref}` });
+        }
+      } else {
+        // Marcar como processado (sem temas) para não re-tentar
+        await db().from('ar_iniciativas').update({ temas: [] }).eq('id', ini.id);
+        erros++;
+      }
+      process.stdout.write(`  [IA] Temas: ${total} classificadas, ${erros} sem tema\r`);
+    }
+
+    if (data.length < PAGINA) break;
+  }
+
+  console.log(`\n  [IA] Temas concluído — ${total} classificadas, ${erros} sem tema`);
+  return { total: total + erros, inseridos: total, atualizados: 0, erros, detalhes };
 }
 
 // ── Transcrições de Debates ───────────────────────────────────────────────────

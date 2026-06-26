@@ -89,6 +89,22 @@ Contra: ${contra}
 Abstenção: ${abstencao}`;
 }
 
+export const TEMAS_DISPONIVEIS = [
+  'Saúde', 'Educação', 'Habitação', 'Ambiente', 'Economia',
+  'Justiça', 'Segurança', 'Trabalho', 'Transportes', 'Cultura',
+  'Administração Pública', 'Relações Externas', 'Social', 'Tecnologia', 'Agricultura',
+];
+
+export function promptTemas(ini) {
+  return `Classifica esta iniciativa parlamentar portuguesa em 1 a 3 temas da lista. Responde APENAS com um array JSON válido, sem texto extra.
+
+Temas disponíveis: ${JSON.stringify(TEMAS_DISPONIVEIS)}
+
+Tipo: ${ini.desc_tipo || ini.tipo || '—'}
+Título: ${ini.titulo || '—'}
+Epígrafe: ${ini.epigrafe || '—'}`;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 
 async function chamarGroq(prompt) {

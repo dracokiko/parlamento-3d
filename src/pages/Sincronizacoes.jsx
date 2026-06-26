@@ -24,6 +24,7 @@ const RECURSOS_CONFIG = {
   diretivas_ue:          { label: 'Diretivas UE',         cor: '#ca8a04', fonte: 'EUR-Lex · SPARQL endpoint + scraping de fichas',       url: 'https://eur-lex.europa.eu/search.html?type=named&name=CURRENT_ACTS' },
   deputados_divergentes: { label: 'Votos Divergentes',    cor: '#f59e0b', fonte: 'derivado de ar_votacoes.detalhe_raw (processamento interno)', url: null },
   dar_links:             { label: 'Ligações DAR↔Iniciativas', cor: '#6366f1', fonte: 'debates.parlamento.pt · Catálogo DAR XVII Leg.',       url: 'https://debates.parlamento.pt/catalogo/r3/dar/01/17/01' },
+  temas:                 { label: 'Temas IA',                 cor: '#7c3aed', fonte: 'Groq API · classificação temática de iniciativas',      url: null },
 };
 
 // ── Regras de sincronização (retiradas dos GitHub Actions) ────────────────────
@@ -50,6 +51,7 @@ const SYNC_JOBS = [
       { nome: 'Presenças',          fonte: 'scraping parlamento.pt',      cor: '#64748b' },
       { nome: 'Votos Divergentes',  fonte: 'análise de votações',         cor: '#f59e0b' },
       { nome: 'Ligações DAR↔Init.', fonte: 'eventos das iniciativas',     cor: '#6366f1' },
+      { nome: 'Temas IA',           fonte: 'Groq API',                    cor: '#7c3aed' },
     ],
   },
   {
