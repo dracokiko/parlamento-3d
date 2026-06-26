@@ -69,13 +69,16 @@ export async function syncDarLinks() {
   return run();
 }
 
+const MAX_DETALHES = 200;
+
 async function run() {
   console.log('\n' + '='.repeat(55));
   console.log('  LINK DAR ↔ INICIATIVAS');
   console.log('='.repeat(55));
 
   let offset = 0;
-  let totalInis = 0, comLinks = 0, totalLinks = 0;
+  let totalInis = 0, novos = 0, atualizados = 0, totalLinks = 0;
+  const detalhes = [];
 
   // Mapa: darId → Set de iniciativa_ids
   const darMap = new Map();
@@ -83,7 +86,7 @@ async function run() {
   while (true) {
     const { data, error } = await db
       .from('ar_iniciativas')
-      .select('id, numero, tipo, eventos')
+      .select('id, numero, tipo, titulo, eventos, dar_links')
       .not('eventos', 'is', null)
       .range(offset, offset + PAGE - 1);
 
@@ -96,7 +99,17 @@ async function run() {
       const links = extrairDarLinks(ini.eventos);
       if (!links.length) continue;
 
-      comLinks++;
+      const eraNovo = !ini.dar_links || ini.dar_links.length === 0;
+      if (eraNovo) {
+        novos++;
+        if (detalhes.length < MAX_DETALHES) {
+          const ref = [ini.tipo, ini.numero].filter(Boolean).join(' ');
+          detalhes.push({ label: `${ref}${ini.titulo ? ' · ' + ini.titulo.slice(0, 80) : ''} (${links.length} debate${links.length !== 1 ? 's' : ''})` });
+        }
+      } else {
+        atualizados++;
+      }
+
       totalLinks += links.length;
       batch.push({ id: ini.id, dar_links: links });
 
@@ -111,14 +124,15 @@ async function run() {
       await db.from('ar_iniciativas').update({ dar_links }).eq('id', id);
     }
 
-    process.stdout.write(`  … ${totalInis} iniciativas | ${comLinks} com links | ${totalLinks} links totais\r`);
+    process.stdout.write(`  … ${totalInis} iniciativas | ${novos} novas | ${atualizados} actualizadas | ${totalLinks} links\r`);
 
     if (data.length < PAGE) break;
     offset += PAGE;
   }
 
   console.log(`\n  ✓ Iniciativas processadas : ${totalInis}`);
-  console.log(`  ✓ Com dar_links           : ${comLinks}`);
+  console.log(`  ✓ Novas ligações          : ${novos}`);
+  console.log(`  ✓ Actualizadas            : ${atualizados}`);
   console.log(`  ✓ Total links             : ${totalLinks}`);
   console.log(`  ✓ DAR únicos referenciados: ${darMap.size}`);
 
@@ -157,7 +171,7 @@ async function run() {
 
   console.log(`  ✓ ar_debates actualizados : ${debs} (${debs_novos} novos placeholders)`);
   console.log('\nFim.');
-  return { ok: true, total: totalInis, inseridos: comLinks, atualizados: debs, erros: 0 };
+  return { ok: true, total: totalInis, inseridos: novos, atualizados, erros: 0, detalhes };
 }
 
 // Execução directa

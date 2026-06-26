@@ -197,7 +197,7 @@ async function main() {
       inseridos:   rDarLinks?.inseridos   ?? 0,
       atualizados: rDarLinks?.atualizados ?? 0,
       erros:       rDarLinks === null ? 1 : 0,
-      detalhes:    [],
+      detalhes:    rDarLinks?.detalhes ?? [],
     });
 
     let rVotAi = null;
