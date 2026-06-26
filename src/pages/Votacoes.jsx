@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import {
   ArrowLeft, Vote, ExternalLink, CheckCircle2, XCircle, MinusCircle,
-  ChevronRight, X, BarChart2, AlertTriangle,
+  ChevronRight, X, BarChart2, AlertTriangle, Sparkles,
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { partidos as PARTIDOS } from '../data/mockPartidos';
@@ -129,23 +129,29 @@ const CartaoVotacao = ({ voto, tituloIni, descTipo, autoresGp, partidoFiltrado }
   const { bg, text, icon: Icon } = corResultado(voto.resultado);
   const temBreakdown = favor.length + contra.length + abstencao.length > 0;
 
-  const posicao  = posicaoPartido(gp, partidoFiltrado);
-  const posInfo  = posicao ? POSICAO_LABEL[posicao] : null;
-  const proposta = partidoFiltrado && (autoresGp ?? []).some(a => a?.GP?.trim() === partidoFiltrado);
+  const posicao = posicaoPartido(gp, partidoFiltrado);
+  const posInfo = posicao ? POSICAO_LABEL[posicao] : null;
+  const autores = (autoresGp ?? []).filter(a => a?.GP);
 
   return (
     <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm hover:shadow-md transition-shadow">
 
-      {/* Tags de contexto do partido filtrado */}
-      {(posInfo || proposta) && (
-        <div className="flex flex-wrap gap-2 mb-3">
-          {proposta && (
-            <span
-              className="inline-flex items-center text-[11px] font-bold rounded-full px-2.5 py-0.5"
-              style={{ backgroundColor: (GP_COR[partidoFiltrado] ?? '#888') + '22', color: GP_COR[partidoFiltrado] ?? '#888' }}
-            >
-              Proposta pelo {partidoFiltrado}
-            </span>
+      {/* Partido(s) proponente + posição do partido filtrado */}
+      {(autores.length > 0 || posInfo) && (
+        <div className="flex flex-wrap items-center gap-1.5 mb-3">
+          {autores.length > 0 && (
+            <>
+              <span className="text-[10px] text-gray-400">Proposta por</span>
+              {autores.map(a => (
+                <span
+                  key={a.GP}
+                  className="inline-flex items-center text-[11px] font-bold rounded-full px-2.5 py-0.5"
+                  style={{ backgroundColor: (GP_COR[a.GP.trim()] ?? '#888') + '22', color: GP_COR[a.GP.trim()] ?? '#888' }}
+                >
+                  {a.GP}
+                </span>
+              ))}
+            </>
           )}
           {posInfo && (
             <span className={`inline-flex items-center gap-1 text-[11px] font-bold rounded-full px-2.5 py-0.5 ${posInfo.bg} ${posInfo.text}`}>
@@ -215,6 +221,16 @@ const CartaoVotacao = ({ voto, tituloIni, descTipo, autoresGp, partidoFiltrado }
         </div>
       )}
 
+      {voto.resumo_ia && (
+        <div className="bg-amber-50 border border-amber-100 rounded-xl p-3 mt-3">
+          <div className="flex items-center gap-1.5 mb-1">
+            <Sparkles size={11} className="text-amber-500" />
+            <span className="text-[10px] font-semibold text-amber-600 uppercase tracking-wide">Resumo IA</span>
+          </div>
+          <p className="text-xs text-gray-700 leading-relaxed">{voto.resumo_ia}</p>
+        </div>
+      )}
+
       <div className="flex flex-wrap gap-4 mt-3">
         <a href={urlOficial} target="_blank" rel="noreferrer"
           className="inline-flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-800">
@@ -237,7 +253,7 @@ const CartaoVotacaoMobile = ({ voto, tituloIni, descTipo, autoresGp, partidoFilt
   const gp      = voto.detalhe_gp ?? {};
   const posicao = posicaoPartido(gp, partidoFiltrado);
   const posInfo = posicao ? POSICAO_LABEL[posicao] : null;
-  const proposta = partidoFiltrado && (autoresGp ?? []).some(a => a?.GP?.trim() === partidoFiltrado);
+  const autores = (autoresGp ?? []).filter(a => a?.GP);
   const { bg, text, icon: Icon } = corResultado(voto.resultado);
 
   return (
@@ -245,15 +261,21 @@ const CartaoVotacaoMobile = ({ voto, tituloIni, descTipo, autoresGp, partidoFilt
       to={`/votacoes/${voto.id}`}
       className="block bg-white border border-gray-100 rounded-2xl px-4 py-3.5 shadow-sm active:bg-gray-50 transition-colors"
     >
-      {(posInfo || proposta) && (
-        <div className="flex flex-wrap gap-1.5 mb-2">
-          {proposta && (
-            <span
-              className="text-[10px] font-bold rounded-full px-2 py-0.5"
-              style={{ backgroundColor: (GP_COR[partidoFiltrado] ?? '#888') + '22', color: GP_COR[partidoFiltrado] ?? '#888' }}
-            >
-              Proposta pelo {partidoFiltrado}
-            </span>
+      {(autores.length > 0 || posInfo) && (
+        <div className="flex flex-wrap items-center gap-1 mb-2">
+          {autores.length > 0 && (
+            <>
+              <span className="text-[10px] text-gray-400">Proposta por</span>
+              {autores.map(a => (
+                <span
+                  key={a.GP}
+                  className="text-[10px] font-bold rounded-full px-2 py-0.5"
+                  style={{ backgroundColor: (GP_COR[a.GP.trim()] ?? '#888') + '22', color: GP_COR[a.GP.trim()] ?? '#888' }}
+                >
+                  {a.GP}
+                </span>
+              ))}
+            </>
           )}
           {posInfo && (
             <span className={`inline-flex items-center gap-1 text-[10px] font-bold rounded-full px-2 py-0.5 ${posInfo.bg} ${posInfo.text}`}>
@@ -281,6 +303,11 @@ const CartaoVotacaoMobile = ({ voto, tituloIni, descTipo, autoresGp, partidoFilt
           <ChevronRight size={14} className="text-gray-300 ml-0.5" />
         </div>
       </div>
+      {voto.resumo_ia && (
+        <p className="text-[11px] text-gray-500 mt-2 leading-relaxed line-clamp-2 border-l-2 border-amber-300 pl-2">
+          {voto.resumo_ia}
+        </p>
+      )}
       {voto.data_votacao && (
         <p className="text-xs text-gray-400 mt-1.5">
           {new Date(voto.data_votacao).toLocaleDateString('pt-PT', { day: '2-digit', month: 'short', year: 'numeric' })}
@@ -562,7 +589,7 @@ export function Votacoes() {
       setCarregando(true);
       const { data } = await supabase
         .from('ar_votacoes')
-        .select('id, iniciativa_id, fase, data_votacao, resultado, unanime, reuniao, tipo_reuniao, detalhe_gp, publicacao, deputados_isolados')
+        .select('id, iniciativa_id, fase, data_votacao, resultado, unanime, reuniao, tipo_reuniao, detalhe_gp, publicacao, deputados_isolados, resumo_ia')
         .order('data_votacao', { ascending: false })
         .limit(3000);
 
