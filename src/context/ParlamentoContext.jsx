@@ -86,7 +86,7 @@ export const ParlamentoProvider = ({ children }) => {
       });
 
     // Iniciativas (sem eventos e autores_gp — campos pesados desnecessários para listagem)
-    paginar('ar_iniciativas', 'id, numero, titulo, epigrafe, desc_tipo, tipo, resumo_ia, data_inicio, data_fim, legislatura, autores_dep', 'data_inicio')
+    paginar('ar_iniciativas', 'id, numero, titulo, epigrafe, desc_tipo, tipo, resumo_ia, data_inicio, data_fim, legislatura, autores_dep, dar_links', 'data_inicio')
       .then(todas => {
         const mapa = new Map();
         todas.forEach(ini => {

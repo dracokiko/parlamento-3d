@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { X, MapPin, FileText, Mic, ExternalLink, BookUser, CalendarCheck, AlertTriangle } from 'lucide-react';
+import { X, MapPin, FileText, Mic, ExternalLink, BookUser, CalendarCheck, AlertTriangle, BookOpen } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { useParlamento } from '../../context/ParlamentoContext';
@@ -43,6 +43,12 @@ const SecaoIniciativas = ({ iniciativas, carregando, onClickIniciativa }) => {
             )}
             {ini.data_inicio && (
               <span className="text-xs text-gray-400">{ini.data_inicio}</span>
+            )}
+            {ini.dar_links?.length > 0 && (
+              <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-indigo-600 bg-indigo-50 group-hover:bg-indigo-100 rounded px-1.5 py-0.5">
+                <BookOpen size={9} />
+                {ini.dar_links.length} debate{ini.dar_links.length !== 1 ? 's' : ''} no DAR
+              </span>
             )}
           </div>
           <p className="text-sm font-medium text-gray-800 leading-snug">{ini.titulo}</p>
