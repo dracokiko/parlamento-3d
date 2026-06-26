@@ -219,7 +219,10 @@ export async function classificarTemas() {
       .is('temas', null)
       .range(0, PAGINA - 1);
 
-    if (error) { console.error('  ✗ Erro ao buscar iniciativas:', error.message); break; }
+    if (error) {
+      console.error('  ✗ Erro ao buscar iniciativas:', error.message);
+      return { total: 0, inseridos: 0, atualizados: 0, erros: -1, detalhes: [] };
+    }
     if (!data?.length) break;
 
     for (const ini of data) {

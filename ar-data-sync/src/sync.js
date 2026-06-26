@@ -130,12 +130,13 @@ async function main() {
   let rTemas = null;
   try { rTemas = await classificarTemas(); }
   catch (err) { console.warn(`\n  ⚠ classificarTemas falhou (${err.message})`); }
+  const temasOk = rTemas !== null && (rTemas?.erros ?? 0) >= 0;
   await registarLog('temas', {
-    sucesso:     rTemas !== null,
+    sucesso:     temasOk,
     total:       rTemas?.total       ?? 0,
     inseridos:   rTemas?.inseridos   ?? 0,
     atualizados: 0,
-    erros:       rTemas?.erros       ?? (rTemas === null ? 1 : 0),
+    erros:       rTemas === null || (rTemas?.erros ?? 0) < 0 ? 1 : (rTemas?.erros ?? 0),
     detalhes:    rTemas?.detalhes    ?? [],
   });
 
