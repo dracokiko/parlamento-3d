@@ -203,11 +203,20 @@ export function IniciativaDetalhe() {
     );
   }
 
-  // Agrupar intervenções por sessão DAR, ordenadas cronologicamente
+  // Ordem real de intervenção dentro da sessão: vem do sufixo numérico do id
+  // (formato `${debate_id}_${i}`, atribuído pela ordem de leitura do PDF do DAR).
+  // data_debate é igual para todas as intervenções da mesma sessão, por isso
+  // não serve para ordenar dentro da sessão.
+  const ordemNaSessao = iv => parseInt(iv.id.slice(iv.id.lastIndexOf('_') + 1), 10) || 0;
+
+  // Agrupar intervenções por sessão DAR, ordenadas pela ordem real de oradores
   const ivsParaDebate = intervencoes.reduce((acc, iv) => {
     (acc[iv.debate_id] ??= []).push(iv);
     return acc;
   }, {});
+  for (const ivs of Object.values(ivsParaDebate)) {
+    ivs.sort((a, b) => ordemNaSessao(a) - ordemNaSessao(b));
+  }
 
   // Indexar dar_links por darId para obter metadata da sessão
   const darMeta = {};
