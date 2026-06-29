@@ -111,8 +111,8 @@ const mesAnoLabel = (iv) => {
   return `${MES_NOME[parseInt(mo, 10) - 1]} ${y}`;
 };
 
-const CartaoIntervencao = ({ iv, texto, carregandoTextos, expandido, onToggle }) => {
-  const temTexto    = typeof texto === 'string' && texto.length > 0;
+const CartaoIntervencao = ({ iv, texto, carregandoTextos, expandido, onToggle, iniciativa, onVerIniciativa }) => {
+  const temTexto     = typeof texto === 'string' && texto.length > 0;
   const podeExpandir = temTexto && texto.length > SNIPPET_LEN;
   const snippet      = temTexto
     ? texto.trim().slice(0, SNIPPET_LEN) + (podeExpandir ? '…' : '')
@@ -133,9 +133,6 @@ const CartaoIntervencao = ({ iv, texto, carregandoTextos, expandido, onToggle })
               {iv.fase_debate}
             </span>
           )}
-          {iv.num_palavras != null && iv.num_palavras >= MIN_PALAVRAS && (
-            <span className="text-[10px] text-gray-400">{iv.num_palavras} palavras</span>
-          )}
           {iv.num_palavras != null && iv.num_palavras < MIN_PALAVRAS && (
             <span className="text-[10px] text-gray-400 bg-gray-50 rounded-full px-2 py-0.5 border border-gray-100">
               🗯️ interjeição
@@ -148,6 +145,19 @@ const CartaoIntervencao = ({ iv, texto, carregandoTextos, expandido, onToggle })
           <p className="text-xs font-semibold text-gray-700 mb-1.5 leading-snug">
             {iv.assunto}
           </p>
+        )}
+
+        {/* Iniciativa associada */}
+        {iniciativa && (
+          <button
+            onClick={e => { e.stopPropagation(); onVerIniciativa(iniciativa); }}
+            className="flex items-start gap-1 mb-1.5 text-left group/ini w-full"
+          >
+            <FileText size={10} className="text-blue-400 mt-0.5 flex-shrink-0 group-hover/ini:text-blue-600" />
+            <span className="text-[10px] text-blue-500 group-hover/ini:text-blue-700 leading-snug line-clamp-2 transition-colors">
+              {iniciativa.desc_tipo ? `${iniciativa.desc_tipo} · ` : ''}{iniciativa.titulo}
+            </span>
+          </button>
         )}
 
         {/* Snippet / texto completo / loading skeleton */}
@@ -189,7 +199,7 @@ const CartaoIntervencao = ({ iv, texto, carregandoTextos, expandido, onToggle })
   );
 };
 
-const SecaoIntervencoes = ({ intervencoes, carregando, corPartido }) => {
+const SecaoIntervencoes = ({ intervencoes, carregando, corPartido, onVerIniciativa, iniciativasIdMapa }) => {
   const [textos, setTextos]             = useState({});
   const [carregandoTextos, setLoadTx]   = useState(false);
   const [expandido, setExpandido]       = useState(null);
@@ -262,6 +272,8 @@ const SecaoIntervencoes = ({ intervencoes, carregando, corPartido }) => {
                 carregandoTextos={carregandoTextos}
                 expandido={expandido === iv.id}
                 onToggle={() => setExpandido(p => p === iv.id ? null : iv.id)}
+                iniciativa={iv.iniciativa_id ? iniciativasIdMapa?.get(String(iv.iniciativa_id)) : null}
+                onVerIniciativa={onVerIniciativa}
               />
             ))}
           </div>
@@ -383,6 +395,7 @@ export const PainelDeputado = () => {
   const [biografiaAberta, setBiografiaAberta]   = useState(false);
   const [presencasAbertas, setPresencasAbertas] = useState(false);
   const [rebeldesAbertos, setRebeldesAbertos]   = useState(false);
+  const { iniciativasIdMapa } = useParlamento();
   const { perfil, iniciativas, carregando } = useArDeputado(deputadoSelecionado);
   const nomeParlamentar = perfil?.nome_parlamentar ?? deputadoSelecionado?.nomeAbrev ?? '';
   const { intervencoes, carregando: carregandoInt } = useIntervencoesDeputado(nomeParlamentar, deputadoSelecionado.partido);
@@ -401,7 +414,7 @@ export const PainelDeputado = () => {
   const conteudo = (
     <>
       {abaAtiva === 'iniciativas'  && <SecaoIniciativas  iniciativas={iniciativas}  carregando={carregando}    onClickIniciativa={setIniciativaSelecionada} />}
-      {abaAtiva === 'intervencoes' && <SecaoIntervencoes intervencoes={intervencoes} carregando={carregandoInt} corPartido={partido?.cor} />}
+      {abaAtiva === 'intervencoes' && <SecaoIntervencoes intervencoes={intervencoes} carregando={carregandoInt} corPartido={partido?.cor} onVerIniciativa={setIniciativaSelecionada} iniciativasIdMapa={iniciativasIdMapa} />}
     </>
   );
 

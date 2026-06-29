@@ -31,6 +31,7 @@ export const ParlamentoProvider = ({ children }) => {
   const [perfisMapa, setPerfisMapa]               = useState(new Map());
   const [intervencoesMapa, setIntervencoesMapa]   = useState(new Map());
   const [iniciativasMapa, setIniciativasMapa]     = useState(new Map());
+  const [iniciativasIdMapa, setIniciativasIdMapa] = useState(new Map()); // id → iniciativa
   const [biografiasMapa, setBiografiasMapa]       = useState(new Map());
   const [presencasMapa, setPresencasMapa]         = useState(new Map());
 
@@ -73,7 +74,7 @@ export const ParlamentoProvider = ({ children }) => {
       });
 
     // Intervenções (sem texto — carregado em batch ao abrir painel do deputado)
-    paginar('ar_intervencoes', 'id, debate_id, nome_dep, partido, data_debate, assunto, url_diario, num_palavras, fase_debate', 'data_debate')
+    paginar('ar_intervencoes', 'id, debate_id, nome_dep, partido, data_debate, assunto, url_diario, num_palavras, fase_debate, iniciativa_id', 'data_debate')
       .then(todas => {
         const mapa = new Map();
         todas.forEach(iv => {
@@ -88,8 +89,10 @@ export const ParlamentoProvider = ({ children }) => {
     // Iniciativas (sem eventos e autores_gp — campos pesados desnecessários para listagem)
     paginar('ar_iniciativas', 'id, numero, titulo, epigrafe, desc_tipo, tipo, resumo_ia, data_inicio, data_fim, legislatura, autores_dep, dar_links', 'data_inicio')
       .then(todas => {
-        const mapa = new Map();
+        const mapa   = new Map(); // cad_id → [iniciativas]
+        const idMapa = new Map(); // id     → iniciativa
         todas.forEach(ini => {
+          idMapa.set(String(ini.id), ini);
           (ini.autores_dep ?? []).forEach(a => {
             const cid = a.idCadastro ? String(a.idCadastro) : null;
             if (!cid) return;
@@ -98,6 +101,7 @@ export const ParlamentoProvider = ({ children }) => {
           });
         });
         setIniciativasMapa(mapa);
+        setIniciativasIdMapa(idMapa);
         setIniciativasProntas(true);
       });
 
@@ -248,6 +252,7 @@ export const ParlamentoProvider = ({ children }) => {
     perfisMapa,
     intervencoesMapa,
     iniciativasMapa,
+    iniciativasIdMapa,
     biografiasMapa,
     presencasMapa,
     tudoCarregado: !carregando && perfisProntos && intervencoesProntas && iniciativasProntas && biografiasProntas && presencasProntas && cena3DPronta,
@@ -276,6 +281,7 @@ export const ParlamentoProvider = ({ children }) => {
     perfisMapa,
     intervencoesMapa,
     iniciativasMapa,
+    iniciativasIdMapa,
     biografiasMapa,
     presencasMapa,
     perfisProntos,
