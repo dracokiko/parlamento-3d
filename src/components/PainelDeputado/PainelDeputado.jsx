@@ -140,12 +140,10 @@ const CartaoIntervencao = ({ iv, texto, carregandoTextos, expandido, onToggle, i
           )}
         </div>
 
-        {/* Assunto */}
-        {iv.assunto && (
-          <p className="text-xs font-semibold text-gray-700 mb-1.5 leading-snug">
-            {iv.assunto}
-          </p>
-        )}
+        {/* Assunto — sempre visível, com fallback */}
+        <p className="text-xs font-semibold text-gray-700 mb-1.5 leading-snug">
+          {iv.assunto ?? 'Intervenção parlamentar'}
+        </p>
 
         {/* Iniciativa associada */}
         {iniciativa && (
@@ -170,8 +168,6 @@ const CartaoIntervencao = ({ iv, texto, carregandoTextos, expandido, onToggle, i
           <p className={`text-xs text-gray-500 leading-relaxed ${expandido ? 'whitespace-pre-wrap' : 'line-clamp-2'}`}>
             {expandido ? texto : snippet}
           </p>
-        ) : texto === '' ? (
-          <p className="text-xs text-gray-400 italic">Sem texto indexado</p>
         ) : null}
 
         {/* Footer */}
@@ -205,20 +201,27 @@ const SecaoIntervencoes = ({ intervencoes, carregando, corPartido, onVerIniciati
   const [expandido, setExpandido]       = useState(null);
   const [mostrarTodas, setMostrarTodas] = useState(false);
 
-  // Pré-carrega textos de todas as intervenções do deputado actual
+  // Pré-carrega textos de todas as intervenções do deputado actual.
+  // Faz chunks de 200 para não exceder o limite de tamanho de URL do PostgREST.
   useEffect(() => {
     if (!intervencoes.length) return;
     setTextos({});
     setExpandido(null);
     setLoadTx(true);
     const ids = intervencoes.map(iv => iv.id);
-    supabase.from('ar_intervencoes').select('id, texto').in('id', ids)
-      .then(({ data }) => {
-        const t = {};
+    const CHUNK = 200;
+    const chunks = [];
+    for (let i = 0; i < ids.length; i += CHUNK) chunks.push(ids.slice(i, i + CHUNK));
+    Promise.all(
+      chunks.map(chunk => supabase.from('ar_intervencoes').select('id, texto').in('id', chunk))
+    ).then(results => {
+      const t = {};
+      results.forEach(({ data }) => {
         (data ?? []).forEach(iv => { t[iv.id] = iv.texto ?? ''; });
-        setTextos(t);
-        setLoadTx(false);
       });
+      setTextos(t);
+      setLoadTx(false);
+    });
   }, [intervencoes]);
 
   if (carregando) return <p className="text-sm text-gray-400 italic">A carregar intervenções...</p>;
