@@ -224,7 +224,10 @@ export function IniciativaDetalhe() {
     if (l.darId && !darMeta[l.darId]) darMeta[l.darId] = l;
   }
 
-  // Ordenar sessões cronologicamente
+  // Número DAR para desempate quando duas sessões têm a mesma data
+  const darNrDe = id => parseInt(id?.match(/^dar_(\d+)_/)?.[1] ?? '0', 10);
+
+  // Ordenar sessões cronologicamente; desempate pelo número do DAR (sempre crescente)
   const sessoes = Object.entries(ivsParaDebate)
     .map(([debateId, ivs]) => ({
       debateId,
@@ -232,7 +235,7 @@ export function IniciativaDetalhe() {
       meta: darMeta[debateId] ?? {},
       data: darMeta[debateId]?.data ?? ivs[0]?.data_debate ?? '',
     }))
-    .sort((a, b) => a.data.localeCompare(b.data));
+    .sort((a, b) => a.data.localeCompare(b.data) || darNrDe(a.debateId) - darNrDe(b.debateId));
 
   const autoresDep = iniciativa.autores_dep ?? [];
   const autoresGP  = iniciativa.autores_gp  ?? [];

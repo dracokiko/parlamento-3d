@@ -75,6 +75,7 @@ async function construirMapa() {
                 idCadastro:    String(dep.idCadastro),
                 iniciativa_id: String(ini.id),
                 fase:          evt.Fase ?? null,
+                paginaInicio:  parsed.paginaInicio ?? null,
               });
               totalEntradas++;
             }
@@ -91,8 +92,17 @@ async function construirMapa() {
   return { mapa, totalEntradas };
 }
 
-export async function linkIntervencoesIniciativas() {
+// Extrai o índice numérico do sufixo do id da intervenção (ordem real na sessão).
+function ordemNaSessao(iv) {
+  return parseInt(iv.id.slice(iv.id.lastIndexOf('_') + 1), 10) || 0;
+}
+
+export async function linkIntervencoesIniciativas(opts = {}) {
+  // --force relinka intervenções já ligadas (útil para corrigir dados históricos)
+  const force = opts.force ?? process.argv.includes('--force');
+
   console.log('\n  [LINK] A ligar intervenções → iniciativas (via Intervencoesdebates)...');
+  if (force) console.log('  [LINK] Modo --force: a religar todas as intervenções');
 
   const { mapa, totalEntradas } = await construirMapa();
   console.log(`\n  [LINK] Mapa construído: ${mapa.size} debates, ${totalEntradas} entradas`);
@@ -105,12 +115,12 @@ export async function linkIntervencoesIniciativas() {
   let ligadas = 0, semMatch = 0, erros = 0;
 
   for (const [darId, entradas] of mapa) {
-    // Buscar apenas as intervenções ainda não ligadas para este debate
-    const { data: ivs, error } = await db
+    let q = db
       .from('ar_intervencoes')
       .select('id, nome_dep')
-      .eq('debate_id', darId)
-      .is('iniciativa_id', null);
+      .eq('debate_id', darId);
+    if (!force) q = q.is('iniciativa_id', null);
+    const { data: ivs, error } = await q;
 
     if (error) {
       console.warn(`  ⚠ Erro ao buscar intervenções de ${darId}: ${error.message}`);
@@ -119,10 +129,29 @@ export async function linkIntervencoesIniciativas() {
     }
     if (!ivs?.length) continue;
 
-    // Associar cada intervenção à primeira entrada com nome correspondente
+    // Ordenar intervenções pela ordem real de intervenção na sessão (_i suffix)
+    const ivsOrdenados = [...ivs].sort((a, b) => ordemNaSessao(a) - ordemNaSessao(b));
+
+    // Ordenar entradas estruturadas pela página do DAR onde cada orador falou.
+    // Isto garante que, quando o mesmo deputado fala N vezes na mesma sessão
+    // (para iniciativas diferentes), o k-ésimo match corresponde ao k-ésimo orador.
+    const entradasOrdenadas = [...entradas].sort((a, b) => {
+      if (a.paginaInicio == null && b.paginaInicio == null) return 0;
+      if (a.paginaInicio == null) return 1;
+      if (b.paginaInicio == null) return -1;
+      return a.paginaInicio - b.paginaInicio;
+    });
+
+    // K-ésima ocorrência: rastreia quantas vezes cada nome já foi associado
+    const contadorNome = {};
     const updates = [];
-    for (const iv of ivs) {
-      const entrada = entradas.find(e => nomeMatch(iv.nome_dep, e.nome));
+    for (const iv of ivsOrdenados) {
+      const norm = (iv.nome_dep ?? '').toLowerCase()
+        .normalize('NFD').replace(/[̀-ͯ]/g, '').trim();
+      const matches = entradasOrdenadas.filter(e => nomeMatch(iv.nome_dep, e.nome));
+      const k = contadorNome[norm] ?? 0;
+      contadorNome[norm] = k + 1;
+      const entrada = matches[k];
       if (entrada) {
         updates.push({
           id:            iv.id,
