@@ -145,17 +145,18 @@ const CartaoIntervencao = ({ iv, texto, carregandoTextos, expandido, onToggle, i
           {iv.assunto ?? 'Intervenção parlamentar'}
         </p>
 
-        {/* Iniciativa associada */}
-        {iniciativa && (
-          <button
-            onClick={e => { e.stopPropagation(); onVerIniciativa(iniciativa); }}
+        {/* Iniciativa associada — navega para a página completa */}
+        {iv.iniciativa_id && iniciativa && (
+          <Link
+            to={`/iniciativas/${iv.iniciativa_id}`}
+            onClick={e => e.stopPropagation()}
             className="flex items-start gap-1 mb-1.5 text-left group/ini w-full"
           >
             <FileText size={10} className="text-blue-400 mt-0.5 flex-shrink-0 group-hover/ini:text-blue-600" />
             <span className="text-[10px] text-blue-500 group-hover/ini:text-blue-700 leading-snug line-clamp-2 transition-colors">
               {iniciativa.desc_tipo ? `${iniciativa.desc_tipo} · ` : ''}{iniciativa.titulo}
             </span>
-          </button>
+          </Link>
         )}
 
         {/* Snippet / texto completo / loading skeleton */}

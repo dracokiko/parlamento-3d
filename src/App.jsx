@@ -15,6 +15,7 @@ import { DiretivasUE } from './pages/DiretivasUE';
 import { DiretivaDetalhe } from './pages/DiretivaDetalhe';
 import { Votacoes } from './pages/Votacoes';
 import { VotacaoDetalhe } from './pages/VotacaoDetalhe';
+import { IniciativaDetalhe } from './pages/IniciativaDetalhe';
 import { Sobre } from './pages/Sobre';
 import { Presencas } from './pages/Presencas';
 import { Sincronizacoes } from './pages/Sincronizacoes';
@@ -270,6 +271,7 @@ function AppInner() {
           <Route path="/diretivas-eu/:celex" element={<DiretivaDetalhe />} />
           <Route path="/votacoes"            element={<Votacoes />} />
           <Route path="/votacoes/:id"        element={<VotacaoDetalhe />} />
+          <Route path="/iniciativas/:id"     element={<IniciativaDetalhe />} />
           <Route path="/sobre"               element={<Sobre />} />
           <Route path="/presencas"           element={<Presencas />} />
           <Route path="/sincronizacoes"      element={<Sincronizacoes />} />
