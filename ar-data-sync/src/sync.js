@@ -9,6 +9,7 @@ import { syncVotacoes } from './votacoesSync.js';
 import { syncDarLinks } from './linkDarIniciativas.js';
 import { crawlerPresencas } from './presencasCrawler.js';
 import { crawlerBiografias } from './biografiasCrawler.js';
+import { linkIntervencoesIniciativas } from './linkIntervencoesIni.js';
 
 const MAX_AMOSTRAS = 500;
 
@@ -172,13 +173,26 @@ async function main() {
     sucesso: true, total: aiTotal, inseridos: aiInseridos, atualizados: 0, erros: aiErros, detalhes: [],
   });
 
-  // Intervenções
+  // Intervenções (indexação a partir do texto PDF)
   let rInt = null;
   try { rInt = await indexarIntervencoes(); }
   catch (err) { console.warn(`\n  ⚠ indexarIntervencoes falhou (${err.message})`); }
   await registarLog('intervencoes', {
     sucesso: rInt !== null, total: rInt?.total ?? 0, inseridos: rInt?.inseridos ?? 0,
     atualizados: 0, erros: rInt?.erros ?? (rInt === null ? 1 : 0), detalhes: [],
+  });
+
+  // Ligação intervenções → iniciativas (via Intervencoesdebates estruturado)
+  let rIntLink = null;
+  try { rIntLink = await linkIntervencoesIniciativas(); }
+  catch (err) { console.warn(`\n  ⚠ linkIntervencoesIniciativas falhou (${err.message})`); }
+  await registarLog('intervencoes_links', {
+    sucesso:     rIntLink !== null,
+    total:       rIntLink?.total     ?? 0,
+    inseridos:   rIntLink?.inseridos ?? 0,
+    atualizados: 0,
+    erros:       rIntLink === null ? 1 : (rIntLink?.erros ?? 0),
+    detalhes:    [],
   });
 
   // Votações (extracção + resumos IA) + deputados divergentes + dar_links
