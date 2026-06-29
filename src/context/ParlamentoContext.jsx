@@ -72,8 +72,8 @@ export const ParlamentoProvider = ({ children }) => {
         setPerfisProntos(true);
       });
 
-    // Intervenções (sem texto — carregado lazily ao expandir)
-    paginar('ar_intervencoes', 'id, debate_id, nome_dep, partido, data_debate, assunto, url_diario, num_palavras', 'data_debate')
+    // Intervenções (sem texto — carregado em batch ao abrir painel do deputado)
+    paginar('ar_intervencoes', 'id, debate_id, nome_dep, partido, data_debate, assunto, url_diario, num_palavras, fase_debate', 'data_debate')
       .then(todas => {
         const mapa = new Map();
         todas.forEach(iv => {

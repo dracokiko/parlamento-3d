@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { X, MapPin, FileText, Mic, ExternalLink, BookUser, CalendarCheck, AlertTriangle, BookOpen } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
@@ -91,48 +91,141 @@ const SecaoDebates = ({ debates, carregando, onClickDebate }) => {
 };
 
 const MIN_PALAVRAS = 40;
+const SNIPPET_LEN  = 180;
 
-// Extrai a data de publicação do url_diario (dia em que saiu no DAR, pode diferir
-// da data_debate quando o debate foi na véspera da publicação).
-// Fallback para data_debate se o URL não tiver data reconhecível.
+const MES_NOME = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
+                  'Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+
 const dataPublicacao = (iv) => {
   const m = (iv.url_diario ?? '').match(/\/(\d{4}-\d{2}-\d{2})/);
   return m ? m[1] : (iv.data_debate ?? 'Sem data');
 };
 
-// URL da página HTML do artigo: remove os query params ?pgs=...&org=... que
-// forçam o download do PDF. Sem eles, o site da AR abre a vista web.
 const urlPaginaAR = (url) => url ? url.split('?')[0] : null;
 
+const mesAnoKey   = (iv) => dataPublicacao(iv).slice(0, 7);  // YYYY-MM (sortable)
+const mesAnoLabel = (iv) => {
+  const d = dataPublicacao(iv);
+  if (d === 'Sem data') return 'Sem data';
+  const [y, mo] = d.split('-');
+  return `${MES_NOME[parseInt(mo, 10) - 1]} ${y}`;
+};
+
+const CartaoIntervencao = ({ iv, texto, carregandoTextos, expandido, onToggle }) => {
+  const temTexto    = typeof texto === 'string' && texto.length > 0;
+  const podeExpandir = temTexto && texto.length > SNIPPET_LEN;
+  const snippet      = temTexto
+    ? texto.trim().slice(0, SNIPPET_LEN) + (podeExpandir ? '…' : '')
+    : null;
+
+  return (
+    <div className={`border rounded-xl overflow-hidden transition-all duration-150 ${
+      expandido ? 'border-gray-300 shadow-sm' : 'border-gray-100 hover:border-gray-200'
+    }`}>
+      <button
+        onClick={onToggle}
+        className="w-full text-left p-3 hover:bg-gray-50 transition-colors"
+      >
+        {/* Badges */}
+        <div className="flex items-center gap-1.5 mb-1.5 flex-wrap">
+          {iv.fase_debate && (
+            <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-violet-50 text-violet-600 border border-violet-100">
+              {iv.fase_debate}
+            </span>
+          )}
+          {iv.num_palavras != null && iv.num_palavras >= MIN_PALAVRAS && (
+            <span className="text-[10px] text-gray-400">{iv.num_palavras} palavras</span>
+          )}
+          {iv.num_palavras != null && iv.num_palavras < MIN_PALAVRAS && (
+            <span className="text-[10px] text-gray-400 bg-gray-50 rounded-full px-2 py-0.5 border border-gray-100">
+              🗯️ interjeição
+            </span>
+          )}
+        </div>
+
+        {/* Assunto */}
+        {iv.assunto && (
+          <p className="text-xs font-semibold text-gray-700 mb-1.5 leading-snug">
+            {iv.assunto}
+          </p>
+        )}
+
+        {/* Snippet / texto completo / loading skeleton */}
+        {carregandoTextos ? (
+          <div className="space-y-1.5 mt-1">
+            <div className="h-2.5 bg-gray-100 rounded animate-pulse w-full" />
+            <div className="h-2.5 bg-gray-100 rounded animate-pulse w-4/5" />
+          </div>
+        ) : temTexto ? (
+          <p className={`text-xs text-gray-500 leading-relaxed ${expandido ? 'whitespace-pre-wrap' : 'line-clamp-2'}`}>
+            {expandido ? texto : snippet}
+          </p>
+        ) : texto === '' ? (
+          <p className="text-xs text-gray-400 italic">Sem texto indexado</p>
+        ) : null}
+
+        {/* Footer */}
+        <div className="flex items-center justify-between mt-2">
+          {iv.url_diario ? (
+            <a
+              href={urlPaginaAR(iv.url_diario)}
+              target="_blank"
+              rel="noreferrer"
+              onClick={e => e.stopPropagation()}
+              className="inline-flex items-center gap-1 text-[10px] text-blue-400 hover:text-blue-600 transition-colors"
+            >
+              <ExternalLink size={9} />
+              Ver no DAR
+            </a>
+          ) : <span />}
+          {podeExpandir && (
+            <span className="text-[10px] text-gray-300">
+              {expandido ? '▲ ver menos' : '▼ ver mais'}
+            </span>
+          )}
+        </div>
+      </button>
+    </div>
+  );
+};
+
 const SecaoIntervencoes = ({ intervencoes, carregando, corPartido }) => {
-  const [expandido, setExpandido]       = useState(null);
   const [textos, setTextos]             = useState({});
+  const [carregandoTextos, setLoadTx]   = useState(false);
+  const [expandido, setExpandido]       = useState(null);
   const [mostrarTodas, setMostrarTodas] = useState(false);
 
-  const expandir = async (id) => {
-    if (expandido === id) { setExpandido(null); return; }
-    setExpandido(id);
-    if (textos[id] !== undefined) return;
-    setTextos(t => ({ ...t, [id]: null }));
-    const { data } = await supabase.from('ar_intervencoes').select('texto').eq('id', id).single();
-    setTextos(t => ({ ...t, [id]: data?.texto ?? '' }));
-  };
+  // Pré-carrega textos de todas as intervenções do deputado actual
+  useEffect(() => {
+    if (!intervencoes.length) return;
+    setTextos({});
+    setExpandido(null);
+    setLoadTx(true);
+    const ids = intervencoes.map(iv => iv.id);
+    supabase.from('ar_intervencoes').select('id, texto').in('id', ids)
+      .then(({ data }) => {
+        const t = {};
+        (data ?? []).forEach(iv => { t[iv.id] = iv.texto ?? ''; });
+        setTextos(t);
+        setLoadTx(false);
+      });
+  }, [intervencoes]);
 
   if (carregando) return <p className="text-sm text-gray-400 italic">A carregar intervenções...</p>;
-  if (!intervencoes.length) return <p className="text-sm text-gray-400 italic">Sem intervenções indexadas. Corre o sync para as obter.</p>;
+  if (!intervencoes.length) return <p className="text-sm text-gray-400 italic">Sem intervenções indexadas.</p>;
 
-  const lista = mostrarTodas
-    ? intervencoes
-    : intervencoes.filter(iv => (iv.num_palavras ?? MIN_PALAVRAS) >= MIN_PALAVRAS);
-
+  const lista     = mostrarTodas ? intervencoes : intervencoes.filter(iv => (iv.num_palavras ?? MIN_PALAVRAS) >= MIN_PALAVRAS);
   const filtradas = intervencoes.length - lista.length;
 
-  const porDia = lista.reduce((acc, iv) => {
-    const dia = dataPublicacao(iv);
-    (acc[dia] ??= []).push(iv);
-    return acc;
-  }, {});
-  const dias = Object.keys(porDia).sort((a, b) => b.localeCompare(a));
+  // Agrupar por mês
+  const grupos = {};
+  for (const iv of lista) {
+    const key   = mesAnoKey(iv) || '0000-00';
+    const label = mesAnoLabel(iv);
+    if (!grupos[key]) grupos[key] = { label, items: [] };
+    grupos[key].items.push(iv);
+  }
+  const meses = Object.entries(grupos).sort(([a], [b]) => b.localeCompare(a));
 
   return (
     <div className="space-y-4">
@@ -153,58 +246,23 @@ const SecaoIntervencoes = ({ intervencoes, carregando, corPartido }) => {
           {mostrarTodas ? 'Ocultar interjeições' : 'Ver todas'}
         </button>
       </div>
-      {dias.map(dia => (
-        <div key={dia}>
+
+      {meses.map(([key, { label, items }]) => (
+        <div key={key}>
           <p className="text-xs font-semibold uppercase tracking-wider mb-2 sticky top-0 bg-white py-1"
              style={{ color: corPartido ?? '#9ca3af' }}>
-            {dia === 'Sem data' ? dia : dia.split('-').reverse().join('-')}
+            {label}
           </p>
-          <div className="space-y-1.5">
-            {porDia[dia].map(iv => (
-              <div key={iv.id} className="border border-gray-100 rounded-xl overflow-hidden">
-                <button
-                  onClick={() => expandir(iv.id)}
-                  className="w-full text-left p-3 hover:bg-gray-50 transition-colors"
-                >
-                  <div className="flex items-center justify-between gap-2">
-                    <p className="text-xs text-gray-500 truncate flex-1 italic">
-                      {iv.assunto ?? 'Intervenção parlamentar'}
-                    </p>
-                    <div className="flex items-center gap-1.5 flex-shrink-0">
-                      {iv.num_palavras != null && iv.num_palavras < MIN_PALAVRAS && (
-                        <span className="text-[10px] text-gray-400 bg-gray-100 rounded px-1.5 py-0.5 leading-none">
-                          🗯️ interjeição
-                        </span>
-                      )}
-                      <span className="text-xs text-gray-300">{expandido === iv.id ? '▲' : '▼'}</span>
-                    </div>
-                  </div>
-                </button>
-
-                {expandido === iv.id && (
-                  <div className="px-3 pb-3 border-t border-gray-50">
-                    {textos[iv.id] === undefined && (
-                      <p className="text-xs text-gray-400 italic mt-2">A carregar...</p>
-                    )}
-                    {textos[iv.id] !== undefined && (
-                      <p className="text-xs text-gray-700 leading-relaxed whitespace-pre-wrap mt-2 max-h-64 overflow-y-auto">
-                        {textos[iv.id] || '—'}
-                      </p>
-                    )}
-                    {iv.url_diario && (
-                      <a
-                        href={urlPaginaAR(iv.url_diario)}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="inline-flex items-center gap-1 text-xs text-blue-500 hover:text-blue-700 mt-2"
-                      >
-                        <ExternalLink size={10} />
-                        Ver no site da AR
-                      </a>
-                    )}
-                  </div>
-                )}
-              </div>
+          <div className="space-y-2">
+            {items.map(iv => (
+              <CartaoIntervencao
+                key={iv.id}
+                iv={iv}
+                texto={textos[iv.id]}
+                carregandoTextos={carregandoTextos}
+                expandido={expandido === iv.id}
+                onToggle={() => setExpandido(p => p === iv.id ? null : iv.id)}
+              />
             ))}
           </div>
         </div>
