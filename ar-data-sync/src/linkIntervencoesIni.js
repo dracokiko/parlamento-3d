@@ -16,6 +16,7 @@
 import 'dotenv/config';
 import { createClient } from '@supabase/supabase-js';
 import { parsearUrlDar } from './linkDarIniciativas.js';
+import { indexarPaginasTranscricao } from './interventionParser.js';
 
 const db = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
 const PAGE = 500;
@@ -114,6 +115,36 @@ export async function linkIntervencoesIniciativas(opts = {}) {
 
   let ligadas = 0, semMatch = 0, erros = 0;
 
+  // Pré-carregar as transcrições em batch para poder mapear _i → página.
+  // Essencial para distinguir intervenções do mesmo deputado em tópicos diferentes
+  // da mesma sessão DAR (ex: interjeição na pág 8 vs discurso principal na pág 24).
+  const darIds = [...mapa.keys()];
+
+  // Em modo force: limpar todos os links existentes antes de re-ligar do zero.
+  // Sem esta limpeza, links antigos errados persistem mesmo após o re-link.
+  if (force) {
+    console.log('  [LINK] A limpar links existentes...');
+    const BATCH_CLR = 50;
+    for (let i = 0; i < darIds.length; i += BATCH_CLR) {
+      await db.from('ar_intervencoes')
+        .update({ iniciativa_id: null, id_cadastro: null, fase_debate: null })
+        .in('debate_id', darIds.slice(i, i + BATCH_CLR));
+    }
+    console.log('  [LINK] Links limpos.');
+  }
+  const transcricoesMapa = new Map();
+  const BATCH_TX = 50;
+  for (let i = 0; i < darIds.length; i += BATCH_TX) {
+    const { data: txRows } = await db
+      .from('ar_debates')
+      .select('id, transcricao')
+      .in('id', darIds.slice(i, i + BATCH_TX));
+    for (const r of txRows ?? []) {
+      if (r.transcricao) transcricoesMapa.set(r.id, r.transcricao);
+    }
+  }
+  console.log(`\n  [LINK] Transcrições carregadas: ${transcricoesMapa.size}/${darIds.length}`);
+
   for (const [darId, entradas] of mapa) {
     let q = db
       .from('ar_intervencoes')
@@ -129,12 +160,20 @@ export async function linkIntervencoesIniciativas(opts = {}) {
     }
     if (!ivs?.length) continue;
 
-    // Ordenar intervenções pela ordem real de intervenção na sessão (_i suffix)
+    // Ordenar intervenções pela ordem real da sessão (_i suffix no id)
     const ivsOrdenados = [...ivs].sort((a, b) => ordemNaSessao(a) - ordemNaSessao(b));
 
-    // Ordenar entradas estruturadas pela página do DAR onde cada orador falou.
-    // Isto garante que, quando o mesmo deputado fala N vezes na mesma sessão
-    // (para iniciativas diferentes), o k-ésimo match corresponde ao k-ésimo orador.
+    // Mapa _i → página (construído a partir da transcrição)
+    const paginaPorI = transcricoesMapa.has(darId)
+      ? indexarPaginasTranscricao(transcricoesMapa.get(darId))
+      : new Map();
+
+    const paginaDeIv = iv => paginaPorI.get(ordemNaSessao(iv)) ?? null;
+
+    const usados = new Set();
+    const updates = [];
+
+    // Ordenar entradas pela página onde o orador falou sobre a sua iniciativa
     const entradasOrdenadas = [...entradas].sort((a, b) => {
       if (a.paginaInicio == null && b.paginaInicio == null) return 0;
       if (a.paginaInicio == null) return 1;
@@ -142,26 +181,36 @@ export async function linkIntervencoesIniciativas(opts = {}) {
       return a.paginaInicio - b.paginaInicio;
     });
 
-    // K-ésima ocorrência: rastreia quantas vezes cada nome já foi associado
-    const contadorNome = {};
-    const updates = [];
-    for (const iv of ivsOrdenados) {
-      const norm = (iv.nome_dep ?? '').toLowerCase()
-        .normalize('NFD').replace(/[̀-ͯ]/g, '').trim();
-      const matches = entradasOrdenadas.filter(e => nomeMatch(iv.nome_dep, e.nome));
-      const k = contadorNome[norm] ?? 0;
-      contadorNome[norm] = k + 1;
-      const entrada = matches[k];
-      if (entrada) {
-        updates.push({
-          id:            iv.id,
-          iniciativa_id: entrada.iniciativa_id,
-          id_cadastro:   entrada.idCadastro,
-          fase_debate:   entrada.fase,
-        });
+    for (const entrada of entradasOrdenadas) {
+      // Candidatos: intervenções do mesmo deputado ainda não associadas
+      const candidatos = ivsOrdenados.filter(
+        iv => !usados.has(iv.id) && nomeMatch(iv.nome_dep, entrada.nome)
+      );
+      if (!candidatos.length) { semMatch++; continue; }
+
+      let escolhido;
+      if (entrada.paginaInicio != null && paginaPorI.size > 0) {
+        // Escolher a intervenção cuja página está mais próxima da página do orador.
+        // Isto evita associar interjeições de outros tópicos (pág. 8) ao discurso
+        // principal desta iniciativa (pág. 24).
+        const comDiff = candidatos.map(iv => ({
+          iv,
+          diff: Math.abs((paginaDeIv(iv) ?? entrada.paginaInicio) - entrada.paginaInicio),
+        }));
+        comDiff.sort((a, b) => a.diff - b.diff);
+        escolhido = comDiff[0].iv;
       } else {
-        semMatch++;
+        // Fallback sem página: primeiro candidato na ordem da sessão
+        escolhido = candidatos[0];
       }
+
+      usados.add(escolhido.id);
+      updates.push({
+        id:            escolhido.id,
+        iniciativa_id: entrada.iniciativa_id,
+        id_cadastro:   entrada.idCadastro,
+        fase_debate:   entrada.fase,
+      });
     }
 
     if (!updates.length) continue;

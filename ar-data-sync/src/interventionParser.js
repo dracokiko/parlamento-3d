@@ -39,6 +39,49 @@ const RE_INLINE_ORADOR = new RegExp(
 );
 
 /**
+ * Constrói um Map de índice de intervenção (_i) para número de página aproximado.
+ * Os números de página aparecem como \n{N}\n no texto extraído do DAR.
+ *
+ * @param {string} transcricao
+ * @returns {Map<number, number>}  _i → pagina
+ */
+export function indexarPaginasTranscricao(transcricao) {
+  if (!transcricao) return new Map();
+
+  // Marcadores de página: \n{1-3 dígitos}\n
+  const pageMarkers = [];
+  for (const m of transcricao.matchAll(/\n(\d{1,3})\n/g)) {
+    pageMarkers.push({ pg: parseInt(m[1], 10), idx: m.index });
+  }
+  const paginaEm = pos => {
+    let pg = 1;
+    for (const { pg: p, idx } of pageMarkers) {
+      if (idx > pos) break;
+      pg = p;
+    }
+    return pg;
+  };
+
+  // Posições de todos os oradores (mesmo os sem sigla de GP)
+  const todos = [];
+  RE_QUALQUER.lastIndex = 0;
+  let m;
+  while ((m = RE_QUALQUER.exec(transcricao)) !== null) todos.push(m.index);
+  todos.push(transcricao.length);
+
+  const paginaPorI = new Map();
+  let di = 0; // índice entre os deputados (= sufixo _i no id)
+  for (let i = 0; i < todos.length - 1; i++) {
+    const fatia = transcricao.slice(todos[i], todos[i + 1]);
+    RE_DEPUTADO.lastIndex = 0;
+    if (!RE_DEPUTADO.exec(fatia)) continue;
+    paginaPorI.set(di, paginaEm(todos[i]));
+    di++;
+  }
+  return paginaPorI;
+}
+
+/**
  * Dado o texto completo de uma transcrição do DAR, devolve todas as intervenções
  * de deputados (com sigla de GP).
  *
