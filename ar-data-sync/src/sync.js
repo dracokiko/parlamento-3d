@@ -10,6 +10,7 @@ import { syncDarLinks } from './linkDarIniciativas.js';
 import { crawlerPresencas } from './presencasCrawler.js';
 import { crawlerBiografias } from './biografiasCrawler.js';
 import { linkIntervencoesIniciativas } from './linkIntervencoesIni.js';
+import { linkIntervencoesViaDarLinks } from './linkIntervencoesDAR.js';
 
 const MAX_AMOSTRAS = 500;
 
@@ -192,6 +193,20 @@ async function main() {
     inseridos:   rIntLink?.inseridos ?? 0,
     atualizados: 0,
     erros:       rIntLink === null ? 1 : (rIntLink?.erros ?? 0),
+    detalhes:    [],
+  });
+
+  // Ligação complementar via dar_links + intervalos de página (cobre sessões recentes
+  // onde Intervencoesdebates ainda não foi populado pelo API da AR)
+  let rIntLinkDar = null;
+  try { rIntLinkDar = await linkIntervencoesViaDarLinks(); }
+  catch (err) { console.warn(`\n  ⚠ linkIntervencoesViaDarLinks falhou (${err.message})`); }
+  await registarLog('intervencoes_links_dar', {
+    sucesso:     rIntLinkDar !== null,
+    total:       rIntLinkDar?.total     ?? 0,
+    inseridos:   rIntLinkDar?.inseridos ?? 0,
+    atualizados: 0,
+    erros:       rIntLinkDar === null ? 1 : (rIntLinkDar?.erros ?? 0),
     detalhes:    [],
   });
 

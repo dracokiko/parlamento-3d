@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import {
   ArrowLeft, Sparkles, Users, Calendar, GitBranch,
-  Vote, ExternalLink, Mic, ChevronDown, ChevronUp,
+  Vote, ExternalLink, Mic,
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { partidos as PARTIDOS } from '../data/mockPartidos';
@@ -60,127 +60,30 @@ const corResultado = r => {
   return 'yellow';
 };
 
-const PREVIEW_LEN = 400;
-
-function CartaoIntervencao({ iv }) {
-  const [expandido, setExpandido] = useState(false);
-  const texto     = iv.texto ?? '';
-  const longo     = texto.length > PREVIEW_LEN;
-  const info      = GP_INFO[iv.partido?.trim()];
-  const corP      = info?.cor ?? '#9ca3af';
-
-  return (
-    <div className="bg-white rounded-xl border border-gray-100 p-4 space-y-2">
-      <div className="flex items-center gap-2 flex-wrap">
-        <span className="text-sm font-semibold text-gray-900">{iv.nome_dep}</span>
-        {iv.partido && (
-          <span className="text-[10px] font-bold rounded px-1.5 py-0.5"
-            style={{ backgroundColor: corP + '22', color: corP, border: `1px solid ${corP}55` }}>
-            {iv.partido}
-          </span>
-        )}
-      </div>
-      {texto ? (
-        <>
-          <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-wrap">
-            {expandido ? texto : texto.slice(0, PREVIEW_LEN) + (longo ? '…' : '')}
-          </p>
-          {longo && (
-            <button
-              onClick={() => setExpandido(v => !v)}
-              className="flex items-center gap-1 text-xs text-blue-500 hover:text-blue-700 transition-colors mt-1"
-            >
-              {expandido ? <><ChevronUp size={12} /> ver menos</> : <><ChevronDown size={12} /> ver mais</>}
-            </button>
-          )}
-        </>
-      ) : (
-        <p className="text-sm text-gray-400 italic">Sem transcrição disponível.</p>
-      )}
-    </div>
-  );
-}
-
-function SessaoDebate({ sessao, intervencoes }) {
-  const [aberto, setAberto] = useState(true);
-
-  return (
-    <div className="space-y-3">
-      <button
-        onClick={() => setAberto(v => !v)}
-        className="flex items-center gap-3 w-full text-left group"
-      >
-        <div className="flex-1 border-t border-gray-200" />
-        <div className="flex items-center gap-2 flex-shrink-0 bg-gray-50 border border-gray-200 rounded-full px-3 py-1.5 group-hover:bg-gray-100 transition-colors">
-          {sessao.fase && (
-            <span className="text-xs font-semibold text-gray-700">{sessao.fase}</span>
-          )}
-          {sessao.data && (
-            <span className="text-xs text-gray-400">
-              {new Date(sessao.data).toLocaleDateString('pt-PT', { day: '2-digit', month: 'short', year: 'numeric' })}
-            </span>
-          )}
-          {sessao.darNr && (
-            <span className="text-xs text-gray-400">DAR nº {parseInt(sessao.darNr, 10)}</span>
-          )}
-          <div className="flex items-center gap-1 text-indigo-600">
-            <Mic size={10} />
-            <span className="text-xs font-medium">{intervencoes.length}</span>
-          </div>
-          {aberto ? <ChevronUp size={13} className="text-gray-400" /> : <ChevronDown size={13} className="text-gray-400" />}
-        </div>
-        <div className="flex-1 border-t border-gray-200" />
-      </button>
-
-      {aberto && (
-        <>
-          {sessao.url && (
-            <a
-              href={sessao.url}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex items-center gap-1 text-xs text-blue-500 hover:text-blue-700 ml-1"
-            >
-              <ExternalLink size={10} /> Ver sessão no DAR
-            </a>
-          )}
-          <div className="space-y-3">
-            {intervencoes.map(iv => <CartaoIntervencao key={iv.id} iv={iv} />)}
-          </div>
-        </>
-      )}
-    </div>
-  );
-}
+// Extrai darId de uma URL do DAR: .../r3/dar/01/17/01/066/2026-03-13/... → dar_066_2026-03-13
+const extractDarId = url => {
+  const m = url?.match(/\/(\d{3})\/(\d{4}-\d{2}-\d{2})\//);
+  return m ? `dar_${m[1]}_${m[2]}` : null;
+};
 
 export function IniciativaDetalhe() {
   const { id }     = useParams();
   const navigate   = useNavigate();
-  const [iniciativa,   setIniciativa]   = useState(null);
-  const [votacoes,     setVotacoes]     = useState([]);
-  const [intervencoes, setIntervencoes] = useState([]);
-  const [darLinks,     setDarLinks]     = useState([]);
-  const [eventos,      setEventos]      = useState([]);
-  const [carregando,   setCarregando]   = useState(true);
+  const [iniciativa, setIniciativa] = useState(null);
+  const [votacoes,   setVotacoes]   = useState([]);
+  const [carregando, setCarregando] = useState(true);
 
   useEffect(() => {
     async function carregar() {
-      const [{ data: ini }, { data: vots }, { data: ivs }] = await Promise.all([
+      const [{ data: ini }, { data: vots }] = await Promise.all([
         supabase.from('ar_iniciativas').select('*').eq('id', id).single(),
         supabase.from('ar_votacoes')
           .select('id, fase, data_votacao, resultado, unanime, reuniao, detalhe_gp, publicacao, resumo_ia')
           .eq('iniciativa_id', id)
           .order('data_votacao', { ascending: true }),
-        supabase.from('ar_intervencoes')
-          .select('id, debate_id, nome_dep, partido, texto, data_debate, num_palavras')
-          .eq('iniciativa_id', id)
-          .order('data_debate', { ascending: true }),
       ]);
       setIniciativa(ini ?? null);
       setVotacoes(vots ?? []);
-      setIntervencoes(ivs ?? []);
-      setDarLinks(ini?.dar_links ?? []);
-      setEventos(ini?.eventos ?? []);
       setCarregando(false);
     }
     carregar();
@@ -203,39 +106,28 @@ export function IniciativaDetalhe() {
     );
   }
 
-  // Ordem real de intervenção dentro da sessão: vem do sufixo numérico do id
-  // (formato `${debate_id}_${i}`, atribuído pela ordem de leitura do PDF do DAR).
-  // data_debate é igual para todas as intervenções da mesma sessão, por isso
-  // não serve para ordenar dentro da sessão.
-  const ordemNaSessao = iv => parseInt(iv.id.slice(iv.id.lastIndexOf('_') + 1), 10) || 0;
+  const darLinks = iniciativa.dar_links ?? [];
+  const eventos  = iniciativa.eventos   ?? [];
 
-  // Agrupar intervenções por sessão DAR, ordenadas pela ordem real de oradores
-  const ivsParaDebate = intervencoes.reduce((acc, iv) => {
-    (acc[iv.debate_id] ??= []).push(iv);
-    return acc;
-  }, {});
-  for (const ivs of Object.values(ivsParaDebate)) {
-    ivs.sort((a, b) => ordemNaSessao(a) - ordemNaSessao(b));
+  // Construir mapa darId → Set de oradores a partir dos eventos estruturados
+  const oradoresPorDarId = {};
+  for (const ev of eventos) {
+    for (const debate of ev.Intervencoesdebates ?? []) {
+      for (const orador of debate.oradores ?? []) {
+        const darId = extractDarId(orador.publicacao?.[0]?.URLDiario);
+        if (!darId) continue;
+        if (!oradoresPorDarId[darId]) oradoresPorDarId[darId] = new Map();
+        for (const dep of orador.deputadosOradores ?? []) {
+          if (dep.nome) oradoresPorDarId[darId].set(dep.nome, dep.GP ?? null);
+        }
+      }
+    }
   }
 
-  // Indexar dar_links por darId para obter metadata da sessão
-  const darMeta = {};
-  for (const l of darLinks) {
-    if (l.darId && !darMeta[l.darId]) darMeta[l.darId] = l;
-  }
-
-  // Número DAR para desempate quando duas sessões têm a mesma data
-  const darNrDe = id => parseInt(id?.match(/^dar_(\d+)_/)?.[1] ?? '0', 10);
-
-  // Ordenar sessões cronologicamente; desempate pelo número do DAR (sempre crescente)
-  const sessoes = Object.entries(ivsParaDebate)
-    .map(([debateId, ivs]) => ({
-      debateId,
-      intervencoes: ivs,
-      meta: darMeta[debateId] ?? {},
-      data: darMeta[debateId]?.data ?? ivs[0]?.data_debate ?? '',
-    }))
-    .sort((a, b) => a.data.localeCompare(b.data) || darNrDe(a.debateId) - darNrDe(b.debateId));
+  // Ordenar dar_links cronologicamente
+  const darLinksOrdenados = [...darLinks]
+    .filter(dl => dl.darId)
+    .sort((a, b) => (a.darData ?? '').localeCompare(b.darData ?? ''));
 
   const autoresDep = iniciativa.autores_dep ?? [];
   const autoresGP  = iniciativa.autores_gp  ?? [];
@@ -344,29 +236,59 @@ export function IniciativaDetalhe() {
         </div>
 
         {/* Discussão */}
-        {sessoes.length > 0 && (
-          <section className="space-y-6">
+        {darLinksOrdenados.length > 0 && (
+          <section className="space-y-3">
             <div className="flex items-center gap-2">
               <Mic size={16} className="text-gray-400" />
               <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">
-                Discussão · {intervencoes.length} intervenções
+                Debate parlamentar
               </h2>
             </div>
-            {sessoes.map(({ debateId, intervencoes: ivs, meta }) => (
-              <SessaoDebate key={debateId} sessao={meta} intervencoes={ivs} />
-            ))}
-          </section>
-        )}
-
-        {sessoes.length === 0 && darLinks.length > 0 && (
-          <section className="space-y-2">
-            <div className="flex items-center gap-2">
-              <Mic size={16} className="text-gray-400" />
-              <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Discussão</h2>
+            <div className="bg-white rounded-xl border border-gray-100 divide-y divide-gray-50">
+              {darLinksOrdenados.map((dl, i) => {
+                const oradores = oradoresPorDarId[dl.darId]
+                  ? [...oradoresPorDarId[dl.darId].entries()].map(([nome, gp]) => ({ nome, gp }))
+                  : [];
+                return (
+                  <div key={i} className="px-4 py-3 space-y-2">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {dl.fase && (
+                        <span className="text-xs font-semibold text-gray-700 inline-flex items-center gap-0.5">
+                          {dl.fase}<InfoTooltip termo={dl.fase} />
+                        </span>
+                      )}
+                      {dl.darData && (
+                        <span className="text-xs text-gray-400">
+                          {new Date(dl.darData).toLocaleDateString('pt-PT', { day: '2-digit', month: 'short', year: 'numeric' })}
+                        </span>
+                      )}
+                      {dl.darNr && (
+                        <span className="text-xs text-gray-400">DAR nº {parseInt(dl.darNr, 10)}</span>
+                      )}
+                      {dl.url && (
+                        <a href={dl.url} target="_blank" rel="noreferrer"
+                          className="ml-auto inline-flex items-center gap-1 text-xs text-blue-500 hover:text-blue-700 shrink-0">
+                          <ExternalLink size={10} /> Ver no DAR
+                        </a>
+                      )}
+                    </div>
+                    {oradores.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5">
+                        {oradores.map(({ nome, gp }) => {
+                          const cor = GP_INFO[gp?.trim()]?.cor ?? '#9ca3af';
+                          return (
+                            <span key={nome} className="text-[10px] rounded px-2 py-0.5 font-medium"
+                              style={{ backgroundColor: cor + '15', color: cor, border: `1px solid ${cor}40` }}>
+                              {nome}{gp && <span className="opacity-60 ml-1">· {gp}</span>}
+                            </span>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
-            <p className="text-sm text-gray-400 italic">
-              As transcrições desta iniciativa ainda estão a ser importadas.
-            </p>
           </section>
         )}
 
