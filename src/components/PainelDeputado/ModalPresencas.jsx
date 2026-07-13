@@ -1,4 +1,5 @@
 import { X } from 'lucide-react';
+import { useEscapeKey } from '../../hooks/useEscapeKey';
 
 const STATUS_COR = {
   P:   { bg: 'bg-green-100',  text: 'text-green-700',  label: 'P'   },
@@ -19,6 +20,7 @@ function abrevStatus(presenca) {
 }
 
 export const ModalPresencas = ({ presencas, carregando, nomeDeputado, corPartido, onFechar }) => {
+  useEscapeKey(onFechar, !!presencas || carregando);
   if (!presencas && !carregando) return null;
 
   const cor = corPartido ?? '#6b7280';
@@ -35,6 +37,9 @@ export const ModalPresencas = ({ presencas, carregando, nomeDeputado, corPartido
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
       style={{ background: 'rgba(0,0,0,0.45)' }}
       onClick={onFechar}
+      role="dialog"
+      aria-modal="true"
+      aria-label={`Presenças de ${nomeDeputado ?? 'deputado'}`}
     >
       <div
         className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[85vh] flex flex-col overflow-hidden"

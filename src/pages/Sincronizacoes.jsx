@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAdmin } from '../hooks/useAdmin';
+import { useDocumentTitle } from '../hooks/useDocumentTitle';
 
 // ── Configuração de recursos ──────────────────────────────────────────────────
 
@@ -729,6 +730,7 @@ function Dashboard({ onSair }) {
 // ── Página pública (com gate de autenticação) ─────────────────────────────────
 
 export function Sincronizacoes() {
+  useDocumentTitle('Sincronizações');
   const { loading, autenticado, entrar, sair } = useAdmin();
 
   if (loading) {

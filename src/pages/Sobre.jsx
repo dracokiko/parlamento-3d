@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { Building2, Scale, Database, AlertCircle, Mail, User } from 'lucide-react';
+import { useDocumentTitle } from '../hooks/useDocumentTitle';
 
 function Secao({ titulo, icone: Icone, children }) {
   return (
@@ -30,6 +31,7 @@ function FonteItem({ nome, url, descricao }) {
 }
 
 export function Sobre() {
+  useDocumentTitle('Sobre');
   return (
     <div className="min-h-screen bg-[#1a1a2e] text-gray-100 flex flex-col">
       {/* ── Top nav ──────────────────────────────────────── */}

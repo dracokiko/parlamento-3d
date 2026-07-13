@@ -5,6 +5,7 @@ import { supabase } from '../lib/supabase';
 import { partidos as PARTIDOS } from '../data/mockPartidos';
 import { useIsMobile } from '../hooks/useIsMobile';
 import { usePresencasDeputado } from '../hooks/usePresencasDeputado';
+import { useDocumentTitle } from '../hooks/useDocumentTitle';
 import { ModalPresencas } from '../components/PainelDeputado/ModalPresencas';
 
 const corTaxa = taxa => {
@@ -122,6 +123,7 @@ const CartaoDeputado = ({ deputado, rank, corPartido, onClick, isMobile }) => {
 };
 
 export function Presencas() {
+  useDocumentTitle('Presenças');
   const isMobile = useIsMobile();
 
   const [dados, setDados] = useState([]);

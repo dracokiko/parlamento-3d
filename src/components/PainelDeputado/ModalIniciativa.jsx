@@ -3,6 +3,7 @@ import { X, Sparkles, Users, Calendar, GitBranch, Vote, ExternalLink, BookOpen, 
 import { supabase } from '../../lib/supabase';
 import { partidos as PARTIDOS } from '../../data/mockPartidos';
 import { InfoTooltip } from '../UI/InfoTooltip';
+import { useEscapeKey } from '../../hooks/useEscapeKey';
 
 // Mapeia sigla → { cor, deputados }
 const GP_INFO = Object.fromEntries(
@@ -334,6 +335,7 @@ export const ModalIniciativa = ({ iniciativa, onFechar }) => {
     }).finally(() => setCarregando(false));
   }, [iniciativa?.id]);
 
+  useEscapeKey(onFechar, !!iniciativa);
   if (!iniciativa) return null;
 
   const autoresDep = iniciativa.autores_dep ?? [];
@@ -344,6 +346,9 @@ export const ModalIniciativa = ({ iniciativa, onFechar }) => {
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
       style={{ background: 'rgba(0,0,0,0.45)' }}
       onClick={onFechar}
+      role="dialog"
+      aria-modal="true"
+      aria-label={iniciativa.titulo ?? 'Detalhe da iniciativa'}
     >
       <div
         className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[85vh] flex flex-col overflow-hidden"

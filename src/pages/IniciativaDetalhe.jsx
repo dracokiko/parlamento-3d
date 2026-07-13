@@ -7,6 +7,7 @@ import {
 import { supabase } from '../lib/supabase';
 import { partidos as PARTIDOS } from '../data/mockPartidos';
 import { InfoTooltip } from '../components/UI/InfoTooltip';
+import { useDocumentTitle } from '../hooks/useDocumentTitle';
 
 const GP_INFO  = Object.fromEntries(Object.entries(PARTIDOS).map(([k, v]) => [k, { cor: v.cor, deps: v.deputados ?? 0 }]));
 const totalDeps = siglas => siglas.reduce((a, s) => a + (GP_INFO[s.trim()]?.deps ?? 0), 0);
@@ -73,6 +74,8 @@ export function IniciativaDetalhe() {
   const [votacoes,   setVotacoes]   = useState([]);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro]             = useState(null);
+
+  useDocumentTitle(iniciativa?.titulo ?? 'Iniciativa');
 
   useEffect(() => {
     let vivo = true;

@@ -4,6 +4,7 @@ import { ArrowLeft, CheckCircle2, XCircle, MinusCircle, ExternalLink } from 'luc
 import { supabase } from '../lib/supabase';
 import { partidos as PARTIDOS } from '../data/mockPartidos';
 import { InfoTooltip } from '../components/UI/InfoTooltip';
+import { useDocumentTitle } from '../hooks/useDocumentTitle';
 
 const GP_COR  = Object.fromEntries(Object.entries(PARTIDOS).map(([k, v]) => [k, v.cor]));
 const GP_DEPS = Object.fromEntries(Object.entries(PARTIDOS).map(([k, v]) => [k, v.deputados ?? 0]));
@@ -56,6 +57,8 @@ export function VotacaoDetalhe() {
   const [iniciativa, setIniciativa] = useState(null);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro]             = useState(null);
+
+  useDocumentTitle(iniciativa?.titulo ? `Votação · ${iniciativa.titulo}` : 'Votação');
 
   useEffect(() => {
     let vivo = true;

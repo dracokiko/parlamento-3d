@@ -8,6 +8,7 @@ import { supabase } from '../lib/supabase';
 import { partidos as PARTIDOS } from '../data/mockPartidos';
 import { InfoTooltip } from '../components/UI/InfoTooltip';
 import { useIsMobile } from '../hooks/useIsMobile';
+import { useDocumentTitle } from '../hooks/useDocumentTitle';
 import { useParlamento } from '../context/ParlamentoContext';
 
 const GP_COR  = Object.fromEntries(Object.entries(PARTIDOS).map(([k, v]) => [k, v.cor]));
@@ -650,6 +651,7 @@ const RESULTADO_FILTROS = [
 ];
 
 export function Votacoes() {
+  useDocumentTitle('Votações');
   const isMobile = useIsMobile();
   const [votacoes,      setVotacoes]      = useState([]);
   const [titulos,       setTitulos]       = useState({});

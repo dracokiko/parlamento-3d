@@ -7,7 +7,6 @@ import { CenaHemiciclo } from './components/Hemiciclo/CenaHemiciclo';
 import { LegendaPartidos } from './components/Hemiciclo/LegendaPartidos';
 import { ControlosCamara } from './components/Hemiciclo/ControlosCamara';
 import { PainelDeputado } from './components/PainelDeputado/PainelDeputado';
-import { ModalTranscricao } from './components/IntervencaoView/ModalTranscricao';
 import { TooltipDeputado, CoatOfArmsAR } from './components/UI/TooltipDeputado';
 import { Header } from './components/UI/Header';
 import { PesquisaDeputado } from './components/UI/PesquisaDeputado';
@@ -238,8 +237,6 @@ function HemicicloPage() {
               <PesquisaDeputado />
             </div>
           </div>
-
-          <ModalTranscricao />
         </div>
       </div>
 

@@ -1,6 +1,8 @@
 import { X, Sparkles, Users, Calendar, ExternalLink } from 'lucide-react';
+import { useEscapeKey } from '../../hooks/useEscapeKey';
 
 export const ModalDebate = ({ debate, onFechar }) => {
+  useEscapeKey(onFechar, !!debate);
   if (!debate) return null;
 
   const autoresDep = typeof debate.autores_dep === 'string'
@@ -12,6 +14,9 @@ export const ModalDebate = ({ debate, onFechar }) => {
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
       style={{ background: 'rgba(0,0,0,0.45)' }}
       onClick={onFechar}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Detalhe do debate"
     >
       <div
         className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[85vh] flex flex-col overflow-hidden"

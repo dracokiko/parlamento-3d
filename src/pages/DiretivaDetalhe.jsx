@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, ExternalLink, CheckCircle2, AlertTriangle, Clock } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { useDocumentTitle } from '../hooks/useDocumentTitle';
 
 function formatarData(iso) {
   if (!iso) return '—';
@@ -20,6 +21,8 @@ export function DiretivaDetalhe() {
   const [diretiva, setDiretiva]   = useState(null);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro]             = useState(null);
+
+  useDocumentTitle(diretiva?.id ? `Diretiva ${diretiva.id}` : 'Diretiva UE');
 
   useEffect(() => {
     let vivo = true;

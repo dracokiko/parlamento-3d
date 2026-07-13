@@ -23,4 +23,13 @@ module.exports = {
     'react-refresh/only-export-components': ['warn', { allowConstantExport: true }],
     'no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
   },
+  overrides: [
+    {
+      // Padrão idiomático React: contexto exporta Provider + hook de acesso
+      // (useParlamento) e componentes utilitários pequenos exportam constantes
+      // auxiliares — o HMR fica um pouco menos granular, mas é intencional.
+      files: ['src/context/**/*.jsx', 'src/components/UI/InfoTooltip.jsx'],
+      rules: { 'react-refresh/only-export-components': 'off' },
+    },
+  ],
 };

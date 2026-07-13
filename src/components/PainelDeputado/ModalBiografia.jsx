@@ -1,4 +1,5 @@
 import { X, GraduationCap, Briefcase, Users } from 'lucide-react';
+import { useEscapeKey } from '../../hooks/useEscapeKey';
 
 function calcularIdade(dataNasc) {
   if (!dataNasc) return null;
@@ -30,6 +31,7 @@ const Seccao = ({ icon: Icon, titulo, items, cor }) => {
 };
 
 export const ModalBiografia = ({ bio, carregando, nomeDeputado, corPartido, onFechar }) => {
+  useEscapeKey(onFechar, !!bio || carregando);
   if (!bio && !carregando) return null;
 
   const cor    = corPartido ?? '#6b7280';
@@ -40,6 +42,9 @@ export const ModalBiografia = ({ bio, carregando, nomeDeputado, corPartido, onFe
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
       style={{ background: 'rgba(0,0,0,0.45)' }}
       onClick={onFechar}
+      role="dialog"
+      aria-modal="true"
+      aria-label={`Biografia de ${nomeDeputado ?? 'deputado'}`}
     >
       <div
         className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[85vh] flex flex-col overflow-hidden"

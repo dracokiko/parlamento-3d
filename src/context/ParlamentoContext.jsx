@@ -190,12 +190,6 @@ export const ParlamentoProvider = ({ children }) => {
   // Partido em destaque no hemiciclo (filtro visual)
   const [partidoDestaque, setPartidoDestaque] = useState(null);
 
-  // Intervenção a mostrar em detalhe (modal/drawer aberto)
-  const [intervencaoAberta, setIntervencaoAberta] = useState(null);
-
-  // Mostrar transcrição completa em modal
-  const [transcricaoAberta, setTranscricaoAberta] = useState(null);
-
   // Deputado em hover (para tooltip 3D)
   const [deputadoHover, setDeputadoHover] = useState(null);
 
@@ -207,35 +201,16 @@ export const ParlamentoProvider = ({ children }) => {
   // Selecionar um deputado (abre painel lateral)
   const selecionarDeputado = useCallback((deputado) => {
     setDeputadoSelecionado(deputado);
-    setIntervencaoAberta(null);
   }, []);
 
   // Fechar painel do deputado
   const fecharPainel = useCallback(() => {
     setDeputadoSelecionado(null);
-    setIntervencaoAberta(null);
-    setTranscricaoAberta(null);
   }, []);
 
   // Destacar partido no hemiciclo
   const destacarPartido = useCallback((idPartido) => {
     setPartidoDestaque((atual) => atual === idPartido ? null : idPartido);
-  }, []);
-
-  // Abrir detalhe de uma intervenção
-  const abrirIntervencao = useCallback((intervencao) => {
-    setIntervencaoAberta(intervencao);
-  }, []);
-
-  // Fechar detalhe de intervenção
-  const fecharIntervencao = useCallback(() => {
-    setIntervencaoAberta(null);
-    setTranscricaoAberta(null);
-  }, []);
-
-  // Abrir modal de transcrição oficial
-  const abrirTranscricao = useCallback((intervencao) => {
-    setTranscricaoAberta(intervencao);
   }, []);
 
   /**
@@ -265,17 +240,11 @@ export const ParlamentoProvider = ({ children }) => {
     // UI
     deputadoSelecionado,
     partidoDestaque,
-    intervencaoAberta,
-    transcricaoAberta,
     deputadoHover,
     // Ações
     selecionarDeputado,
     fecharPainel,
     destacarPartido,
-    abrirIntervencao,
-    fecharIntervencao,
-    abrirTranscricao,
-    setTranscricaoAberta,
     setDeputadoHover,
     calcularFocoDePartido,
     cameraControlsRef,
@@ -298,15 +267,10 @@ export const ParlamentoProvider = ({ children }) => {
     cena3DPronta,
     deputadoSelecionado,
     partidoDestaque,
-    intervencaoAberta,
-    transcricaoAberta,
     deputadoHover,
     selecionarDeputado,
     fecharPainel,
     destacarPartido,
-    abrirIntervencao,
-    fecharIntervencao,
-    abrirTranscricao,
     calcularFocoDePartido,
     cameraControlsRef,
   ]);

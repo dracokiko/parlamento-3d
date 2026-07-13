@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { ExternalLink, Search, AlertTriangle, CheckCircle2, Clock, Building2, RefreshCw, ChevronRight } from 'lucide-react';
 import { useIsMobile } from '../hooks/useIsMobile';
+import { useDocumentTitle } from '../hooks/useDocumentTitle';
 import { supabase } from '../lib/supabase';
 
 const FILTROS = [
@@ -159,6 +160,7 @@ const CartaoDiretivaMobile = ({ d }) => {
 };
 
 export function DiretivasUE() {
+  useDocumentTitle('Diretivas UE');
   const isMobile = useIsMobile();
   const [diretivas, setDiretivas] = useState([]);
   const [carregando, setCarregando] = useState(true);
