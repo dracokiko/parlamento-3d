@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useCallback, useMemo, useEffect } from 'react';
+import { createContext, useContext, useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import PropTypes from 'prop-types';
 import { supabase } from '../lib/supabase';
 import { mapaLugares, calcularFocoPartido } from '../utils/posicoes3D';
@@ -199,6 +199,11 @@ export const ParlamentoProvider = ({ children }) => {
   // Deputado em hover (para tooltip 3D)
   const [deputadoHover, setDeputadoHover] = useState(null);
 
+  // Ref partilhada para o OrbitControls do hemiciclo 3D — permite que
+  // componentes fora do Canvas (ex: botão de reset em ControlosCamara)
+  // chamem métodos da câmara sem recorrer a window.location.reload().
+  const cameraControlsRef = useRef(null);
+
   // Selecionar um deputado (abre painel lateral)
   const selecionarDeputado = useCallback((deputado) => {
     setDeputadoSelecionado(deputado);
@@ -273,6 +278,7 @@ export const ParlamentoProvider = ({ children }) => {
     setTranscricaoAberta,
     setDeputadoHover,
     calcularFocoDePartido,
+    cameraControlsRef,
   }), [
     deputados,
     posicoes3D,
@@ -302,6 +308,7 @@ export const ParlamentoProvider = ({ children }) => {
     fecharIntervencao,
     abrirTranscricao,
     calcularFocoDePartido,
+    cameraControlsRef,
   ]);
 
   return (

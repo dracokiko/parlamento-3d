@@ -174,6 +174,7 @@ export async function syncVotacoes() {
   let totalIniciativas = 0;
   let totalVotacoes = 0;
   let totalComDivergentes = 0;
+  let erroFatal = false;
 
   while (true) {
     const { data, error } = await db
@@ -182,7 +183,7 @@ export async function syncVotacoes() {
       .not('eventos', 'is', null)
       .range(offset, offset + PAGE - 1);
 
-    if (error) { console.error('Erro ao ler ar_iniciativas:', error.message); break; }
+    if (error) { console.error('Erro ao ler ar_iniciativas:', error.message); erroFatal = true; break; }
     if (!data?.length) break;
 
     const batch = [];
@@ -214,7 +215,7 @@ export async function syncVotacoes() {
   console.log(`\n  ✓ Iniciativas processadas  : ${totalIniciativas}`);
   console.log(`  ✓ Votações extraídas        : ${totalVotacoes}`);
   console.log(`  ✓ Com votos divergentes     : ${totalComDivergentes}`);
-  return { ok: true, total: totalVotacoes, comDivergentes: totalComDivergentes };
+  return { ok: !erroFatal, total: totalVotacoes, comDivergentes: totalComDivergentes };
 }
 
 async function diagnosticarVotacoes() {

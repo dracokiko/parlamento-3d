@@ -56,7 +56,6 @@ export const CoatOfArmsAR = () => {
 
 export const TooltipDeputado = () => {
   const { deputadoHover, selecionarDeputado, setDeputadoHover } = useParlamento();
-  const isMobile = useIsMobile();
   const isTouch = useIsTouch();
   const isTabletPortrait = useIsTabletPortrait();
 

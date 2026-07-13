@@ -239,14 +239,14 @@ export function DiretivasUE() {
               EUR-Lex
             </a>
             . Portugal incorre em multas por cada diretiva transposta fora de prazo.
-            As diretivas delegadas e de execução (sem prazo de notificação nacional) estão disponíveis no filtro "Todas".
+            As diretivas delegadas e de execução (sem prazo de notificação nacional) estão disponíveis no filtro &quot;Todas&quot;.
           </p>
         </div>
 
         {/* ── Disclaimer ───────────────────────────────── */}
         <div className="rounded-lg border border-amber-700/30 bg-amber-900/10 px-4 py-3 mb-6 text-xs text-amber-200/80 leading-relaxed">
           <strong className="text-amber-300">Aviso sobre a fiabilidade dos dados:</strong>{' '}
-          O estado "Transposta" indica apenas que Portugal <em>comunicou</em> à Comissão Europeia a existência de medidas nacionais de implementação — não garante que a transposição seja correta ou completa.
+          O estado &quot;Transposta&quot; indica apenas que Portugal <em>comunicou</em> à Comissão Europeia a existência de medidas nacionais de implementação — não garante que a transposição seja correta ou completa.
           A Comissão pode abrir processos de infração mesmo após notificação, se considerar que a transposição é deficiente ou insuficiente.
           Para informação oficial sobre processos de infração em curso, consulte o{' '}
           <a

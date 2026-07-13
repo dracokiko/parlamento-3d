@@ -296,17 +296,19 @@ function SecaoDar({ darLinks, carregando }) {
 
 // ── Modal principal ─────────────────────────────────────────────────────────
 
-export const ModalIniciativa = ({ iniciativa, onFechar, onClickDebate }) => {
+export const ModalIniciativa = ({ iniciativa, onFechar }) => {
   const [votacoes,   setVotacoes]   = useState([]);
   const [eventos,    setEventos]    = useState([]);
   const [darLinks,   setDarLinks]   = useState([]);
   const [carregando, setCarregando] = useState(false);
+  const [erro,       setErro]       = useState(null);
 
   useEffect(() => {
     if (!iniciativa?.id) return;
     setVotacoes([]);
     setEventos([]);
     setDarLinks([]);
+    setErro(null);
     setCarregando(true);
 
     Promise.all([
@@ -320,7 +322,12 @@ export const ModalIniciativa = ({ iniciativa, onFechar, onClickDebate }) => {
         .select('eventos, dar_links')
         .eq('id', iniciativa.id)
         .single(),
-    ]).then(([{ data: vots }, { data: ini }]) => {
+    ]).then(([{ data: vots, error: erroVots }, { data: ini, error: erroIni }]) => {
+      if (erroVots || erroIni) {
+        console.error('[ModalIniciativa] erro ao carregar dados:', erroVots?.message, erroIni?.message);
+        setErro((erroVots ?? erroIni).message);
+        return;
+      }
       setVotacoes(vots ?? []);
       setEventos(ini?.eventos ?? []);
       setDarLinks(ini?.dar_links ?? []);
@@ -372,6 +379,12 @@ export const ModalIniciativa = ({ iniciativa, onFechar, onClickDebate }) => {
 
         {/* Conteúdo com scroll */}
         <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
+
+          {erro && (
+            <div className="bg-red-50 border border-red-200 rounded-xl p-3 text-sm text-red-600">
+              Erro ao carregar votações/eventos desta iniciativa. Tenta fechar e reabrir.
+            </div>
+          )}
 
           {/* Resumo IA */}
           {iniciativa.resumo_ia && (

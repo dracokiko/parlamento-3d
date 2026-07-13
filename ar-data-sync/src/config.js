@@ -14,6 +14,14 @@ if (!GROQ_API_KEY) {
   process.exit(1);
 }
 
+// Legislatura corrente. Usado para construir caminhos do catálogo DAR.
+// NOTA: os URLs em AR_ENDPOINTS abaixo são links assinados individualmente
+// emitidos pelo parlamento.pt para ficheiros específicos e NÃO podem ser
+// templated a partir de LEGISLATURA — têm de ser substituídos manualmente
+// quando a legislatura mudar.
+export const LEGISLATURA = 'XVII';
+export const LEGISLATURA_DAR_PATH = '01/17/01';
+
 // URLs reais dos Dados Abertos da AR — XVII Legislatura
 // Fonte: https://www.parlamento.pt/Cidadania/Paginas/DadosAbertos.aspx
 //

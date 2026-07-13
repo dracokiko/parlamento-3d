@@ -55,35 +55,59 @@ export function VotacaoDetalhe() {
   const [voto, setVoto]           = useState(null);
   const [iniciativa, setIniciativa] = useState(null);
   const [carregando, setCarregando] = useState(true);
+  const [erro, setErro]             = useState(null);
 
   useEffect(() => {
+    let vivo = true;
     async function carregar() {
-      const { data } = await supabase
+      setCarregando(true);
+      setErro(null);
+      const { data, error } = await supabase
         .from('ar_votacoes')
         .select('*')
         .eq('id', id)
         .single();
 
+      if (!vivo) return;
+
+      if (error) {
+        console.error('[VotacaoDetalhe] erro ao carregar votação:', error.message);
+        setErro(error.message);
+        setCarregando(false);
+        return;
+      }
+
       if (data) {
         setVoto(data);
         if (data.iniciativa_id) {
-          const { data: ini } = await supabase
+          const { data: ini, error: erroIni } = await supabase
             .from('ar_iniciativas')
             .select('id, titulo, desc_tipo')
             .eq('id', data.iniciativa_id)
             .single();
-          setIniciativa(ini ?? null);
+          if (erroIni) console.error('[VotacaoDetalhe] erro ao carregar iniciativa:', erroIni.message);
+          if (vivo) setIniciativa(ini ?? null);
         }
       }
-      setCarregando(false);
+      if (vivo) setCarregando(false);
     }
     carregar();
+    return () => { vivo = false; };
   }, [id]);
 
   if (carregando) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (erro) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center gap-4">
+        <p className="text-red-500">Erro ao carregar a votação. Tenta novamente mais tarde.</p>
+        <button onClick={() => navigate(-1)} className="text-blue-600 text-sm">Voltar</button>
       </div>
     );
   }

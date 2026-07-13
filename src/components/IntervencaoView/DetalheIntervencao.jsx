@@ -1,7 +1,7 @@
-import { X, Calendar, Clock, MapPin, FileText, Sparkles, ArrowLeft } from 'lucide-react';
+import { X, Calendar, Clock, FileText, ArrowLeft } from 'lucide-react';
 import { useParlamento } from '../../context/ParlamentoContext';
 import { partidos } from '../../data/mockPartidos';
-import { formatarData, obterEstiloPosicao } from '../../utils/formatters';
+import { formatarData } from '../../utils/formatters';
 import { ResumoIA } from './ResumoIA';
 
 /**

@@ -27,5 +27,8 @@ export function useArDeputado(deputado) {
     const carregando  = perfisMapa.size === 0 || iniciativasMapa.size === 0;
 
     return { perfil, iniciativas, carregando, erro: null };
+    // Memoiza por deputado?.id (não pelo objecto) de propósito — o objecto `deputado`
+    // pode ter uma referência nova a cada render sem o id mudar.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [deputado?.id, perfisMapa, iniciativasMapa]);
 }

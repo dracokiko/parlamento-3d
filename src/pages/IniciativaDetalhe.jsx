@@ -72,27 +72,45 @@ export function IniciativaDetalhe() {
   const [iniciativa, setIniciativa] = useState(null);
   const [votacoes,   setVotacoes]   = useState([]);
   const [carregando, setCarregando] = useState(true);
+  const [erro, setErro]             = useState(null);
 
   useEffect(() => {
+    let vivo = true;
     async function carregar() {
-      const [{ data: ini }, { data: vots }] = await Promise.all([
+      setCarregando(true);
+      setErro(null);
+      const [{ data: ini, error: erroIni }, { data: vots, error: erroVots }] = await Promise.all([
         supabase.from('ar_iniciativas').select('*').eq('id', id).single(),
         supabase.from('ar_votacoes')
           .select('id, fase, data_votacao, resultado, unanime, reuniao, detalhe_gp, publicacao, resumo_ia')
           .eq('iniciativa_id', id)
           .order('data_votacao', { ascending: true }),
       ]);
+      if (!vivo) return;
+      if (erroIni) console.error('[IniciativaDetalhe] erro ao carregar iniciativa:', erroIni.message);
+      if (erroVots) console.error('[IniciativaDetalhe] erro ao carregar votações:', erroVots.message);
+      if (erroIni) setErro(erroIni.message);
       setIniciativa(ini ?? null);
       setVotacoes(vots ?? []);
       setCarregando(false);
     }
     carregar();
+    return () => { vivo = false; };
   }, [id]);
 
   if (carregando) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (erro) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center gap-4">
+        <p className="text-red-500">Erro ao carregar a iniciativa. Tenta novamente mais tarde.</p>
+        <button onClick={() => navigate(-1)} className="text-blue-600 text-sm">Voltar</button>
       </div>
     );
   }

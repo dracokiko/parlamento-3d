@@ -128,7 +128,7 @@ function HemicicloPage() {
   const { pathname } = useLocation();
 
   return (
-    <ParlamentoProvider>
+    <>
 
       {/* ── Barra topo mobile ──────────────────────────────────── */}
       <div className="md:hidden fixed top-0 left-0 right-0 z-40 flex items-center gap-2 px-3 py-1.5 bg-[#16213e] border-b border-white/10">
@@ -250,7 +250,7 @@ function HemicicloPage() {
       <CoatOfArmsAR />
       <TooltipDeputado />
       <TelaCarregamento />
-    </ParlamentoProvider>
+    </>
   );
 }
 

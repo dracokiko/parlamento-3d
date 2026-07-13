@@ -1,7 +1,6 @@
 import { Canvas, useFrame } from '@react-three/fiber';
-import { OrbitControls, PerspectiveCamera, Environment } from '@react-three/drei';
+import { OrbitControls, PerspectiveCamera } from '@react-three/drei';
 import { Suspense, useRef } from 'react';
-import PropTypes from 'prop-types';
 import { Assento } from './Assento';
 import { EstruturaHemiciclo } from './EstruturaHemiciclo';
 import { useParlamento } from '../../context/ParlamentoContext';
@@ -22,16 +21,8 @@ const SinalPronto = () => {
 
 const BG = '#f0f4f8';
 
-const ControladorCamara = ({ controlsRef }) => {
-  void controlsRef;
-  return null;
-};
-
-ControladorCamara.propTypes = { controlsRef: PropTypes.object.isRequired };
-
 export const CenaHemiciclo = () => {
-  const controlsRef = useRef();
-  const { deputados, posicoes3D, setDeputadoHover } = useParlamento();
+  const { deputados, posicoes3D, setDeputadoHover, cameraControlsRef } = useParlamento();
   const isMobile = useIsMobile();
   const isTabletPortrait = useIsTabletPortrait();
   const isTouch = useIsTouch();
@@ -84,19 +75,17 @@ export const CenaHemiciclo = () => {
         />
 
         <OrbitControls
-          ref={controlsRef}
+          ref={cameraControlsRef}
           enableDamping
           dampingFactor={0.08}
           minDistance={minDist}
           maxDistance={maxDist}
           maxPolarAngle={maxPolarAngle}
           target={orbitTarget}
-          enableRotate={false}
-          enablePan={false}
-          enableZoom={false}
+          enableRotate
+          enablePan
+          enableZoom
         />
-
-        <ControladorCamara controlsRef={controlsRef} />
 
         {/* ── Iluminação ────────────────────────────────────── */}
 

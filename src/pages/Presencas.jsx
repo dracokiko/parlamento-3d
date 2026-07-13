@@ -126,6 +126,7 @@ export function Presencas() {
 
   const [dados, setDados] = useState([]);
   const [carregando, setCarregando] = useState(true);
+  const [erro, setErro] = useState(null);
   const [pesquisa, setPesquisa] = useState('');
   const [partidoFiltro, setPartidoFiltro] = useState(null);
   const [ordem, setOrdem] = useState('taxa_desc');
@@ -136,7 +137,9 @@ export function Presencas() {
 
   useEffect(() => {
     async function carregar() {
-      const [{ data: presencas }, { data: deps }] = await Promise.all([
+      setCarregando(true);
+      setErro(null);
+      const [{ data: presencas, error: erroPres }, { data: deps, error: erroDeps }] = await Promise.all([
         supabase
           .from('ar_presencas')
           .select('bid, nome_abrev, total_sessoes, presencas, faltas_just, ausencias_mp, outras, taxa_presenca'),
@@ -144,6 +147,14 @@ export function Presencas() {
           .from('deputados')
           .select('id, nome, partido_sigla, foto'),
       ]);
+
+      if (erroPres || erroDeps) {
+        console.error('[Presencas] erro ao carregar dados:', erroPres?.message, erroDeps?.message);
+        setErro((erroPres ?? erroDeps).message);
+        setDados([]);
+        setCarregando(false);
+        return;
+      }
 
       // Normaliza removendo acentos e espaços extra
       const norm = s =>
@@ -349,6 +360,10 @@ export function Presencas() {
         {carregando ? (
           <div className="flex justify-center py-16">
             <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+          </div>
+        ) : erro ? (
+          <div className="text-center py-16">
+            <p className="text-red-500 text-sm">Erro ao carregar dados de presenças. Tenta novamente mais tarde.</p>
           </div>
         ) : lista.length === 0 ? (
           <div className="text-center py-16">

@@ -64,32 +64,6 @@ const SecaoIniciativas = ({ iniciativas, carregando, onClickIniciativa }) => {
   );
 };
 
-const SecaoDebates = ({ debates, carregando, onClickDebate }) => {
-  if (carregando) return <p className="text-sm text-gray-400 italic">A carregar debates...</p>;
-  if (!debates.length) return <p className="text-sm text-gray-400 italic">Sem debates registados.</p>;
-
-  return (
-    <div className="space-y-3">
-      {debates.map(deb => (
-        <button
-          key={deb.id}
-          onClick={() => onClickDebate(deb)}
-          className="w-full text-left border border-gray-100 rounded-xl p-3 hover:bg-purple-50 hover:border-purple-200 transition-colors group"
-        >
-          {deb.tipo_debate && (
-            <span className="inline-block text-xs font-medium text-purple-600 bg-purple-50 group-hover:bg-purple-100 rounded px-1.5 py-0.5 mb-1">
-              {deb.tipo_debate}
-            </span>
-          )}
-          <p className="text-sm font-medium text-gray-800">{deb.assunto ?? '—'}</p>
-          {deb.artigo && <p className="text-xs text-gray-500 mt-0.5">{deb.artigo}</p>}
-          {deb.data_debate && <span className="text-xs text-gray-400 mt-1 block">{deb.data_debate}</span>}
-        </button>
-      ))}
-    </div>
-  );
-};
-
 const MIN_PALAVRAS = 40;
 const SNIPPET_LEN  = 180;
 
@@ -111,7 +85,7 @@ const mesAnoLabel = (iv) => {
   return `${MES_NOME[parseInt(mo, 10) - 1]} ${y}`;
 };
 
-const CartaoIntervencao = ({ iv, texto, carregandoTextos, expandido, onToggle, iniciativa, onVerIniciativa }) => {
+const CartaoIntervencao = ({ iv, texto, carregandoTextos, expandido, onToggle, iniciativa }) => {
   const temTexto     = typeof texto === 'string' && texto.length > 0;
   const podeExpandir = temTexto && texto.length > SNIPPET_LEN;
   const snippet      = temTexto

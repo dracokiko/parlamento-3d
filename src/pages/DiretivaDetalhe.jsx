@@ -19,24 +19,44 @@ export function DiretivaDetalhe() {
   const navigate = useNavigate();
   const [diretiva, setDiretiva]   = useState(null);
   const [carregando, setCarregando] = useState(true);
+  const [erro, setErro]             = useState(null);
 
   useEffect(() => {
+    let vivo = true;
     async function carregar() {
-      const { data } = await supabase
+      setCarregando(true);
+      setErro(null);
+      const { data, error } = await supabase
         .from('diretivas_ue')
         .select('*')
         .eq('id', celex)
         .single();
-      setDiretiva(data ?? null);
+      if (!vivo) return;
+      if (error) {
+        console.error('[DiretivaDetalhe] erro ao carregar diretiva:', error.message);
+        setErro(error.message);
+      } else {
+        setDiretiva(data ?? null);
+      }
       setCarregando(false);
     }
     carregar();
+    return () => { vivo = false; };
   }, [celex]);
 
   if (carregando) {
     return (
       <div className="min-h-screen bg-[#1a1a2e] flex items-center justify-center">
         <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (erro) {
+    return (
+      <div className="min-h-screen bg-[#1a1a2e] flex flex-col items-center justify-center gap-4">
+        <p className="text-red-400">Erro ao carregar a diretiva. Tenta novamente mais tarde.</p>
+        <button onClick={() => navigate(-1)} className="text-blue-400 text-sm">Voltar</button>
       </div>
     );
   }

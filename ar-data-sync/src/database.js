@@ -1,3 +1,4 @@
+import os from 'node:os';
 import { createClient } from '@supabase/supabase-js';
 import { SUPABASE_URL, SUPABASE_KEY, BATCH_SIZE } from './config.js';
 
@@ -58,4 +59,42 @@ export async function registarLog(recurso, stats) {
   } catch (err) {
     console.warn(`  ⚠ Log não guardado: ${err.message}`);
   }
+}
+
+const TRES_HORAS_MS = 3 * 60 * 60 * 1000;
+
+/**
+ * Adquire o lock singleton de sincronização em ar_sync_lock.
+ * Se já estiver a correr (running === true) e o início for há menos de 3h,
+ * devolve { acquired: false, since, host } sem alterar nada.
+ * Caso contrário, marca como a correr e devolve { acquired: true }.
+ */
+export async function acquireSyncLock(host) {
+  const db = getClient();
+  const { data } = await db.from('ar_sync_lock').select('*').eq('id', true).maybeSingle();
+
+  if (data?.running === true && data?.started_at) {
+    const desde = new Date(data.started_at).getTime();
+    if (!isNaN(desde) && (Date.now() - desde) < TRES_HORAS_MS) {
+      return { acquired: false, since: data.started_at, host: data.host };
+    }
+  }
+
+  await db.from('ar_sync_lock').upsert({
+    id:         true,
+    running:    true,
+    started_at: new Date().toISOString(),
+    host:       host || os.hostname(),
+    updated_at: new Date().toISOString(),
+  });
+
+  return { acquired: true };
+}
+
+/** Liberta o lock singleton de sincronização. */
+export async function releaseSyncLock() {
+  await getClient().from('ar_sync_lock').update({
+    running:    false,
+    updated_at: new Date().toISOString(),
+  }).eq('id', true);
 }

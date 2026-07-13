@@ -662,25 +662,35 @@ export function Votacoes() {
   const [filtroTema,      setFiltroTema]      = useState('');
   const [filtroCategoria, setFiltroCategoria] = useState('');
   const [pagina,          setPagina]          = useState(1);
+  const [erro,            setErro]            = useState(null);
 
   useEffect(() => {
     async function carregar() {
       setCarregando(true);
-      const { data } = await supabase
+      setErro(null);
+      const { data, error } = await supabase
         .from('ar_votacoes')
         .select('id, iniciativa_id, fase, codigo_fase, data_votacao, resultado, unanime, reuniao, tipo_reuniao, detalhe_gp, publicacao, deputados_isolados, resumo_ia')
         .order('data_votacao', { ascending: false })
         .limit(3000);
+
+      if (error) {
+        console.error('[Votacoes] erro ao carregar votações:', error.message);
+        setErro(error.message);
+        setCarregando(false);
+        return;
+      }
 
       const lista = data ?? [];
       setVotacoes(lista);
 
       const ids = [...new Set(lista.map(v => v.iniciativa_id).filter(Boolean))];
       if (ids.length) {
-        const { data: inis } = await supabase
+        const { data: inis, error: erroInis } = await supabase
           .from('ar_iniciativas')
           .select('id, titulo, epigrafe, desc_tipo, autores_gp, temas')
           .in('id', ids);
+        if (erroInis) console.error('[Votacoes] erro ao carregar títulos:', erroInis.message);
         setTitulos(Object.fromEntries(
           (inis ?? []).map(i => [i.id, { titulo: i.titulo, epigrafe: i.epigrafe, desc_tipo: i.desc_tipo, autores_gp: i.autores_gp, temas: i.temas }])
         ));
@@ -723,7 +733,6 @@ export function Votacoes() {
     });
   }, [votacoes, filtroResult, filtroData, filtroPartido, filtroProposta, filtroTema, filtroCategoria, titulos]);
 
-  const totalPaginas  = Math.ceil(filtrados.length / POR_PAGINA);
   const visiveis      = filtrados.slice((pagina - 1) * POR_PAGINA, pagina * POR_PAGINA);
   const temFiltroAtivo = filtroPartido || filtroData || filtroResult !== 'todos' || filtroTema || filtroCategoria;
 
@@ -924,7 +933,10 @@ export function Votacoes() {
             )}
 
             {/* Lista */}
-            {!carregando && filtrados.length === 0 && (
+            {!carregando && erro && (
+              <p className="text-center text-red-500 text-sm py-16">Erro ao carregar votações. Tenta novamente mais tarde.</p>
+            )}
+            {!carregando && !erro && filtrados.length === 0 && (
               <p className="text-center text-gray-400 text-sm py-16">Nenhuma votação encontrada.</p>
             )}
 

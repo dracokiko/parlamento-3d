@@ -478,7 +478,7 @@ function Dashboard({ onSair }) {
     [mes.ano, mes.mes],
   );
 
-  const logsAtivos = logsPorDia[diaAtivo] ?? [];
+  const logsAtivos = useMemo(() => logsPorDia[diaAtivo] ?? [], [logsPorDia, diaAtivo]);
 
   const porRecurso = useMemo(() => {
     const mapa = {};

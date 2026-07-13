@@ -30,7 +30,7 @@ export function useIntervencoesDeputado(nomeParlamentar, partidoSigla) {
     return resultado.sort((a, b) =>
       (b.data_debate ?? '').localeCompare(a.data_debate ?? '')
     );
-  }, [nomeParlamentar, intervencoesMapa]);
+  }, [nomeParlamentar, partidoSigla, intervencoesMapa]);
 
   const carregando = intervencoesMapa.size === 0;
 

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Info, RotateCcw, Maximize2 } from 'lucide-react';
+import { useParlamento } from '../../context/ParlamentoContext';
 
 /**
  * Painel de controlos da câmara 3D.
@@ -10,10 +11,10 @@ import { Info, RotateCcw, Maximize2 } from 'lucide-react';
  */
 export const ControlosCamara = () => {
   const [mostrarAjuda, setMostrarAjuda] = useState(false);
+  const { cameraControlsRef } = useParlamento();
 
   const handleReset = () => {
-    // Forçar reload simples — alternativa: usar ref ao OrbitControls
-    window.location.reload();
+    cameraControlsRef.current?.reset();
   };
 
   return (

@@ -11,14 +11,17 @@
 
 import 'dotenv/config';
 import { createClient } from '@supabase/supabase-js';
+import { LEGISLATURA, LEGISLATURA_DAR_PATH } from './config.js';
 
 const db = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
 const PAGE = 500;
 
+const RE_DAR_URL = new RegExp(`dar/${LEGISLATURA_DAR_PATH}/(\\d+)/(\\d{4}-\\d{2}-\\d{2})(?:/(\\d+))?(?:\\?pgs=(\\d+)(?:-(\\d+))?)?`);
+
 /** Extrai dar_id e páginas de um URLDiario do AR. */
 export function parsearUrlDar(url) {
   if (!url) return null;
-  const m = url.match(/dar\/01\/17\/01\/(\d+)\/(\d{4}-\d{2}-\d{2})(?:\/(\d+))?(?:\?pgs=(\d+)(?:-(\d+))?)?/);
+  const m = url.match(RE_DAR_URL);
   if (!m) return null;
   const darNr   = m[1];
   const darData = m[2];
@@ -162,7 +165,7 @@ async function run() {
         id:             darId,
         data_debate:    m?.[2] ?? null,
         sessao:         '01',
-        legislatura:    'XVII',
+        legislatura:    LEGISLATURA,
         iniciativa_ids,
       }, { onConflict: 'id' });
       debs_novos++;
