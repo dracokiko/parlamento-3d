@@ -2,7 +2,7 @@ import fs from 'fs';
 import { AR_ENDPOINTS, BATCH_SIZE } from './config.js';
 import { downloadToTemp, streamRecords } from './downloader.js';
 import { NORMALIZADORES } from './processor.js';
-import { upsertBatch, registarLog, acquireSyncLock, releaseSyncLock } from './database.js';
+import { upsertBatch, registarLog, acquireSyncLock, releaseSyncLock, registarSyncStatus } from './database.js';
 import { resumirIniciativas, resumirDeputados, resumirDebates, resumirVotacoes, obterTranscricoesDebates, indexarIntervencoes, classificarTemas } from './summarizer.js';
 import { crawlerDebatesDAR } from './catalogueCrawler.js';
 import { syncVotacoes } from './votacoesSync.js';
@@ -111,7 +111,7 @@ async function main() {
     if (!AR_ENDPOINTS[r]) {
       console.error(`Recurso desconhecido: "${r}". Opções: ${Object.keys(AR_ENDPOINTS).join(', ')}`);
       process.exitCode = 1;
-      return;
+      return { ok: false, message: `Recurso desconhecido: ${r}` };
     }
     const res = await sincronizar(r);
     resultados[r] = res;
@@ -289,11 +289,14 @@ async function main() {
   if (falhas.length) {
     console.error(`  FALHAS NA SINCRONIZAÇÃO: ${falhas.join(', ')}`);
     process.exitCode = 1;
+    return { ok: false, message: `Falhas: ${falhas.join(', ')}` };
   } else if (avisosUnicos.length) {
     console.error(`  PIPELINE CONCLUÍDO COM AVISOS: ${avisosUnicos.join(', ')}`);
     process.exitCode = 1;
+    return { ok: false, message: `Avisos: ${avisosUnicos.join(', ')}` };
   } else {
     console.log('  PIPELINE COMPLETO ✓  (dados + resumos IA guardados)');
+    return { ok: true, message: null };
   }
 }
 
@@ -303,9 +306,17 @@ async function run() {
     console.log(`⏭  Sync já em curso desde ${lock.since} (${lock.host}) — a saltar esta execução.`);
     return;
   }
+  let resultado;
   try {
-    await main();
+    resultado = await main();
+  } catch (err) {
+    resultado = { ok: false, message: `Erro fatal: ${err.message}` };
+    throw err;
   } finally {
+    await registarSyncStatus('ar-sync', {
+      status:  resultado?.ok ? 'ok' : 'error',
+      message: resultado?.message ?? null,
+    });
     await releaseSyncLock();
   }
 }

@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "displayName": "Parlamento 3D",
+  "description": "Visualização 3D interativa da atividade parlamentar da Assembleia da República Portuguesa.",
+  "criticality": "normal",
+  "stack": ["React", "Vite", "Three.js", "Supabase", "Vercel"],
+  "repo": "https://github.com/dracokiko/parlamento-3d",
+  "owner": "José Marrucho",
+  "updatedAt": "2026-07-30",
+  "links": {
+    "supabase": "https://supabase.com/dashboard/project/rcqfhzsqtgurvypdoasd"
+  }
+}

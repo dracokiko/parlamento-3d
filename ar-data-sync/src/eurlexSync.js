@@ -234,7 +234,7 @@ export async function syncDiretivasUE() {
     celexList = await obterDiretivas();
   } catch (err) {
     console.error('  ✗ SPARQL falhou:', err.message);
-    process.exit(1);
+    throw err;
   }
   console.log(`  → ${celexList.length} diretivas encontradas`);
 
@@ -266,11 +266,12 @@ export async function syncDiretivasUE() {
   console.log('\n[3/3] Supabase upsert...');
   const BATCH = 50;
   let saved = 0;
+  let batchErros = 0;
   for (let i = 0; i < registos.length; i += BATCH) {
     const { error } = await db
       .from('diretivas_ue')
       .upsert(registos.slice(i, i + BATCH), { onConflict: 'id' });
-    if (error) console.warn(`  ⚠ batch ${i}: ${error.message}`);
+    if (error) { console.warn(`  ⚠ batch ${i}: ${error.message}`); batchErros++; }
     else saved += Math.min(BATCH, registos.length - i);
   }
 
@@ -290,16 +291,39 @@ export async function syncDiretivasUE() {
 
   try {
     await db.from('ar_sync_log').insert({
-      recurso: 'diretivas_ue', sucesso: true,
-      total: registos.length, inseridos: saved, atualizados: 0, erros: 0,
+      recurso: 'diretivas_ue', sucesso: batchErros === 0,
+      total: registos.length, inseridos: saved, atualizados: 0, erros: batchErros,
       detalhes: [],
     });
   } catch {}
+
+  return {
+    ok:      batchErros === 0,
+    message: batchErros ? `${batchErros} lote(s) falharam ao gravar` : null,
+  };
+}
+
+async function registarStatus(status, message) {
+  try {
+    const db = createClient(SUPABASE_URL, SUPABASE_KEY);
+    await db.from('sync_status').upsert({
+      job: 'eurlex-sync',
+      status,
+      message: message ?? null,
+      last_run_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    });
+  } catch (err) {
+    console.warn(`  ⚠ Sync status não guardado: ${err.message}`);
+  }
 }
 
 if (process.argv[1].includes('eurlexSync')) {
-  syncDiretivasUE().catch((err) => {
-    console.error('  ✗', err.message);
-    process.exit(1);
-  });
+  syncDiretivasUE()
+    .then((r) => registarStatus(r?.ok === false ? 'error' : 'ok', r?.message))
+    .catch(async (err) => {
+      console.error('  ✗', err.message);
+      await registarStatus('error', err.message);
+      process.exit(1);
+    });
 }

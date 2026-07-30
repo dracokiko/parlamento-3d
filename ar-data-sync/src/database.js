@@ -61,6 +61,21 @@ export async function registarLog(recurso, stats) {
   }
 }
 
+/** Regista o resultado agregado de um job (tabela pública sync_status). */
+export async function registarSyncStatus(job, { status, message }) {
+  try {
+    await getClient().from('sync_status').upsert({
+      job,
+      status,
+      message: message ?? null,
+      last_run_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    });
+  } catch (err) {
+    console.warn(`  ⚠ Sync status não guardado: ${err.message}`);
+  }
+}
+
 const TRES_HORAS_MS = 3 * 60 * 60 * 1000;
 
 /**
