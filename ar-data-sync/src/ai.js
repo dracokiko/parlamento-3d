@@ -1,6 +1,7 @@
 /**
  * Wrapper para a API Groq (gratuita).
- * Modelo: llama-3.1-8b-instant — rápido e suficiente para resumos.
+ * Modelo: qwen/qwen3.8-27b — rápido e suficiente para resumos.
+ * (llama-3.1-8b-instant foi descontinuado pela Groq em 2026.)
  *
  * Limites free tier: 30 req/min, 14.400 req/dia.
  * O pipeline corre uma vez por dia e só processa registos NOVOS,
@@ -9,7 +10,7 @@
 import { GROQ_API_KEY } from './config.js';
 
 const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions';
-const MODEL    = 'llama-3.1-8b-instant';
+const MODEL    = 'qwen/qwen3.8-27b';
 const DELAY_MS = 2200; // ~27 req/min — margem segura abaixo do limite de 30
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
