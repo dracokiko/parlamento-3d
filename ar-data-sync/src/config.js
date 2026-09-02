@@ -20,7 +20,11 @@ if (!GROQ_API_KEY) {
 // templated a partir de LEGISLATURA — têm de ser substituídos manualmente
 // quando a legislatura mudar.
 export const LEGISLATURA = 'XVII';
-export const LEGISLATURA_DAR_PATH = '01/17/01';
+export const LEGISLATURA_NUM = '17';
+// Série I do catálogo DAR. A sessão legislativa (o 3º segmento do caminho,
+// ex: 01/17/02) NÃO é fixa aqui — muda todos os anos por volta de meados de
+// Setembro, por isso é descoberta dinamicamente em catalogueCrawler.js.
+export const DAR_SERIE = '01';
 
 // URLs reais dos Dados Abertos da AR — XVII Legislatura
 // Fonte: https://www.parlamento.pt/Cidadania/Paginas/DadosAbertos.aspx

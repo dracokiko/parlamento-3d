@@ -14,7 +14,7 @@
  */
 
 import { createClient } from '@supabase/supabase-js';
-import { SUPABASE_URL, SUPABASE_KEY, LEGISLATURA, LEGISLATURA_DAR_PATH } from './config.js';
+import { SUPABASE_URL, SUPABASE_KEY, LEGISLATURA, LEGISLATURA_NUM, DAR_SERIE } from './config.js';
 import { extrairTextoHtml } from './scraper.js';
 
 const BASE      = 'https://debates.parlamento.pt';
@@ -47,12 +47,37 @@ async function fetchHtml(url, tentativas = 2) {
   }
 }
 
-/** Lista todos os (numero, data) do DAR disponíveis no catálogo. */
-async function listarNumerosDar() {
-  const html = await fetchHtml(`${BASE}/catalogo/r3/dar/${LEGISLATURA_DAR_PATH}`);
+let _sessaoCache = null;
+
+/**
+ * Descobre a sessão legislativa mais recente disponível no catálogo DAR
+ * (o 3º segmento do caminho, ex: 01/17/02), lendo os links "Sessão
+ * Legislativa NN" da página-índice da legislatura. Evita ter de actualizar
+ * manualmente um número de sessão fixo todos os anos por volta de Setembro.
+ */
+export async function descobrirSessaoAtual() {
+  if (_sessaoCache) return _sessaoCache;
+
+  const html = await fetchHtml(`${BASE}/catalogo/r3/dar/${DAR_SERIE}/${LEGISLATURA_NUM}`);
+  const re = new RegExp(`href="/catalogo/r3/dar/${DAR_SERIE}/${LEGISLATURA_NUM}/(\\d+)">\\s*Sessão Legislativa`, 'g');
+  let melhor = null;
+  for (const m of html.matchAll(re)) {
+    if (melhor === null || parseInt(m[1], 10) > parseInt(melhor, 10)) melhor = m[1];
+  }
+  if (!melhor) {
+    throw new Error(`Não foi possível descobrir a sessão legislativa actual no catálogo DAR (legislatura ${LEGISLATURA})`);
+  }
+  _sessaoCache = melhor;
+  return melhor;
+}
+
+/** Lista todos os (numero, data) do DAR disponíveis no catálogo, para a sessão dada. */
+async function listarNumerosDar(sessaoLeg) {
+  const caminho = `${DAR_SERIE}/${LEGISLATURA_NUM}/${sessaoLeg}`;
+  const html = await fetchHtml(`${BASE}/catalogo/r3/dar/${caminho}`);
   const vistos = new Set();
   const numeros = [];
-  const rePath = new RegExp(`href="/catalogo/r3/dar/${LEGISLATURA_DAR_PATH}/(\\d+)/([0-9-]+)"`, 'g');
+  const rePath = new RegExp(`href="/catalogo/r3/dar/${caminho}/(\\d+)/([0-9-]+)"`, 'g');
   for (const m of html.matchAll(rePath)) {
     const chave = `${m[1]}_${m[2]}`;
     if (!vistos.has(chave)) {
@@ -62,7 +87,7 @@ async function listarNumerosDar() {
   }
   const resultado = numeros.sort((a, b) => a.data.localeCompare(b.data));
   if (resultado.length === 0) {
-    console.error('⚠ ATENÇÃO: 0 sessões encontradas para a legislatura ' + LEGISLATURA + ' — pode indicar mudança de legislatura, verificar URL do catálogo DAR');
+    console.error(`⚠ ATENÇÃO: 0 sessões encontradas para a legislatura ${LEGISLATURA} / sessão legislativa ${sessaoLeg} — verificar URL do catálogo DAR`);
   }
   return resultado;
 }
@@ -97,17 +122,18 @@ async function dataUltimaCrawlada() {
  * Tenta a data fornecida e até 3 dias antes (a data no URL das publicações
  * é a data do DAR, 1 dia após a sessão; o catálogo usa a data da sessão).
  */
-async function fetchTextoSessao(numero, data) {
+async function fetchTextoSessao(numero, data, sessaoLeg) {
+  const caminho = `${DAR_SERIE}/${LEGISLATURA_NUM}/${sessaoLeg}`;
   const d = new Date(data + 'T12:00:00Z');
   for (let offset = 0; offset <= 3; offset++) {
     const tryDate = new Date(d.getTime() - offset * 86_400_000)
       .toISOString().slice(0, 10);
-    const url = `${BASE}/catalogo/r3/dar/${LEGISLATURA_DAR_PATH}/${numero}/${tryDate}?sft=true`;
+    const url = `${BASE}/catalogo/r3/dar/${caminho}/${numero}/${tryDate}?sft=true`;
     try {
       const html = await fetchHtml(url, 1); // 1 tentativa — falha rápido
       const texto = extrairTextoHtml(html);
       if (texto && texto.length >= MIN_TEXTO) {
-        return { url: `${BASE}/catalogo/r3/dar/${LEGISLATURA_DAR_PATH}/${numero}/${tryDate}`, texto };
+        return { url: `${BASE}/catalogo/r3/dar/${caminho}/${numero}/${tryDate}`, texto };
       }
     } catch { /* tentar próxima data */ }
   }
@@ -148,13 +174,16 @@ async function linkIniciativas(darId) {
 export async function crawlerDebatesDAR(modo = 'new') {
   console.log(`\n  [DAR-CRAWL] modo=${modo}`);
 
+  const sessaoLeg = await descobrirSessaoAtual();
+  console.log(`  [DAR-CRAWL] sessão legislativa actual: ${sessaoLeg}`);
+
   let sessoes;
 
   if (modo === 'missing') {
     sessoes = await sessoesMissing();
     console.log(`  [DAR-CRAWL] ${sessoes.length} sessões com placeholder sem transcrição`);
   } else {
-    const todas = await listarNumerosDar();
+    const todas = await listarNumerosDar(sessaoLeg);
     if (modo === 'new') {
       const ultima = await dataUltimaCrawlada();
       sessoes = ultima ? todas.filter(s => s.data > ultima) : todas;
@@ -180,13 +209,13 @@ export async function crawlerDebatesDAR(modo = 'new') {
 
     await sleep(DELAY);
     try {
-      const sessao = await fetchTextoSessao(numero, data);
+      const sessao = await fetchTextoSessao(numero, data, sessaoLeg);
       if (!sessao) { ignorados++; continue; }
 
       const payload = {
         id,
         data_debate:   data,
-        sessao:        '01',
+        sessao:        sessaoLeg,
         legislatura:   LEGISLATURA,
         url_diario:    sessao.url,
         transcricao:   sessao.texto,

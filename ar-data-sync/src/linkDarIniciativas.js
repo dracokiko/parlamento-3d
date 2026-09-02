@@ -11,12 +11,16 @@
 
 import 'dotenv/config';
 import { createClient } from '@supabase/supabase-js';
-import { LEGISLATURA, LEGISLATURA_DAR_PATH } from './config.js';
+import { LEGISLATURA, LEGISLATURA_NUM, DAR_SERIE } from './config.js';
+import { descobrirSessaoAtual } from './catalogueCrawler.js';
 
 const db = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
 const PAGE = 500;
 
-const RE_DAR_URL = new RegExp(`dar/${LEGISLATURA_DAR_PATH}/(\\d+)/(\\d{4}-\\d{2}-\\d{2})(?:/(\\d+))?(?:\\?pgs=(\\d+)(?:-(\\d+))?)?`);
+// O segmento de sessão legislativa (3º \d+) não é fixado aqui — os URLs
+// URLDiario vêm da API oficial e podem referenciar qualquer sessão da
+// legislatura corrente, por isso o regex aceita qualquer número.
+const RE_DAR_URL = new RegExp(`dar/${DAR_SERIE}/${LEGISLATURA_NUM}/\\d+/(\\d+)/(\\d{4}-\\d{2}-\\d{2})(?:/(\\d+))?(?:\\?pgs=(\\d+)(?:-(\\d+))?)?`);
 
 /** Extrai dar_id e páginas de um URLDiario do AR. */
 export function parsearUrlDar(url) {
@@ -78,6 +82,8 @@ async function run() {
   console.log('\n' + '='.repeat(55));
   console.log('  LINK DAR ↔ INICIATIVAS');
   console.log('='.repeat(55));
+
+  const sessaoLeg = await descobrirSessaoAtual();
 
   let offset = 0;
   let totalInis = 0, novos = 0, atualizados = 0, totalLinks = 0;
@@ -164,7 +170,7 @@ async function run() {
       await db.from('ar_debates').upsert({
         id:             darId,
         data_debate:    m?.[2] ?? null,
-        sessao:         '01',
+        sessao:         sessaoLeg,
         legislatura:    LEGISLATURA,
         iniciativa_ids,
       }, { onConflict: 'id' });
