@@ -62,12 +62,13 @@ export async function registarLog(recurso, stats) {
 }
 
 /** Regista o resultado agregado de um job (tabela pública sync_status). */
-export async function registarSyncStatus(job, { status, message }) {
+export async function registarSyncStatus(job, { status, message, summary }) {
   try {
     await getClient().from('sync_status').upsert({
       job,
       status,
       message: message ?? null,
+      summary: summary ?? null,
       last_run_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     });

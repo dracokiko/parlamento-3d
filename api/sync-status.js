@@ -20,7 +20,7 @@ export default async function handler(req, res) {
     const supabase = createClient(url, key);
     const { data, error } = await supabase
       .from('sync_status')
-      .select('status, last_run_at, message')
+      .select('status, last_run_at, message, summary')
       .eq('job', 'ar-sync')
       .maybeSingle();
 
@@ -34,6 +34,7 @@ export default async function handler(req, res) {
       status: data.status,
       lastRunAt: data.last_run_at,
       message: data.message ?? undefined,
+      summary: data.summary ?? undefined,
     });
   } catch (err) {
     return res.status(200).json({ status: 'error', lastRunAt: null, message: `Falha ao consultar estado: ${err.message}` });

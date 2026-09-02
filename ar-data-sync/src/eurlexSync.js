@@ -300,16 +300,21 @@ export async function syncDiretivasUE() {
   return {
     ok:      batchErros === 0,
     message: batchErros ? `${batchErros} lote(s) falharam ao gravar` : null,
+    summary: [{
+      recurso: 'diretivas_ue', sucesso: batchErros === 0,
+      total: registos.length, inseridos: saved, atualizados: 0, erros: batchErros,
+    }],
   };
 }
 
-async function registarStatus(status, message) {
+async function registarStatus(status, message, summary) {
   try {
     const db = createClient(SUPABASE_URL, SUPABASE_KEY);
     await db.from('sync_status').upsert({
       job: 'eurlex-sync',
       status,
       message: message ?? null,
+      summary: summary ?? null,
       last_run_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     });
@@ -320,10 +325,10 @@ async function registarStatus(status, message) {
 
 if (process.argv[1].includes('eurlexSync')) {
   syncDiretivasUE()
-    .then((r) => registarStatus(r?.ok === false ? 'error' : 'ok', r?.message))
+    .then((r) => registarStatus(r?.ok === false ? 'error' : 'ok', r?.message, r?.summary))
     .catch(async (err) => {
       console.error('  ✗', err.message);
-      await registarStatus('error', err.message);
+      await registarStatus('error', err.message, null);
       process.exit(1);
     });
 }
