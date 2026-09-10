@@ -13,6 +13,7 @@ import 'dotenv/config';
 import { createClient } from '@supabase/supabase-js';
 import { LEGISLATURA, LEGISLATURA_NUM, DAR_SERIE } from './config.js';
 import { descobrirSessaoAtual } from './catalogueCrawler.js';
+import { empurrarAmostra } from './resumoPublico.js';
 
 const db = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
 const PAGE = 500;
@@ -86,8 +87,9 @@ async function run() {
   const sessaoLeg = await descobrirSessaoAtual();
 
   let offset = 0;
-  let totalInis = 0, novos = 0, atualizados = 0, totalLinks = 0;
+  let totalInis = 0, novos = 0, atualizados = 0, totalLinks = 0, erros = 0;
   const detalhes = [];
+  const falhas = [];
 
   // Mapa: darId → Set de iniciativa_ids
   const darMap = new Map();
@@ -130,7 +132,11 @@ async function run() {
 
     // Actualizar dar_links nas iniciativas
     for (const { id, dar_links } of batch) {
-      await db.from('ar_iniciativas').update({ dar_links }).eq('id', id);
+      const { error: updErr } = await db.from('ar_iniciativas').update({ dar_links }).eq('id', id);
+      if (updErr) {
+        erros++;
+        empurrarAmostra(falhas, { id, motivo: updErr.message });
+      }
     }
 
     process.stdout.write(`  … ${totalInis} iniciativas | ${novos} novas | ${atualizados} actualizadas | ${totalLinks} links\r`);
@@ -180,7 +186,7 @@ async function run() {
 
   console.log(`  ✓ ar_debates actualizados : ${debs} (${debs_novos} novos placeholders)`);
   console.log('\nFim.');
-  return { ok: true, total: totalInis, inseridos: novos, atualizados, erros: 0, detalhes };
+  return { ok: true, total: totalInis, inseridos: novos, atualizados, erros, detalhes, falhas };
 }
 
 // Execução directa

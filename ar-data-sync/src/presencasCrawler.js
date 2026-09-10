@@ -10,6 +10,7 @@
 
 import 'dotenv/config';
 import { createClient } from '@supabase/supabase-js';
+import { empurrarAmostra } from './resumoPublico.js';
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY;
@@ -110,6 +111,7 @@ export async function crawlerPresencas() {
   console.log(`  → ${deputados.length} deputados activos`);
 
   let ok = 0, erros = 0;
+  const novos = [], falhas = [];
 
   for (const { cad_id: bid, nome_parlamentar: nome_abrev } of deputados) {
     try {
@@ -119,6 +121,7 @@ export async function crawlerPresencas() {
       if (registo.total_sessoes === 0) {
         console.warn(`\n  ⚠ BID ${bid} (${nome_abrev}): sem sessões — a saltar`);
         erros++;
+        empurrarAmostra(falhas, { id: bid, motivo: `${nome_abrev}: sem sessões encontradas` });
         continue;
       }
 
@@ -129,17 +132,19 @@ export async function crawlerPresencas() {
       if (e) throw new Error(e.message);
 
       ok++;
+      empurrarAmostra(novos, { id: bid, label: `${nome_abrev} (${registo.taxa_presenca}% de presença)` });
       const linha = `  … ${ok}/${deputados.length} — ${nome_abrev} (${registo.taxa_presenca}%)`;
       process.stdout.write(linha.padEnd(65) + '\r');
     } catch (err) {
       erros++;
+      empurrarAmostra(falhas, { id: bid, motivo: `${nome_abrev}: ${err.message}` });
       console.warn(`\n  ✗ BID ${bid} (${nome_abrev}): ${err.message}`);
     }
     await sleep(DELAY);
   }
 
   console.log(`\n\n  ✓ Concluído | OK: ${ok} | Erros: ${erros}`);
-  return { total: ok + erros, inseridos: ok, atualizados: 0, erros };
+  return { total: ok + erros, inseridos: ok, atualizados: 0, erros, novos, falhas };
 }
 
 // Auto-executa só quando chamado directamente (npm run sync:presencas)

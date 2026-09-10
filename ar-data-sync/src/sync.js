@@ -11,6 +11,14 @@ import { crawlerPresencas } from './presencasCrawler.js';
 import { crawlerBiografias } from './biografiasCrawler.js';
 import { linkIntervencoesIniciativas } from './linkIntervencoesIni.js';
 import { linkIntervencoesViaDarLinks } from './linkIntervencoesDAR.js';
+import { juntarAmostra } from './resumoPublico.js';
+
+/** Copia até ao limite público, independentemente do tamanho da lista de origem (algumas funções mantêm um cap interno maior, só para ar_sync_log). */
+function capPublico(itens) {
+  const cap = [];
+  juntarAmostra(cap, itens);
+  return cap;
+}
 
 const MAX_AMOSTRAS = 500;
 
@@ -24,6 +32,17 @@ function labelItem(recurso, reg) {
       return { id: reg.id, label: `${(reg.assunto || reg.artigo || reg.id || '').slice(0, 90)}` };
     default:
       return { id: reg.id, label: String(reg.id).slice(0, 80) };
+  }
+}
+
+// Id do registo bruto (antes de normalizar) — usado quando um registo falha a
+// normalização, por isso não temos o `reg` normalizado para o identificar.
+function rawIdItem(recurso, raw) {
+  switch (recurso) {
+    case 'iniciativas': return raw?.IniId != null ? String(raw.IniId) : undefined;
+    case 'deputados':   return raw?.DepId != null ? String(raw.DepId) : undefined;
+    case 'debates':      return raw?.DebateId != null ? String(raw.DebateId) : undefined;
+    default:             return undefined;
   }
 }
 
@@ -41,18 +60,27 @@ async function sincronizar(recurso, log) {
     tmpPath = await downloadToTemp(url);
   } catch (err) {
     console.error(`  ✗ Falha no download: ${err.message}`);
-    await log(recurso, { sucesso: false, total: 0, inseridos: 0, atualizados: 0, erros: 1, detalhes: [] });
+    await log(recurso, {
+      sucesso: false, total: 0, inseridos: 0, atualizados: 0, erros: 1, detalhes: [],
+      falhas: [{ motivo: `Falha no download: ${err.message}` }],
+    });
     return false;
   }
 
   let batch = [], total = 0, inseridos = 0, atualizados = 0, erros = 0;
-  const amostras = [];
+  const amostras = [];   // até 500 — só para ar_sync_log (interno)
+  const novosPublicos = []; // amostra menor — vai para o summary público
+  const falhas = [];
 
   try {
     for await (const raw of streamRecords(tmpPath, nestedKey)) {
       try {
         const reg = normalizar(raw);
-        if (!reg) { erros++; continue; }
+        if (!reg) {
+          erros++;
+          falhas.push({ id: rawIdItem(recurso, raw), motivo: 'Registo sem id — normalização devolveu null.' });
+          continue;
+        }
         batch.push(reg);
         total++;
 
@@ -60,16 +88,17 @@ async function sincronizar(recurso, log) {
           const r = await upsertBatch(recurso, batch);
           inseridos   += r.inseridos;
           atualizados += r.atualizados;
+          const novosEtiquetados = r.novos.map(reg => labelItem(recurso, reg));
           if (amostras.length < MAX_AMOSTRAS) {
-            r.novos.slice(0, MAX_AMOSTRAS - amostras.length).forEach(reg => {
-              amostras.push(labelItem(recurso, reg));
-            });
+            amostras.push(...novosEtiquetados.slice(0, MAX_AMOSTRAS - amostras.length));
           }
+          juntarAmostra(novosPublicos, novosEtiquetados);
           batch = [];
           process.stdout.write(`  … ${total} processados\r`);
         }
       } catch (err) {
         erros++;
+        falhas.push({ id: rawIdItem(recurso, raw), motivo: err.message });
         if (erros <= 5) console.warn(`\n  ⚠ ${err.message}`);
       }
     }
@@ -78,21 +107,22 @@ async function sincronizar(recurso, log) {
       const r = await upsertBatch(recurso, batch);
       inseridos   += r.inseridos;
       atualizados += r.atualizados;
+      const novosEtiquetados = r.novos.map(reg => labelItem(recurso, reg));
       if (amostras.length < MAX_AMOSTRAS) {
-        r.novos.slice(0, MAX_AMOSTRAS - amostras.length).forEach(reg => {
-          amostras.push(labelItem(recurso, reg));
-        });
+        amostras.push(...novosEtiquetados.slice(0, MAX_AMOSTRAS - amostras.length));
       }
+      juntarAmostra(novosPublicos, novosEtiquetados);
     }
 
-    await log(recurso, { sucesso: true, total, inseridos, atualizados, erros, detalhes: amostras });
+    await log(recurso, { sucesso: true, total, inseridos, atualizados, erros, detalhes: amostras, novos: novosPublicos, falhas });
     const s = ((Date.now() - inicio) / 1000).toFixed(1);
     console.log(`\n  ✓ ${s}s | Total: ${total} | Inseridos: ${inseridos} | Atualizados: ${atualizados} | Erros: ${erros}`);
     return { ok: true, inseridos };
 
   } catch (err) {
     console.error(`\n  ✗ Erro fatal: ${err.message}`);
-    await log(recurso, { sucesso: false, total, inseridos, atualizados, erros: erros + 1, detalhes: amostras });
+    falhas.push({ motivo: `Erro fatal: ${err.message}` });
+    await log(recurso, { sucesso: false, total, inseridos, atualizados, erros: erros + 1, detalhes: amostras, novos: novosPublicos, falhas });
     return { ok: false, inseridos: 0 };
   } finally {
     try { fs.unlinkSync(tmpPath); } catch {}
@@ -105,8 +135,10 @@ async function main() {
   const falhas = [];
   const avisos = [];
 
-  // Resumo por recurso (contagens do dia, sem amostras) — exposto publicamente
-  // via sync_status.summary para consumo por dashboards externos.
+  // Resumo por recurso (contagens do dia + amostras do que mudou/falhou) —
+  // exposto publicamente via sync_status.summary para consumo por dashboards
+  // externos. `novos`/`falhas` só entram quando não vazios, para não inchar
+  // o JSON em recursos sem nada a reportar.
   const resumo = [];
   const log = async (recurso, stats) => {
     await registarLog(recurso, stats);
@@ -120,6 +152,8 @@ async function main() {
       // Momento em que este recurso concluiu — os recursos correm sequencialmente e um
       // pipeline completo pode demorar minutos, por isso não têm todos a mesma hora.
       syncedAt:    new Date().toISOString(),
+      ...(stats.novos?.length  ? { novos:  capPublico(stats.novos)  } : {}),
+      ...(stats.falhas?.length ? { falhas: capPublico(stats.falhas) } : {}),
     });
   };
 
@@ -141,9 +175,14 @@ async function main() {
   console.log('  FASE IA — RESUMOS AUTOMÁTICOS');
   console.log('='.repeat(55));
 
-  // Resumos IA (acumula iniciativas + deputados + debates num único log)
+  // Resumos IA (acumula iniciativas + deputados + debates + votações num único log)
   let aiTotal = 0, aiInseridos = 0, aiErros = 0;
-  const acumularAi = r => { aiTotal += r?.total ?? 0; aiInseridos += r?.inseridos ?? 0; aiErros += r?.erros ?? 0; };
+  let aiNovos = [], aiFalhas = [];
+  const acumularAi = r => {
+    aiTotal += r?.total ?? 0; aiInseridos += r?.inseridos ?? 0; aiErros += r?.erros ?? 0;
+    juntarAmostra(aiNovos, r?.novos);
+    juntarAmostra(aiFalhas, r?.falhas);
+  };
 
   try { if (resultados.iniciativas?.ok) acumularAi(await resumirIniciativas()); }
   catch (err) { console.warn(`\n  ⚠ resumirIniciativas falhou (${err.message})`); avisos.push('resumirIniciativas'); }
@@ -160,6 +199,8 @@ async function main() {
     atualizados: 0,
     erros:       rTemas === null || (rTemas?.erros ?? 0) < 0 ? 1 : (rTemas?.erros ?? 0),
     detalhes:    rTemas?.detalhes    ?? [],
+    novos:       rTemas?.detalhes    ?? [],
+    falhas:      rTemas?.falhas      ?? [],
   });
   if (!temasOk) avisos.push('temas');
 
@@ -174,9 +215,11 @@ async function main() {
     sucesso: rDar !== null,
     total:       (rDar?.novos ?? 0) + (rDar?.erros ?? 0),
     inseridos:    rDar?.novos  ?? 0,
-    atualizados:  0,
+    atualizados:  rDar?.actualizados ?? 0,
     erros:        rDar?.erros  ?? (rDar === null ? 1 : 0),
     detalhes:    [],
+    novos:       rDar?.amostraNovos ?? [],
+    falhas:      rDar?.falhas ?? [],
   });
   if (!(rDar !== null)) avisos.push('dar');
 
@@ -187,6 +230,7 @@ async function main() {
   await log('transcricoes', {
     sucesso: rTransc !== null, total: rTransc?.total ?? 0, inseridos: rTransc?.inseridos ?? 0,
     atualizados: 0, erros: rTransc?.erros ?? (rTransc === null ? 1 : 0), detalhes: [],
+    novos: rTransc?.novos ?? [], falhas: rTransc?.falhas ?? [],
   });
   if (!(rTransc !== null)) avisos.push('transcricoes');
 
@@ -195,6 +239,7 @@ async function main() {
   catch (err) { console.warn(`\n  ⚠ resumirDebates falhou (${err.message})`); avisos.push('resumirDebates'); }
   await log('resumos_ia', {
     sucesso: aiErros === 0, total: aiTotal, inseridos: aiInseridos, atualizados: 0, erros: aiErros, detalhes: [],
+    novos: aiNovos, falhas: aiFalhas,
   });
   if (!(aiErros === 0)) avisos.push('resumos_ia');
 
@@ -205,6 +250,7 @@ async function main() {
   await log('intervencoes', {
     sucesso: rInt !== null, total: rInt?.total ?? 0, inseridos: rInt?.inseridos ?? 0,
     atualizados: 0, erros: rInt?.erros ?? (rInt === null ? 1 : 0), detalhes: [],
+    novos: rInt?.novos ?? [], falhas: rInt?.falhas ?? [],
   });
   if (!(rInt !== null)) avisos.push('intervencoes');
 
@@ -219,6 +265,8 @@ async function main() {
     atualizados: 0,
     erros:       rIntLink === null ? 1 : (rIntLink?.erros ?? 0),
     detalhes:    [],
+    novos:       rIntLink?.novos  ?? [],
+    falhas:      rIntLink?.falhas ?? [],
   });
   if (!(rIntLink !== null)) avisos.push('intervencoes_links');
 
@@ -234,6 +282,8 @@ async function main() {
     atualizados: 0,
     erros:       rIntLinkDar === null ? 1 : (rIntLinkDar?.erros ?? 0),
     detalhes:    [],
+    novos:       rIntLinkDar?.novos  ?? [],
+    falhas:      rIntLinkDar?.falhas ?? [],
   });
   if (!(rIntLinkDar !== null)) avisos.push('intervencoes_links_dar');
 
@@ -245,7 +295,8 @@ async function main() {
     const votacoesSucesso = rVot?.ok ?? rVot !== null;
     await log('votacoes', {
       sucesso: votacoesSucesso, total: rVot?.total ?? 0, inseridos: rVot?.total ?? 0,
-      atualizados: 0, erros: rVot === null ? 1 : 0, detalhes: [],
+      atualizados: 0, erros: rVot?.erros ?? (rVot === null ? 1 : 0), detalhes: [],
+      novos: rVot?.novos ?? [], falhas: rVot?.falhas ?? [],
     });
     if (!votacoesSucesso) avisos.push('votacoes');
 
@@ -257,6 +308,8 @@ async function main() {
       atualizados: 0,
       erros:       rVot === null ? 1 : 0,
       detalhes:    [],
+      novos:       rVot?.divergentesAmostra ?? [],
+      falhas:      [],
     });
     if (!(rVot !== null)) avisos.push('deputados_divergentes');
 
@@ -270,8 +323,10 @@ async function main() {
       total:       rDarLinks?.total       ?? 0,
       inseridos:   rDarLinks?.inseridos   ?? 0,
       atualizados: rDarLinks?.atualizados ?? 0,
-      erros:       rDarLinks === null ? 1 : 0,
+      erros:       rDarLinks === null ? 1 : (rDarLinks?.erros ?? 0),
       detalhes:    rDarLinks?.detalhes ?? [],
+      novos:       rDarLinks?.detalhes ?? [],
+      falhas:      rDarLinks?.falhas   ?? [],
     });
     if (!darLinksSucesso) avisos.push('dar_links');
 
@@ -288,6 +343,7 @@ async function main() {
   await log('biografias', {
     sucesso: rBio !== null, total: rBio?.total ?? 0, inseridos: rBio?.inseridos ?? 0,
     atualizados: 0, erros: rBio?.erros ?? (rBio === null ? 1 : 0), detalhes: [],
+    novos: rBio?.novos ?? [], falhas: rBio?.falhas ?? [],
   });
   if (!(rBio !== null)) avisos.push('biografias');
 
@@ -298,6 +354,7 @@ async function main() {
   await log('presencas', {
     sucesso: rPresencas !== null, total: rPresencas?.total ?? 0, inseridos: rPresencas?.inseridos ?? 0,
     atualizados: 0, erros: rPresencas?.erros ?? (rPresencas === null ? 1 : 0), detalhes: [],
+    novos: rPresencas?.novos ?? [], falhas: rPresencas?.falhas ?? [],
   });
   if (!(rPresencas !== null)) avisos.push('presencas');
 

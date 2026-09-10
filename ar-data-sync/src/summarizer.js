@@ -13,6 +13,7 @@ import { SUPABASE_URL, SUPABASE_KEY } from './config.js';
 import { resumir, promptIniciativa, promptDeputado, promptDebate, promptVotacao, promptTemas, TEMAS_DISPONIVEIS } from './ai.js';
 import { obterTranscricao } from './scraper.js';
 import { parsearIntervencoes } from './interventionParser.js';
+import { empurrarAmostra } from './resumoPublico.js';
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
@@ -29,6 +30,7 @@ const PAGINA = 50; // registos por página (evita timeout no Supabase)
 export async function resumirIniciativas() {
   console.log('\n  [IA] A resumir iniciativas novas...');
   let total = 0, erros = 0;
+  const novos = [], falhas = [];
 
   while (true) {
     // Offset sempre 0: registos processados saem do conjunto IS NULL,
@@ -47,8 +49,10 @@ export async function resumirIniciativas() {
       if (resumo) {
         await db().from('ar_iniciativas').update({ resumo_ia: resumo }).eq('id', ini.id);
         total++;
+        empurrarAmostra(novos, { id: ini.id, label: (ini.epigrafe || ini.titulo || ini.id).slice(0, 90) });
       } else {
         erros++;
+        empurrarAmostra(falhas, { id: ini.id, motivo: 'Falha ao gerar resumo (IA)' });
       }
       process.stdout.write(`  [IA] Iniciativas: ${total} resumidas, ${erros} erros\r`);
     }
@@ -57,7 +61,7 @@ export async function resumirIniciativas() {
   }
 
   console.log(`\n  [IA] Iniciativas concluído — ${total} resumidas, ${erros} erros`);
-  return { total: total + erros, inseridos: total, atualizados: 0, erros };
+  return { total: total + erros, inseridos: total, atualizados: 0, erros, novos, falhas };
 }
 
 // ── Deputados ─────────────────────────────────────────────────────────────────
@@ -65,10 +69,11 @@ export async function resumirIniciativas() {
 export async function resumirDeputados() {
   console.log('\n  [IA] A resumir perfis de deputados...');
   let total = 0, erros = 0;
+  const novos = [], falhas = [];
 
   // Só os 230 deputados actuais (tabela deputados) — exclui suplentes históricos
   const { data: activos, error: errActivos } = await db().from('deputados').select('id');
-  if (errActivos) { console.error('  ✗ Erro ao buscar deputados activos:', errActivos.message); return { total: 0, inseridos: 0, atualizados: 0, erros: 1 }; }
+  if (errActivos) { console.error('  ✗ Erro ao buscar deputados activos:', errActivos.message); return { total: 0, inseridos: 0, atualizados: 0, erros: 1, novos, falhas }; }
   const idsActivos = (activos ?? []).map(d => d.id);
 
   while (true) {
@@ -100,8 +105,10 @@ export async function resumirDeputados() {
       if (resumo) {
         await db().from('ar_deputados').update({ resumo_ia: resumo }).eq('id', dep.id);
         total++;
+        empurrarAmostra(novos, { id: dep.id, label: `${dep.nome_parlamentar || dep.id} (${dep.partido_sigla || '?'})` });
       } else {
         erros++;
+        empurrarAmostra(falhas, { id: dep.id, motivo: 'Falha ao gerar resumo (IA)' });
       }
       process.stdout.write(`  [IA] Deputados: ${total} processados, ${erros} erros\r`);
     }
@@ -110,7 +117,7 @@ export async function resumirDeputados() {
   }
 
   console.log(`\n  [IA] Deputados concluído — ${total} processados, ${erros} erros`);
-  return { total: total + erros, inseridos: total, atualizados: 0, erros };
+  return { total: total + erros, inseridos: total, atualizados: 0, erros, novos, falhas };
 }
 
 // ── Resumos de Debates ────────────────────────────────────────────────────────
@@ -131,20 +138,23 @@ export async function resumirDebates() {
 
   console.log(`  [IA] ${data.length} debates para resumir...`);
   let total = 0, erros = 0;
+  const novos = [], falhas = [];
 
   for (const debate of data) {
     const resumo = await resumir(promptDebate(debate));
     if (resumo) {
       await db().from('ar_debates').update({ resumo_ia: resumo }).eq('id', debate.id);
       total++;
+      empurrarAmostra(novos, { id: debate.id, label: (debate.assunto || debate.artigo || debate.id).slice(0, 90) });
     } else {
       erros++;
+      empurrarAmostra(falhas, { id: debate.id, motivo: 'Falha ao gerar resumo (IA)' });
     }
     process.stdout.write(`  [IA] Debates: ${total}/${data.length} resumidos, ${erros} erros\r`);
   }
 
   console.log(`\n  [IA] Debates concluído — ${total} resumidos, ${erros} erros`);
-  return { total: total + erros, inseridos: total, atualizados: 0, erros };
+  return { total: total + erros, inseridos: total, atualizados: 0, erros, novos, falhas };
 }
 
 // ── Votações ──────────────────────────────────────────────────────────────────
@@ -152,6 +162,7 @@ export async function resumirDebates() {
 export async function resumirVotacoes() {
   console.log('\n  [IA] A resumir votações novas...');
   let total = 0, erros = 0;
+  const novos = [], falhas = [];
 
   while (true) {
     const { data: vots, error } = await db()
@@ -178,10 +189,12 @@ export async function resumirVotacoes() {
       if (resumo) {
         await db().from('ar_votacoes').update({ resumo_ia: resumo }).eq('id', vot.id);
         total++;
+        empurrarAmostra(novos, { id: vot.id, label: `${ini?.titulo?.slice(0, 70) ?? vot.iniciativa_id} — ${vot.resultado ?? '?'}` });
       } else {
         // Marcar com string vazia para não re-tentar infinitamente
         await db().from('ar_votacoes').update({ resumo_ia: '' }).eq('id', vot.id);
         erros++;
+        empurrarAmostra(falhas, { id: vot.id, motivo: 'Falha ao gerar resumo (IA)' });
       }
       process.stdout.write(`  [IA] Votações: ${total} resumidas, ${erros} erros\r`);
     }
@@ -190,7 +203,7 @@ export async function resumirVotacoes() {
   }
 
   console.log(`\n  [IA] Votações concluído — ${total} resumidas, ${erros} erros`);
-  return { total: total + erros, inseridos: total, atualizados: 0, erros };
+  return { total: total + erros, inseridos: total, atualizados: 0, erros, novos, falhas };
 }
 
 // ── Classificação temática ────────────────────────────────────────────────────
@@ -211,6 +224,7 @@ export async function classificarTemas() {
   console.log('\n  [IA] A classificar temas de iniciativas...');
   let total = 0, erros = 0;
   const detalhes = [];
+  const falhas = [];
 
   while (true) {
     const { data, error } = await db()
@@ -221,7 +235,7 @@ export async function classificarTemas() {
 
     if (error) {
       console.error('  ✗ Erro ao buscar iniciativas:', error.message);
-      return { total: 0, inseridos: 0, atualizados: 0, erros: -1, detalhes: [] };
+      return { total: 0, inseridos: 0, atualizados: 0, erros: -1, detalhes: [], falhas: [] };
     }
     if (!data?.length) break;
 
@@ -233,12 +247,13 @@ export async function classificarTemas() {
         total++;
         if (detalhes.length < 200) {
           const ref = [ini.desc_tipo ?? ini.tipo, ini.titulo?.slice(0, 70)].filter(Boolean).join(' · ');
-          detalhes.push({ label: `[${temas.join(', ')}] ${ref}` });
+          detalhes.push({ id: ini.id, label: `[${temas.join(', ')}] ${ref}` });
         }
       } else {
         // Marcar como processado (sem temas) para não re-tentar
         await db().from('ar_iniciativas').update({ temas: [] }).eq('id', ini.id);
         erros++;
+        empurrarAmostra(falhas, { id: ini.id, motivo: 'IA não devolveu temas válidos' });
       }
       process.stdout.write(`  [IA] Temas: ${total} classificadas, ${erros} sem tema\r`);
     }
@@ -247,7 +262,7 @@ export async function classificarTemas() {
   }
 
   console.log(`\n  [IA] Temas concluído — ${total} classificadas, ${erros} sem tema`);
-  return { total: total + erros, inseridos: total, atualizados: 0, erros, detalhes };
+  return { total: total + erros, inseridos: total, atualizados: 0, erros, detalhes, falhas };
 }
 
 // ── Transcrições de Debates ───────────────────────────────────────────────────
@@ -255,6 +270,7 @@ export async function classificarTemas() {
 export async function obterTranscricoesDebates() {
   console.log('\n  [DAR] A obter transcrições de debates...');
   let total = 0, erros = 0, offset = 0;
+  const novos = [], falhas = [];
 
   while (true) {
     // Debates com url_diario mas sem transcrição ainda
@@ -274,8 +290,10 @@ export async function obterTranscricoesDebates() {
       if (texto) {
         await db().from('ar_debates').update({ transcricao: texto }).eq('id', debate.id);
         total++;
+        empurrarAmostra(novos, { id: debate.id, label: (debate.assunto ?? debate.id).slice(0, 90) });
       } else {
         erros++;
+        empurrarAmostra(falhas, { id: debate.id, motivo: `Sem transcrição obtida de ${debate.url_diario}` });
       }
     }
 
@@ -284,7 +302,7 @@ export async function obterTranscricoesDebates() {
   }
 
   console.log(`\n  [DAR] Transcrições concluídas — ${total} obtidas, ${erros} erros`);
-  return { total: total + erros, inseridos: total, atualizados: 0, erros };
+  return { total: total + erros, inseridos: total, atualizados: 0, erros, novos, falhas };
 }
 
 // ── Intervenções individuais ──────────────────────────────────────────────────
@@ -292,9 +310,10 @@ export async function obterTranscricoesDebates() {
 export async function indexarIntervencoes() {
   console.log('\n  [INT] A indexar intervenções...');
 
-  let totalInt = 0, totalDeb = 0;
+  let totalInt = 0, totalDeb = 0, erros = 0;
   let offset = 0;
   const PAGE = 50;
+  const novos = [], falhas = [];
 
   while (true) {
     // Busca apenas IDs para não carregar texto de transcrições desnecessariamente
@@ -346,6 +365,10 @@ export async function indexarIntervencoes() {
         if (!upsertErr) {
           totalInt += registos.length;
           totalDeb++;
+          empurrarAmostra(novos, { id: debate.id, label: `${(debate.assunto ?? debate.id).slice(0, 70)} (${registos.length} intervenções)` });
+        } else {
+          erros++;
+          empurrarAmostra(falhas, { id: debate.id, motivo: upsertErr.message });
         }
         process.stdout.write(`  [INT] ${totalDeb} debates → ${totalInt} intervenções\r`);
       }
@@ -355,6 +378,6 @@ export async function indexarIntervencoes() {
     offset += PAGE;
   }
 
-  console.log(`\n  [INT] Indexação concluída — ${totalDeb} debates, ${totalInt} intervenções`);
-  return { total: totalInt, inseridos: totalInt, atualizados: 0, erros: 0 };
+  console.log(`\n  [INT] Indexação concluída — ${totalDeb} debates, ${totalInt} intervenções, ${erros} erros`);
+  return { total: totalInt, inseridos: totalInt, atualizados: 0, erros, novos, falhas };
 }

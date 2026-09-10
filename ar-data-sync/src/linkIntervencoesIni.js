@@ -17,6 +17,7 @@ import 'dotenv/config';
 import { createClient } from '@supabase/supabase-js';
 import { parsearUrlDar } from './linkDarIniciativas.js';
 import { indexarPaginasTranscricao } from './interventionParser.js';
+import { empurrarAmostra } from './resumoPublico.js';
 
 const db = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
 const PAGE = 500;
@@ -114,6 +115,7 @@ export async function linkIntervencoesIniciativas(opts = {}) {
   }
 
   let ligadas = 0, semMatch = 0, erros = 0;
+  const novos = [], falhas = [];
 
   // Pré-carregar as transcrições em batch para poder mapear _i → página.
   // Essencial para distinguir intervenções do mesmo deputado em tópicos diferentes
@@ -156,6 +158,7 @@ export async function linkIntervencoesIniciativas(opts = {}) {
     if (error) {
       console.warn(`  ⚠ Erro ao buscar intervenções de ${darId}: ${error.message}`);
       erros++;
+      empurrarAmostra(falhas, { id: darId, motivo: error.message });
       continue;
     }
     if (!ivs?.length) continue;
@@ -228,16 +231,22 @@ export async function linkIntervencoesIniciativas(opts = {}) {
       )
     );
 
-    for (const r of resultados) {
-      if (r.error) erros++;
-      else ligadas++;
-    }
+    updates.forEach((u, i) => {
+      const r = resultados[i];
+      if (r.error) {
+        erros++;
+        empurrarAmostra(falhas, { id: u.id, motivo: r.error.message });
+      } else {
+        ligadas++;
+        empurrarAmostra(novos, { id: u.id, label: `→ iniciativa ${u.iniciativa_id}` });
+      }
+    });
 
     process.stdout.write(`  [LINK] ${ligadas} ligadas, ${semMatch} sem match, ${erros} erros\r`);
   }
 
   console.log(`\n  [LINK] Concluído — ${ligadas} ligadas, ${semMatch} sem match estruturado, ${erros} erros`);
-  return { total: ligadas + semMatch, inseridos: ligadas, atualizados: 0, erros };
+  return { total: ligadas + semMatch, inseridos: ligadas, atualizados: 0, erros, novos, falhas };
 }
 
 // Execução directa

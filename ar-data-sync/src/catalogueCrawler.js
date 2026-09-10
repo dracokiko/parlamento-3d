@@ -16,6 +16,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { SUPABASE_URL, SUPABASE_KEY, LEGISLATURA, LEGISLATURA_NUM, DAR_SERIE } from './config.js';
 import { extrairTextoHtml } from './scraper.js';
+import { empurrarAmostra } from './resumoPublico.js';
 
 const BASE      = 'https://debates.parlamento.pt';
 const TIMEOUT   = 300_000;
@@ -196,6 +197,7 @@ export async function crawlerDebatesDAR(modo = 'new') {
   }
 
   let novos = 0, actualizados = 0, ignorados = 0, erros = 0;
+  const amostraNovos = [], falhas = [];
 
   for (const { numero, data, id } of sessoes) {
     // Verificar se já tem transcrição
@@ -226,6 +228,7 @@ export async function crawlerDebatesDAR(modo = 'new') {
       if (error) {
         console.warn(`  ⚠ Upsert ${id}: ${error.message}`);
         erros++;
+        empurrarAmostra(falhas, { id, motivo: error.message });
         continue;
       }
 
@@ -233,15 +236,17 @@ export async function crawlerDebatesDAR(modo = 'new') {
       const label = existing ? 'UPD' : '+  ';
       existing ? actualizados++ : novos++;
       console.log(`  [DAR-CRAWL] ${label} ${id} (${sessao.texto.length} chars, ${nInis} iniciativas)`);
+      empurrarAmostra(amostraNovos, { id, label: `${data} — ${sessao.texto.length} chars, ${nInis} iniciativas` });
 
     } catch (e) {
       console.warn(`  ⚠ ${numero}/${data}: ${e.message}`);
       erros++;
+      empurrarAmostra(falhas, { id, motivo: e.message });
     }
   }
 
   console.log(`\n  [DAR-CRAWL] Concluído — ${novos} novos, ${actualizados} actualizados, ${ignorados} ignorados, ${erros} erros`);
-  return { novos, actualizados, erros };
+  return { novos, actualizados, erros, amostraNovos, falhas };
 }
 
 // Execução directa

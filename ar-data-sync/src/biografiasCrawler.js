@@ -10,6 +10,7 @@
 
 import 'dotenv/config';
 import { createClient } from '@supabase/supabase-js';
+import { empurrarAmostra } from './resumoPublico.js';
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY;
@@ -138,6 +139,7 @@ export async function crawlerBiografias() {
   console.log(`  → ${deputados.length} BIDs encontrados no catálogo`);
 
   let ok = 0, erros = 0;
+  const novos = [], falhas = [];
 
   for (const { bid, nome: nomeFallback } of deputados) {
     try {
@@ -150,6 +152,7 @@ export async function crawlerBiografias() {
       if (!bio.nome_abrev) {
         console.warn(`  ⚠ BID ${bid}: sem nome mesmo com fallback — a saltar`);
         erros++;
+        empurrarAmostra(falhas, { id: bid, motivo: 'Sem nome mesmo com fallback' });
         continue;
       }
 
@@ -160,17 +163,19 @@ export async function crawlerBiografias() {
       if (error) throw new Error(error.message);
 
       ok++;
+      empurrarAmostra(novos, { id: bid, label: bio.nome_abrev });
       const linha = `  … ${ok}/${deputados.length} — ${bio.nome_abrev}`;
       process.stdout.write(linha.padEnd(60) + '\r');
     } catch (err) {
       erros++;
+      empurrarAmostra(falhas, { id: bid, motivo: err.message });
       console.warn(`\n  ✗ BID ${bid}: ${err.message}`);
     }
     await sleep(DELAY);
   }
 
   console.log(`\n\n  ✓ Concluído | OK: ${ok} | Erros: ${erros}`);
-  return { total: ok + erros, inseridos: ok, atualizados: 0, erros };
+  return { total: ok + erros, inseridos: ok, atualizados: 0, erros, novos, falhas };
 }
 
 // Auto-executa só quando chamado directamente

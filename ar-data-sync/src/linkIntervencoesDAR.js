@@ -16,6 +16,7 @@
 import 'dotenv/config';
 import { createClient } from '@supabase/supabase-js';
 import { indexarPaginasTranscricao } from './interventionParser.js';
+import { empurrarAmostra } from './resumoPublico.js';
 
 const db = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
 const PAGE = 500;
@@ -76,6 +77,7 @@ export async function linkIntervencoesViaDarLinks(opts = {}) {
   console.log(`  [LINK-DAR] Transcrições carregadas: ${txMapa.size}/${darIds.length}`);
 
   let ligadas = 0, semTx = 0, erros = 0;
+  const novos = [], falhas = [];
 
   for (const [darId, links] of mapaLinks) {
     if (!txMapa.has(darId)) { semTx += links.length; continue; }
@@ -89,7 +91,7 @@ export async function linkIntervencoesViaDarLinks(opts = {}) {
     if (!force) q = q.is('iniciativa_id', null);
     const { data: ivs, error } = await q;
 
-    if (error) { console.warn(`  ⚠ ${darId}: ${error.message}`); erros++; continue; }
+    if (error) { console.warn(`  ⚠ ${darId}: ${error.message}`); erros++; empurrarAmostra(falhas, { id: darId, motivo: error.message }); continue; }
     if (!ivs?.length) continue;
 
     // Ordenar links por página para processar em sequência sem sobreposições
@@ -130,16 +132,22 @@ export async function linkIntervencoesViaDarLinks(opts = {}) {
       )
     );
 
-    for (const r of resultados) {
-      if (r.error) erros++;
-      else ligadas++;
-    }
+    updates.forEach((u, i) => {
+      const r = resultados[i];
+      if (r.error) {
+        erros++;
+        empurrarAmostra(falhas, { id: u.id, motivo: r.error.message });
+      } else {
+        ligadas++;
+        empurrarAmostra(novos, { id: u.id, label: `→ iniciativa ${u.iniciativa_id}` });
+      }
+    });
 
     process.stdout.write(`  [LINK-DAR] ${ligadas} ligadas, ${semTx} sem transcrição, ${erros} erros\r`);
   }
 
   console.log(`\n  [LINK-DAR] Concluído — ${ligadas} ligadas, ${erros} erros`);
-  return { total: ligadas, inseridos: ligadas, erros };
+  return { total: ligadas, inseridos: ligadas, erros, novos, falhas };
 }
 
 // Execução directa

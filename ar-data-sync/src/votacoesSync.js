@@ -9,6 +9,7 @@
 
 import 'dotenv/config';
 import { createClient } from '@supabase/supabase-js';
+import { empurrarAmostra, juntarAmostra } from './resumoPublico.js';
 
 const db = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
 const PAGE = 500;
@@ -175,6 +176,8 @@ export async function syncVotacoes() {
   let totalVotacoes = 0;
   let totalComDivergentes = 0;
   let erroFatal = false;
+  let erros = 0;
+  const novos = [], falhas = [], divergentesAmostra = [];
 
   while (true) {
     const { data, error } = await db
@@ -192,7 +195,14 @@ export async function syncVotacoes() {
       const vots = extrairVotacoes(ini.id, ini.eventos);
       batch.push(...vots);
       for (const v of vots) {
-        if (v.deputados_isolados?.some(d => d.rebelde)) totalComDivergentes++;
+        const rebeldes = v.deputados_isolados?.filter(d => d.rebelde) ?? [];
+        if (rebeldes.length) {
+          totalComDivergentes++;
+          empurrarAmostra(divergentesAmostra, {
+            id: v.id,
+            label: `Iniciativa ${v.iniciativa_id} — ${rebeldes.map(d => d.nome).join(', ')}`,
+          });
+        }
       }
     }
 
@@ -203,7 +213,13 @@ export async function syncVotacoes() {
         .from('ar_votacoes')
         .upsert(batch, { onConflict: 'id' });
 
-      if (upsertErr) console.error('  Erro no upsert:', upsertErr.message);
+      if (upsertErr) {
+        console.error('  Erro no upsert:', upsertErr.message);
+        erros += batch.length;
+        empurrarAmostra(falhas, { motivo: `Upsert de ${batch.length} votações falhou: ${upsertErr.message}` });
+      } else {
+        juntarAmostra(novos, batch.map(v => ({ id: v.id, label: `Iniciativa ${v.iniciativa_id} — ${v.resultado ?? '?'}` })));
+      }
     }
 
     process.stdout.write(`  … ${totalIniciativas} iniciativas | ${totalVotacoes} votações\r`);
@@ -215,7 +231,10 @@ export async function syncVotacoes() {
   console.log(`\n  ✓ Iniciativas processadas  : ${totalIniciativas}`);
   console.log(`  ✓ Votações extraídas        : ${totalVotacoes}`);
   console.log(`  ✓ Com votos divergentes     : ${totalComDivergentes}`);
-  return { ok: !erroFatal, total: totalVotacoes, comDivergentes: totalComDivergentes };
+  return {
+    ok: !erroFatal, total: totalVotacoes, comDivergentes: totalComDivergentes,
+    erros, novos, falhas, divergentesAmostra,
+  };
 }
 
 async function diagnosticarVotacoes() {
