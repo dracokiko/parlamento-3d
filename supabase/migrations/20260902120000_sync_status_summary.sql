@@ -3,6 +3,8 @@
 -- o que foi acrescentado/atualizado a cada dia e não apenas ok/error.
 --
 -- Formato de `summary`: array de objetos
---   [{ recurso, sucesso, total, inseridos, atualizados, erros }, ...]
+--   [{ recurso, sucesso, total, inseridos, atualizados, erros, syncedAt }, ...]
+-- (syncedAt acrescentado depois, ver ar-data-sync/src/sync.js — sem migração própria
+-- porque a coluna é jsonb, não precisa de alterar o esquema.)
 
 ALTER TABLE sync_status ADD COLUMN IF NOT EXISTS summary jsonb;

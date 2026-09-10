@@ -117,6 +117,9 @@ async function main() {
       inseridos:   stats.inseridos ?? 0,
       atualizados: stats.atualizados ?? 0,
       erros:       stats.erros ?? 0,
+      // Momento em que este recurso concluiu — os recursos correm sequencialmente e um
+      // pipeline completo pode demorar minutos, por isso não têm todos a mesma hora.
+      syncedAt:    new Date().toISOString(),
     });
   };
 
