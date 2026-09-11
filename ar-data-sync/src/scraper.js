@@ -135,6 +135,23 @@ export function extrairTextoHtml(html) {
 
 // ── Entrada pública ───────────────────────────────────────────────────────────
 
+async function fetchPagina(url) {
+  const res = await fetch(url, {
+    signal:  AbortSignal.timeout(PAGE_TIMEOUT),
+    headers: { 'User-Agent': 'Mozilla/5.0 (compatible; ParlamentoBot/1.0)' },
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.text();
+}
+
+/** Remove o parâmetro `org` do URL, ou null se não existir. */
+function semParamOrg(urlStr) {
+  const u = new URL(urlStr);
+  if (!u.searchParams.has('org')) return null;
+  u.searchParams.delete('org');
+  return u.toString();
+}
+
 /**
  * Dado o URLDiario de um debate, descarrega e devolve a transcrição completa.
  *
@@ -145,18 +162,26 @@ export async function obterTranscricao(urlDiario) {
   if (!urlDiario) return null;
 
   try {
-    const res = await fetch(urlDiario, {
-      signal:  AbortSignal.timeout(PAGE_TIMEOUT),
-      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; ParlamentoBot/1.0)' },
-    });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const html = await res.text();
+    let html;
+    let urlUsado = urlDiario;
+    try {
+      html = await fetchPagina(urlDiario);
+    } catch (err) {
+      // debates.parlamento.pt devolve 404 para alguns URLs com `org=` (ex.: "org=PLC")
+      // mesmo vindo directamente da própria API da AR — confirmado em produção: o
+      // mesmo URL sem esse parâmetro funciona. Antes de desistir, tenta uma vez sem ele.
+      const semOrg = semParamOrg(urlDiario);
+      if (!semOrg) throw err;
+      console.warn(`    ⚠ ${err.message} — a tentar sem "org="...`);
+      urlUsado = semOrg;
+      html = await fetchPagina(semOrg);
+    }
 
     // Tentar exportação PDF (abordagem principal)
     const campos = extrairCamposForm(html);
     if (campos?.pgs) {
       try {
-        const texto = await exportarPdf(campos, urlDiario);
+        const texto = await exportarPdf(campos, urlUsado);
         if (texto) return texto;
       } catch (e) {
         console.warn(`    ⚠ Export PDF falhou (${e.message}), a usar HTML...`);
