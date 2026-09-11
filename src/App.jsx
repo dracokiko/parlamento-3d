@@ -17,6 +17,7 @@ import { VotacaoDetalhe } from './pages/VotacaoDetalhe';
 import { IniciativaDetalhe } from './pages/IniciativaDetalhe';
 import { Sobre } from './pages/Sobre';
 import { Presencas } from './pages/Presencas';
+import { AtividadeParlamentar } from './pages/AtividadeParlamentar';
 import { Sincronizacoes } from './pages/Sincronizacoes';
 import { useIsMobile } from './hooks/useIsMobile';
 
@@ -116,6 +117,7 @@ const MobilePainel = () => {
 const NAV_LINKS = [
   { to: '/',                label: 'Hemiciclo'        },
   { to: '/votacoes',        label: 'Votações'         },
+  { to: '/atividade',       label: 'Atividade'        },
   { to: '/presencas',       label: 'Presenças'        },
   { to: '/diretivas-eu',    label: 'Diretivas UE'     },
   { to: '/sincronizacoes',  label: 'Sincronizações'   },
@@ -268,6 +270,7 @@ function AppInner() {
           <Route path="/diretivas-eu/:celex" element={<DiretivaDetalhe />} />
           <Route path="/votacoes"            element={<Votacoes />} />
           <Route path="/votacoes/:id"        element={<VotacaoDetalhe />} />
+          <Route path="/atividade"           element={<AtividadeParlamentar />} />
           <Route path="/iniciativas/:id"     element={<IniciativaDetalhe />} />
           <Route path="/sobre"               element={<Sobre />} />
           <Route path="/presencas"           element={<Presencas />} />
