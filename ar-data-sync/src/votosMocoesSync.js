@@ -14,7 +14,7 @@
 
 import 'dotenv/config';
 import { createClient } from '@supabase/supabase-js';
-import { AR_ENDPOINTS } from './config.js';
+import { fetchAtividades } from './atividadesGerais.js';
 import { empurrarAmostra } from './resumoPublico.js';
 
 const db = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
@@ -62,9 +62,7 @@ function labelItem(reg) {
 export async function syncVotosMocoes() {
   console.log('\n  [VOTOS-MOÇÕES] A sincronizar votos e moções do plenário...');
 
-  const res = await fetch(AR_ENDPOINTS.debates.url);
-  if (!res.ok) throw new Error(`HTTP ${res.status} ao descarregar ${AR_ENDPOINTS.debates.url}`);
-  const raw = await res.json();
+  const raw = await fetchAtividades();
   const atividades = raw.AtividadesGerais?.Atividades ?? [];
   const alvo = atividades.filter(a => TIPOS_INCLUIDOS.has(a.DescTipo));
   console.log(`  [VOTOS-MOÇÕES] ${alvo.length} de ${atividades.length} atividades são Voto/Moção`);

@@ -7,6 +7,7 @@ import { resumirIniciativas, resumirDeputados, resumirDebates, resumirVotacoes, 
 import { crawlerDebatesDAR } from './catalogueCrawler.js';
 import { syncVotacoes } from './votacoesSync.js';
 import { syncVotosMocoes } from './votosMocoesSync.js';
+import { syncAudicoes, syncAudiencias, syncDeslocacoes, syncEventos, syncOrcamento } from './atividadesSimples.js';
 import { syncDarLinks } from './linkDarIniciativas.js';
 import { crawlerPresencas } from './presencasCrawler.js';
 import { crawlerBiografias } from './biografiasCrawler.js';
@@ -240,6 +241,50 @@ async function main() {
     falhas:      rVotMoc?.falhas ?? [],
   });
   if (!(rVotMoc !== null)) avisos.push('votos_mocoes');
+
+  // Atalho para recursos "simples" (fetch/normalizar/upsert só, mesma forma de
+  // retorno de atividadesSimples.js) — evita repetir o mesmo mapeamento
+  // sucesso/erros/novos/falhas cinco vezes seguidas.
+  const logSimples = async (recurso, resultado) => {
+    await log(recurso, {
+      sucesso:     resultado !== null,
+      total:       resultado?.total       ?? 0,
+      inseridos:   resultado?.inseridos   ?? 0,
+      atualizados: resultado?.atualizados ?? 0,
+      erros:       resultado?.erros       ?? (resultado === null ? 1 : 0),
+      detalhes:    [],
+      novos:       resultado?.novos  ?? [],
+      falhas:      resultado?.falhas ?? [],
+    });
+    return resultado !== null;
+  };
+
+  // Audições, Audiências, Deslocações, Eventos, Orçamento (mesmo ficheiro de
+  // "debates", chaves de AtividadesGerais até agora ignoradas)
+  let rAud = null;
+  try { rAud = await syncAudicoes(); }
+  catch (err) { console.warn(`\n  ⚠ syncAudicoes falhou (${err.message})`); avisos.push('syncAudicoes'); }
+  if (!(await logSimples('audicoes', rAud))) avisos.push('audicoes');
+
+  let rAudi = null;
+  try { rAudi = await syncAudiencias(); }
+  catch (err) { console.warn(`\n  ⚠ syncAudiencias falhou (${err.message})`); avisos.push('syncAudiencias'); }
+  if (!(await logSimples('audiencias', rAudi))) avisos.push('audiencias');
+
+  let rDesloc = null;
+  try { rDesloc = await syncDeslocacoes(); }
+  catch (err) { console.warn(`\n  ⚠ syncDeslocacoes falhou (${err.message})`); avisos.push('syncDeslocacoes'); }
+  if (!(await logSimples('deslocacoes', rDesloc))) avisos.push('deslocacoes');
+
+  let rEvt = null;
+  try { rEvt = await syncEventos(); }
+  catch (err) { console.warn(`\n  ⚠ syncEventos falhou (${err.message})`); avisos.push('syncEventos'); }
+  if (!(await logSimples('eventos', rEvt))) avisos.push('eventos');
+
+  let rOrc = null;
+  try { rOrc = await syncOrcamento(); }
+  catch (err) { console.warn(`\n  ⚠ syncOrcamento falhou (${err.message})`); avisos.push('syncOrcamento'); }
+  if (!(await logSimples('orcamento', rOrc))) avisos.push('orcamento');
 
   // Transcrições (scraping DAR PDF)
   let rTransc = null;
