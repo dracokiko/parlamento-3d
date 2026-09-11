@@ -6,6 +6,7 @@ import { upsertBatch, registarLog, acquireSyncLock, releaseSyncLock, registarSyn
 import { resumirIniciativas, resumirDeputados, resumirDebates, resumirVotacoes, obterTranscricoesDebates, indexarIntervencoes, classificarTemas } from './summarizer.js';
 import { crawlerDebatesDAR } from './catalogueCrawler.js';
 import { syncVotacoes } from './votacoesSync.js';
+import { syncVotosMocoes } from './votosMocoesSync.js';
 import { syncDarLinks } from './linkDarIniciativas.js';
 import { crawlerPresencas } from './presencasCrawler.js';
 import { crawlerBiografias } from './biografiasCrawler.js';
@@ -222,6 +223,23 @@ async function main() {
     falhas:      rDar?.falhas ?? [],
   });
   if (!(rDar !== null)) avisos.push('dar');
+
+  // Votos e Moções do Plenário (extraídos do mesmo ficheiro de "debates",
+  // chave AtividadesGerais.Atividades — inclui moções de censura)
+  let rVotMoc = null;
+  try { rVotMoc = await syncVotosMocoes(); }
+  catch (err) { console.warn(`\n  ⚠ syncVotosMocoes falhou (${err.message})`); avisos.push('syncVotosMocoes'); }
+  await log('votos_mocoes', {
+    sucesso:     rVotMoc !== null,
+    total:       rVotMoc?.total       ?? 0,
+    inseridos:   rVotMoc?.inseridos   ?? 0,
+    atualizados: rVotMoc?.atualizados ?? 0,
+    erros:       rVotMoc?.erros       ?? (rVotMoc === null ? 1 : 0),
+    detalhes:    [],
+    novos:       rVotMoc?.novos  ?? [],
+    falhas:      rVotMoc?.falhas ?? [],
+  });
+  if (!(rVotMoc !== null)) avisos.push('votos_mocoes');
 
   // Transcrições (scraping DAR PDF)
   let rTransc = null;
