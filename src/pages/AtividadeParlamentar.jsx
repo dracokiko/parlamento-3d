@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import {
   ArrowLeft, Landmark, Gavel, Mic2, Handshake, Plane, CalendarDays, Wallet, FileSearch,
   ExternalLink, CheckCircle2, XCircle, MinusCircle, Search, X, ChevronLeft, ChevronRight,
+  MessageSquare, ChevronDown, ChevronUp,
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { partidos as PARTIDOS } from '../data/mockPartidos';
@@ -20,7 +21,7 @@ const GP_COR = Object.fromEntries(Object.entries(PARTIDOS).map(([k, v]) => [k, v
 const TABS = [
   {
     id: 'votos_mocoes', label: 'Votos e Moções', icon: Gavel, tabela: 'ar_votos_mocoes',
-    colunas: 'id, desc_tipo, assunto, numero, data_entrada, resultado, data_votacao, unanime, autores_gp, publicacao',
+    colunas: 'id, desc_tipo, assunto, numero, data_entrada, resultado, data_votacao, unanime, autores_gp, publicacao, intervencao_ids',
     ordenar: 'data_entrada',
     descricao: 'Votos: declarações do plenário sobre um assunto de interesse público (pesar, condenação, saudação, solidariedade) — não criam lei, são uma tomada de posição política. Moções: forçam uma votação sobre a confiança no Governo (censura ou rejeição do programa) — se aprovadas, o Governo cai.',
   },
@@ -101,6 +102,62 @@ const AutorBadge = ({ nome }) => {
   );
 };
 
+/**
+ * Lista expansível das intervenções (quem disse o quê) de um Voto/Moção que
+ * foi debatido em plenário — só carrega o texto ao abrir, não à partida
+ * (cada cartão pode ter dezenas de intervenções, não vale a pena pedir tudo
+ * só por a página ter carregado).
+ */
+function IntervencoesExpansiveis({ ids }) {
+  const [aberto, setAberto] = useState(false);
+  const [dados, setDados] = useState(null);
+  const [carregando, setCarregando] = useState(false);
+
+  const toggle = async () => {
+    if (!aberto && !dados) {
+      setCarregando(true);
+      const { data, error } = await supabase.from('ar_intervencoes').select('id, nome_dep, partido, texto').in('id', ids);
+      if (error) {
+        console.error('[AtividadeParlamentar] erro ao carregar intervenções:', error.message);
+      } else {
+        const ordem = new Map(ids.map((id, i) => [id, i]));
+        setDados([...(data ?? [])].sort((a, b) => (ordem.get(a.id) ?? 0) - (ordem.get(b.id) ?? 0)));
+      }
+      setCarregando(false);
+    }
+    setAberto(a => !a);
+  };
+
+  return (
+    <div className="mt-2 border-t border-gray-100 pt-2">
+      <button
+        onClick={toggle}
+        className="flex items-center gap-1.5 text-xs font-semibold text-blue-600 hover:text-blue-800 transition-colors"
+      >
+        <MessageSquare size={12} />
+        {aberto ? 'Ocultar' : 'Ver'} intervenções ({ids.length})
+        {aberto ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+      </button>
+      {aberto && (
+        <div className="mt-2 flex flex-col gap-2.5 max-h-72 overflow-y-auto pr-1">
+          {carregando && <p className="text-xs text-gray-400">A carregar…</p>}
+          {dados?.map(iv => (
+            <div key={iv.id} className="text-xs">
+              <p className="font-semibold text-gray-800">
+                {iv.nome_dep} {iv.partido && <span className="font-normal text-gray-400">({iv.partido})</span>}
+              </p>
+              <p className="text-gray-600 leading-snug mt-0.5">{iv.texto}</p>
+            </div>
+          ))}
+          {dados && dados.length === 0 && (
+            <p className="text-xs text-gray-400">Não foi possível carregar o texto destas intervenções.</p>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 /** Link para a página oficial — mesmo estilo em todos os cartões que o têm. */
 const LinkOficial = ({ url, label = 'Ver no Parlamento.pt' }) => {
   if (!url) return null;
@@ -142,6 +199,9 @@ function CartaoAtividade({ tab, item }) {
           <span>{formatarData(item.data_entrada)}{item.unanime ? ' · Unânime' : ''}</span>
           <LinkOficial url={url} label="Diário da AR" />
         </div>
+        {(item.intervencao_ids ?? []).length > 0 && (
+          <IntervencoesExpansiveis ids={item.intervencao_ids} />
+        )}
       </div>
     );
   }
