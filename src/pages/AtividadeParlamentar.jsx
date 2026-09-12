@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import {
-  ArrowLeft, Landmark, Gavel, Mic2, Handshake, Plane, CalendarDays, Wallet,
+  ArrowLeft, Landmark, Gavel, Mic2, Handshake, Plane, CalendarDays, Wallet, FileSearch,
   ExternalLink, CheckCircle2, XCircle, MinusCircle, Search, X, ChevronLeft, ChevronRight,
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
@@ -12,44 +12,72 @@ import { useDocumentTitle } from '../hooks/useDocumentTitle';
 const GP_COR = Object.fromEntries(Object.entries(PARTIDOS).map(([k, v]) => [k, v.cor]));
 
 // ── Configuração de cada separador ──────────────────────────────────────────
-// Cada recurso vem da mesma fonte (o ficheiro AtividadesXVII_json.txt já
-// descarregado diariamente) mas cada um tem a sua própria tabela e forma.
+// A maior parte destes recursos vem da mesma fonte (o ficheiro
+// AtividadesXVII_json.txt já descarregado diariamente); "Inquéritos" vem da
+// tabela de iniciativas, filtrada pelo tipo. `descricao` é o texto que
+// explica o conceito, mostrado no topo de cada separador.
 
 const TABS = [
   {
     id: 'votos_mocoes', label: 'Votos e Moções', icon: Gavel, tabela: 'ar_votos_mocoes',
     colunas: 'id, desc_tipo, assunto, numero, data_entrada, resultado, data_votacao, unanime, autores_gp, publicacao',
     ordenar: 'data_entrada',
+    descricao: 'Votos: declarações do plenário sobre um assunto de interesse público (pesar, condenação, saudação, solidariedade) — não criam lei, são uma tomada de posição política. Moções: forçam uma votação sobre a confiança no Governo (censura ou rejeição do programa) — se aprovadas, o Governo cai.',
   },
   {
     id: 'audicoes', label: 'Audições', icon: Mic2, tabela: 'ar_audicoes',
     colunas: 'id, assunto, data, entidades, numero',
     ordenar: 'data',
+    descricao: 'Reunião de uma comissão parlamentar com uma entidade externa — associação, autarquia, cidadão — para ouvir a sua posição sobre um assunto em discussão, muitas vezes no âmbito de uma petição.',
   },
   {
     id: 'audiencias', label: 'Audiências', icon: Handshake, tabela: 'ar_audiencias',
     colunas: 'id, assunto, data, entidades, concedida, numero',
     ordenar: 'data',
+    descricao: 'Reunião de um deputado ou órgão da Assembleia com uma entidade externa — embaixador, ministro estrangeiro, organização — fora do processo legislativo formal.',
   },
   {
     id: 'deslocacoes', label: 'Deslocações', icon: Plane, tabela: 'ar_deslocacoes',
     colunas: 'id, designacao, tipo, data_inicio, data_fim, local_evento',
     ordenar: 'data_inicio',
+    descricao: 'Viagens oficiais de deputados em representação da Assembleia — reuniões interparlamentares, conferências internacionais ou eventos de representação institucional.',
   },
   {
     id: 'eventos', label: 'Eventos', icon: CalendarDays, tabela: 'ar_eventos',
     colunas: 'id, designacao, tipo_evento, data, local_evento',
     ordenar: 'data',
+    descricao: 'Iniciativas abertas ao público organizadas pela Assembleia — conferências, seminários, cerimónias e workshops realizados nas suas instalações.',
   },
   {
     id: 'orcamento', label: 'Orçamento', icon: Wallet, tabela: 'ar_orcamento',
     colunas: 'id, titulo, ano, tipo, data_aprovacao_ca',
     ordenar: 'data_aprovacao_ca',
+    descricao: 'O processo de aprovação do orçamento e das contas de gerência da própria Assembleia da República — o dinheiro para o seu funcionamento, não o Orçamento do Estado.',
+  },
+  {
+    id: 'inqueritos', label: 'Inquéritos', icon: FileSearch, tabela: 'ar_iniciativas',
+    colunas: 'id, numero, titulo, epigrafe, data_inicio, autores_gp',
+    ordenar: 'data_inicio',
+    filtroEq: ['desc_tipo', 'Inquérito Parlamentar'],
+    descricao: 'Comissões criadas pela Assembleia para investigar um assunto de interesse público (ex.: gestão de uma instituição, decisão do Governo) — têm poderes equiparados aos de um tribunal para convocar testemunhas e pedir documentos.',
   },
 ];
 
 const formatarData = (iso, opts) =>
   iso ? new Date(iso).toLocaleDateString('pt-PT', opts ?? { day: '2-digit', month: 'short', year: 'numeric' }) : null;
+
+/** Página oficial no site da AR para cada tipo de atividade, quando existe. */
+function urlOficial(tab, item) {
+  switch (tab.id) {
+    case 'votos_mocoes': return item.publicacao?.[0]?.URLDiario ?? null;
+    case 'audicoes':     return `https://www.parlamento.pt/ActividadeParlamentar/Paginas/DetalheAudicao.aspx?BID=${item.id}`;
+    case 'audiencias':   return `https://www.parlamento.pt/ActividadeParlamentar/Paginas/DetalheAudiencia.aspx?BID=${item.id}`;
+    case 'deslocacoes':  return `https://www.parlamento.pt/ActividadeParlamentar/Paginas/DetalheDeslocacao.aspx?BID=${item.id}`;
+    case 'eventos':      return `https://www.parlamento.pt/ActividadeParlamentar/Paginas/DetalheEvento.aspx?BID=${item.id}`;
+    case 'inqueritos':   return `https://www.parlamento.pt/ActividadeParlamentar/Paginas/DetalheIniciativa.aspx?BID=${item.id}`;
+    default: return null; // orçamento — sem página de detalhe própria conhecida
+  }
+}
 
 // ── Badges reutilizáveis ─────────────────────────────────────────────────────
 
@@ -73,12 +101,23 @@ const AutorBadge = ({ nome }) => {
   );
 };
 
+/** Link para a página oficial — mesmo estilo em todos os cartões que o têm. */
+const LinkOficial = ({ url, label = 'Ver no Parlamento.pt' }) => {
+  if (!url) return null;
+  return (
+    <a href={url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-blue-500 hover:text-blue-700">
+      <ExternalLink size={11} />{label}
+    </a>
+  );
+};
+
 // ── Um cartão por tipo de atividade ──────────────────────────────────────────
 
 function CartaoAtividade({ tab, item }) {
+  const url = urlOficial(tab, item);
+
   if (tab.id === 'votos_mocoes') {
     const { bg, text, icon: Icon, label } = corResultado(item.resultado);
-    const urlDar = item.publicacao?.[0]?.URLDiario ?? null;
     const isMocao = item.desc_tipo === 'Moção';
     return (
       <div className="bg-white border border-gray-100 rounded-2xl p-4 shadow-sm hover:shadow-md transition-shadow">
@@ -101,11 +140,7 @@ function CartaoAtividade({ tab, item }) {
         )}
         <div className="flex items-center justify-between gap-2 text-xs text-gray-400">
           <span>{formatarData(item.data_entrada)}{item.unanime ? ' · Unânime' : ''}</span>
-          {urlDar && (
-            <a href={urlDar} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-blue-500 hover:text-blue-700">
-              <ExternalLink size={11} />Diário da AR
-            </a>
-          )}
+          <LinkOficial url={url} label="Diário da AR" />
         </div>
       </div>
     );
@@ -131,7 +166,10 @@ function CartaoAtividade({ tab, item }) {
         </div>
         <p className="text-sm font-semibold text-gray-900 leading-snug mb-1">{item.assunto ?? '—'}</p>
         {item.entidades && <p className="text-xs text-gray-500 leading-snug mb-2">{item.entidades}</p>}
-        <p className="text-xs text-gray-400">{formatarData(item.data)}</p>
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-xs text-gray-400">{formatarData(item.data)}</p>
+          <LinkOficial url={url} />
+        </div>
       </div>
     );
   }
@@ -149,11 +187,14 @@ function CartaoAtividade({ tab, item }) {
         </div>
         <p className="text-sm font-semibold text-gray-900 leading-snug mb-1">{item.designacao ?? '—'}</p>
         {item.local_evento && <p className="text-xs text-gray-500 mb-2">{item.local_evento}</p>}
-        <p className="text-xs text-gray-400">
-          {mesmoDia
-            ? formatarData(item.data_inicio)
-            : `${formatarData(item.data_inicio) ?? '?'} — ${formatarData(item.data_fim) ?? '?'}`}
-        </p>
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-xs text-gray-400">
+            {mesmoDia
+              ? formatarData(item.data_inicio)
+              : `${formatarData(item.data_inicio) ?? '?'} — ${formatarData(item.data_fim) ?? '?'}`}
+          </p>
+          <LinkOficial url={url} />
+        </div>
       </div>
     );
   }
@@ -168,7 +209,10 @@ function CartaoAtividade({ tab, item }) {
         )}
         <p className="text-sm font-semibold text-gray-900 leading-snug mb-1">{item.designacao ?? '—'}</p>
         {item.local_evento && <p className="text-xs text-gray-500 mb-2">{item.local_evento}</p>}
-        <p className="text-xs text-gray-400">{formatarData(item.data)}</p>
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-xs text-gray-400">{formatarData(item.data)}</p>
+          <LinkOficial url={url} />
+        </div>
       </div>
     );
   }
@@ -188,6 +232,30 @@ function CartaoAtividade({ tab, item }) {
         {item.data_aprovacao_ca && (
           <p className="text-xs text-gray-400">Aprovado em {formatarData(item.data_aprovacao_ca)}</p>
         )}
+      </div>
+    );
+  }
+
+  if (tab.id === 'inqueritos') {
+    return (
+      <div className="bg-white border border-gray-100 rounded-2xl p-4 shadow-sm hover:shadow-md transition-shadow">
+        {item.numero && (
+          <span className="inline-flex items-center text-[11px] font-bold text-rose-700 bg-rose-50 rounded px-1.5 py-0.5 mb-1.5">
+            Inquérito n.º {item.numero}
+          </span>
+        )}
+        <p className="text-sm font-semibold text-gray-900 leading-snug mb-1">
+          {item.epigrafe ?? item.titulo ?? '—'}
+        </p>
+        {(item.autores_gp ?? []).length > 0 && (
+          <div className="flex flex-wrap gap-1 mb-2 mt-1">
+            {item.autores_gp.filter(a => a?.GP).map(a => <AutorBadge key={a.GP} nome={a.GP} />)}
+          </div>
+        )}
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-xs text-gray-400">{formatarData(item.data_inicio)}</p>
+          <LinkOficial url={url} label="Parlamento.pt" />
+        </div>
       </div>
     );
   }
@@ -249,6 +317,7 @@ const CAMPOS_PESQUISA = {
   deslocacoes:  r => [r.designacao, r.local_evento].join(' '),
   eventos:      r => [r.designacao, r.local_evento].join(' '),
   orcamento:    r => [r.titulo].join(' '),
+  inqueritos:   r => [r.epigrafe, r.titulo].join(' '),
 };
 
 export function AtividadeParlamentar() {
@@ -267,9 +336,9 @@ export function AtividadeParlamentar() {
     let cancelado = false;
     setCache(c => ({ ...c, [abaId]: { dados: [], carregando: true, erro: null } }));
 
-    supabase
-      .from(tab.tabela)
-      .select(tab.colunas)
+    let query = supabase.from(tab.tabela).select(tab.colunas);
+    if (tab.filtroEq) query = query.eq(tab.filtroEq[0], tab.filtroEq[1]);
+    query
       .order(tab.ordenar, { ascending: false, nullsFirst: false })
       .limit(3000)
       .then(({ data, error }) => {
@@ -344,6 +413,13 @@ export function AtividadeParlamentar() {
       </div>
 
       <div className="max-w-4xl mx-auto px-6 py-5">
+
+        {/* Texto informativo — o que é isto? */}
+        {tab.descricao && (
+          <div className="bg-blue-50/60 border border-blue-100 rounded-xl px-4 py-3 mb-4">
+            <p className="text-xs text-blue-900 leading-relaxed">{tab.descricao}</p>
+          </div>
+        )}
 
         {/* Pesquisa */}
         <div className="relative mb-4">

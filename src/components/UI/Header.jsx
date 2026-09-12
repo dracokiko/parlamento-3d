@@ -1,9 +1,10 @@
-import { FileText, Info, Vote, Building2, UserCheck } from 'lucide-react';
+import { FileText, Info, Vote, Building2, UserCheck, Landmark } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 
 const NAV = [
   { to: '/',             label: 'Hemiciclo',    icone: Building2  },
   { to: '/votacoes',     label: 'Votações',     icone: Vote       },
+  { to: '/atividade',    label: 'Atividade',    icone: Landmark   },
   { to: '/presencas',    label: 'Presenças',    icone: UserCheck  },
   { to: '/diretivas-eu', label: 'Diretivas UE', icone: FileText   },
   { to: '/sobre',        label: 'Sobre',        icone: Info       },
