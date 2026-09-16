@@ -342,7 +342,15 @@ export function IniciativaDetalhe() {
                         )}
                       </div>
                     </div>
-                    {v.resumo_ia && <p className="text-xs text-gray-600 leading-relaxed">{v.resumo_ia}</p>}
+                    {v.resumo_ia && (
+                      <div className="border-l-2 border-amber-300 pl-2">
+                        <span className="inline-flex items-center gap-1 text-[9px] font-semibold text-amber-600 uppercase tracking-wide">
+                          <Sparkles size={9} />Resumo IA
+                        </span>
+                        <p className="text-xs text-gray-600 leading-relaxed">{v.resumo_ia}</p>
+                        <p className="text-[10px] text-gray-400 mt-1">Gerado automaticamente · pode conter imprecisões</p>
+                      </div>
+                    )}
                     {temBreak && <BarraVotos favor={favor} contra={contra} abstencao={abstencao} />}
                     {temBreak && (
                       <div className="space-y-2">

@@ -209,13 +209,27 @@ async function main() {
   try { if (resultados.deputados?.ok) acumularAi(await resumirDeputados()); }
   catch (err) { console.warn(`\n  ⚠ resumirDeputados falhou (${err.message})`); avisos.push('resumirDeputados'); }
 
-  // Catálogo DAR
+  // Catálogo DAR — duas passagens:
+  //   'new'     apanha as sessões publicadas desde a última corrida;
+  //   'missing' repesca placeholders antigos ainda sem transcrição.
+  // Sem a segunda, qualquer buraco ficava permanente: 'new' só olha para
+  // sessões posteriores à mais recente já crawlada, nunca para trás.
   let rDar = null;
-  try { rDar = await crawlerDebatesDAR(); }
+  try {
+    const rNovas   = await crawlerDebatesDAR('new');
+    const rFaltas  = await crawlerDebatesDAR('missing');
+    rDar = {
+      novos:        (rNovas.novos ?? 0)        + (rFaltas.novos ?? 0),
+      actualizados: (rNovas.actualizados ?? 0) + (rFaltas.actualizados ?? 0),
+      erros:        (rNovas.erros ?? 0)        + (rFaltas.erros ?? 0),
+      amostraNovos: [...(rNovas.amostraNovos ?? []), ...(rFaltas.amostraNovos ?? [])],
+      falhas:       [...(rNovas.falhas ?? []),       ...(rFaltas.falhas ?? [])],
+    };
+  }
   catch (err) { console.warn(`\n  ⚠ Crawler DAR falhou (${err.message})`); avisos.push('crawlerDebatesDAR'); }
   await log('dar', {
     sucesso: rDar !== null,
-    total:       (rDar?.novos ?? 0) + (rDar?.erros ?? 0),
+    total:       (rDar?.novos ?? 0) + (rDar?.actualizados ?? 0) + (rDar?.erros ?? 0),
     inseridos:    rDar?.novos  ?? 0,
     atualizados:  rDar?.actualizados ?? 0,
     erros:        rDar?.erros  ?? (rDar === null ? 1 : 0),

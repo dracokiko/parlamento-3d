@@ -22,21 +22,52 @@ import { empurrarAmostra } from './resumoPublico.js';
 const db = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
 const PAGE = 500;
 
+const normNome = s => (s ?? '').toLowerCase()
+  .normalize('NFD').replace(/[̀-ͯ]/g, '')
+  .trim();
+
 /**
- * Compara dois nomes parlamentares: correspondem se o primeiro e o último
- * token forem iguais (cobre abreviações tipo "Ana Rita Fonseca" ↔ "Ana Fonseca").
- * Sem distinção de maiúsculas nem acentos.
+ * Compara dois nomes parlamentares.
+ *
+ * Devolve 'exato' quando são o mesmo nome, 'aproximado' quando só o primeiro e
+ * o último token coincidem (cobre abreviações tipo "Ana Rita Fonseca" ↔
+ * "Ana Fonseca") ou null quando não correspondem.
+ *
+ * A distinção importa: entre os 230 deputados há pares que colidem no
+ * aproximado — "Pedro Delgado Alves" (PS) com "Pedro Alves" (PSD), e
+ * "Hugo Patrício Oliveira" (PSD) com "Hugo Oliveira" (PS). Nesses casos o
+ * nome sozinho não chega e é preciso confirmar pelo grupo parlamentar.
  */
 function nomeMatch(a, b) {
-  if (!a || !b) return false;
-  const norm = s => s.toLowerCase()
-    .normalize('NFD').replace(/[̀-ͯ]/g, '')
-    .trim();
-  const an = norm(a), bn = norm(b);
-  if (an === bn) return true;
+  if (!a || !b) return null;
+  const an = normNome(a), bn = normNome(b);
+  if (an === bn) return 'exato';
   const wa = an.split(/\s+/), wb = bn.split(/\s+/);
-  if (wa.length < 2 || wb.length < 2) return false;
-  return wa[0] === wb[0] && wa[wa.length - 1] === wb[wb.length - 1];
+  if (wa.length < 2 || wb.length < 2) return null;
+  if (wa[0] === wb[0] && wa[wa.length - 1] === wb[wb.length - 1]) return 'aproximado';
+  return null;
+}
+
+/** Sigla do GP tal como aparece no texto do DAR ("Pedro Pinto (CH)" → "CH"). */
+const normSigla = s => (s ?? '').toUpperCase().replace(/[^A-Z-]/g, '').trim();
+
+/**
+ * Uma intervenção corresponde a uma entrada estruturada da AR?
+ *
+ * Nome igual basta. Nome apenas aproximado só conta quando o grupo
+ * parlamentar confirma — sem isto, uma intervenção do Pedro Alves (PSD)
+ * acabava atribuída ao Pedro Delgado Alves (PS), no perfil do deputado errado.
+ * Quando não sabemos o GP de um dos lados, preferimos não ligar a arriscar.
+ */
+function correspondem(iv, entrada, partidoPorCadastro) {
+  const tipo = nomeMatch(iv.nome_dep, entrada.nome);
+  if (!tipo) return false;
+  if (tipo === 'exato') return true;
+
+  const gpEntrada = normSigla(partidoPorCadastro.get(String(entrada.idCadastro)));
+  const gpIv      = normSigla(iv.partido);
+  if (!gpEntrada || !gpIv) return false;
+  return gpEntrada === gpIv;
 }
 
 /**
@@ -109,6 +140,21 @@ export async function linkIntervencoesIniciativas(opts = {}) {
   const { mapa, totalEntradas } = await construirMapa();
   console.log(`\n  [LINK] Mapa construído: ${mapa.size} debates, ${totalEntradas} entradas`);
 
+  // cad_id → sigla do GP, para desempatar nomes que colidem (ver `correspondem`)
+  const partidoPorCadastro = new Map();
+  {
+    let off = 0;
+    while (true) {
+      const { data, error } = await db.from('ar_deputados').select('cad_id, partido_sigla').not('cad_id', 'is', null).range(off, off + 499);
+      if (error) { console.warn('  ⚠ Não foi possível carregar partidos por cadastro:', error.message); break; }
+      if (!data?.length) break;
+      for (const d of data) partidoPorCadastro.set(String(d.cad_id), d.partido_sigla);
+      if (data.length < 500) break;
+      off += 500;
+    }
+    console.log(`  [LINK] Partidos carregados para desempate: ${partidoPorCadastro.size} deputados`);
+  }
+
   if (!mapa.size) {
     console.log('  [LINK] Nenhum debate com dados estruturados — a terminar.');
     return { total: 0, inseridos: 0, atualizados: 0, erros: 0 };
@@ -150,7 +196,7 @@ export async function linkIntervencoesIniciativas(opts = {}) {
   for (const [darId, entradas] of mapa) {
     let q = db
       .from('ar_intervencoes')
-      .select('id, nome_dep')
+      .select('id, nome_dep, partido')
       .eq('debate_id', darId);
     if (!force) q = q.is('iniciativa_id', null);
     const { data: ivs, error } = await q;
@@ -187,7 +233,7 @@ export async function linkIntervencoesIniciativas(opts = {}) {
     for (const entrada of entradasOrdenadas) {
       // Candidatos: intervenções do mesmo deputado ainda não associadas
       const candidatos = ivsOrdenados.filter(
-        iv => !usados.has(iv.id) && nomeMatch(iv.nome_dep, entrada.nome)
+        iv => !usados.has(iv.id) && correspondem(iv, entrada, partidoPorCadastro)
       );
       if (!candidatos.length) { semMatch++; continue; }
 

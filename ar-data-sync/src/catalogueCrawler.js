@@ -48,28 +48,35 @@ async function fetchHtml(url, tentativas = 2) {
   }
 }
 
-let _sessaoCache = null;
+let _sessoesCache = null;
 
 /**
- * Descobre a sessão legislativa mais recente disponível no catálogo DAR
- * (o 3º segmento do caminho, ex: 01/17/02), lendo os links "Sessão
- * Legislativa NN" da página-índice da legislatura. Evita ter de actualizar
- * manualmente um número de sessão fixo todos os anos por volta de Setembro.
+ * Todas as sessões legislativas disponíveis no catálogo DAR para esta
+ * legislatura (o 3º segmento do caminho, ex: 01/17/02), da mais recente para
+ * a mais antiga. Lidas dos links "Sessão Legislativa NN" da página-índice.
  */
-export async function descobrirSessaoAtual() {
-  if (_sessaoCache) return _sessaoCache;
+export async function descobrirSessoes() {
+  if (_sessoesCache) return _sessoesCache;
 
   const html = await fetchHtml(`${BASE}/catalogo/r3/dar/${DAR_SERIE}/${LEGISLATURA_NUM}`);
   const re = new RegExp(`href="/catalogo/r3/dar/${DAR_SERIE}/${LEGISLATURA_NUM}/(\\d+)">\\s*Sessão Legislativa`, 'g');
-  let melhor = null;
-  for (const m of html.matchAll(re)) {
-    if (melhor === null || parseInt(m[1], 10) > parseInt(melhor, 10)) melhor = m[1];
+  const sessoes = [...new Set([...html.matchAll(re)].map(m => m[1]))]
+    .sort((a, b) => parseInt(b, 10) - parseInt(a, 10));
+
+  if (!sessoes.length) {
+    throw new Error(`Não foi possível descobrir as sessões legislativas no catálogo DAR (legislatura ${LEGISLATURA})`);
   }
-  if (!melhor) {
-    throw new Error(`Não foi possível descobrir a sessão legislativa actual no catálogo DAR (legislatura ${LEGISLATURA})`);
-  }
-  _sessaoCache = melhor;
-  return melhor;
+  _sessoesCache = sessoes;
+  return sessoes;
+}
+
+/**
+ * A sessão legislativa em curso — a mais recente publicada. Muda todos os anos
+ * a 15 de Setembro (art.º 174.º da Constituição), por isso é descoberta em vez
+ * de fixada.
+ */
+export async function descobrirSessaoAtual() {
+  return (await descobrirSessoes())[0];
 }
 
 /** Lista todos os (numero, data) do DAR disponíveis no catálogo, para a sessão dada. */
@@ -120,23 +127,35 @@ async function dataUltimaCrawlada() {
 
 /**
  * Busca o texto completo de uma sessão via ?sft=true.
- * Tenta a data fornecida e até 3 dias antes (a data no URL das publicações
- * é a data do DAR, 1 dia após a sessão; o catálogo usa a data da sessão).
+ *
+ * Duas fontes de incerteza no URL, ambas tentadas aqui:
+ *  - a data: a que vem nas publicações é a do DAR (1 dia após a sessão) e o
+ *    catálogo usa a da sessão, por isso tentamos até 3 dias antes;
+ *  - a sessão legislativa: uma sessão de Fevereiro pertence à sessão
+ *    legislativa anterior à que está em curso a partir de 15 de Setembro.
+ *    Preferir sempre `sessaoPreferida` (a mais provável para este registo) e
+ *    só depois as outras — sem isto, assim que uma sessão legislativa nova
+ *    abre, nenhuma sessão antiga em falta volta a ser encontrada.
  */
-async function fetchTextoSessao(numero, data, sessaoLeg) {
-  const caminho = `${DAR_SERIE}/${LEGISLATURA_NUM}/${sessaoLeg}`;
+async function fetchTextoSessao(numero, data, sessaoPreferida) {
+  const todas = await descobrirSessoes();
+  const candidatas = [sessaoPreferida, ...todas.filter(s => s !== sessaoPreferida)];
   const d = new Date(data + 'T12:00:00Z');
-  for (let offset = 0; offset <= 3; offset++) {
-    const tryDate = new Date(d.getTime() - offset * 86_400_000)
-      .toISOString().slice(0, 10);
-    const url = `${BASE}/catalogo/r3/dar/${caminho}/${numero}/${tryDate}?sft=true`;
-    try {
-      const html = await fetchHtml(url, 1); // 1 tentativa — falha rápido
-      const texto = extrairTextoHtml(html);
-      if (texto && texto.length >= MIN_TEXTO) {
-        return { url: `${BASE}/catalogo/r3/dar/${caminho}/${numero}/${tryDate}`, texto };
-      }
-    } catch { /* tentar próxima data */ }
+
+  for (const sessaoLeg of candidatas) {
+    const caminho = `${DAR_SERIE}/${LEGISLATURA_NUM}/${sessaoLeg}`;
+    for (let offset = 0; offset <= 3; offset++) {
+      const tryDate = new Date(d.getTime() - offset * 86_400_000)
+        .toISOString().slice(0, 10);
+      const url = `${BASE}/catalogo/r3/dar/${caminho}/${numero}/${tryDate}?sft=true`;
+      try {
+        const html = await fetchHtml(url, 1); // 1 tentativa — falha rápido
+        const texto = extrairTextoHtml(html);
+        if (texto && texto.length >= MIN_TEXTO) {
+          return { url: `${BASE}/catalogo/r3/dar/${caminho}/${numero}/${tryDate}`, texto };
+        }
+      } catch { /* tentar próxima data/sessão */ }
+    }
   }
   return null;
 }

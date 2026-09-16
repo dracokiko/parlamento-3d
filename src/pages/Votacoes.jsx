@@ -249,6 +249,7 @@ const CartaoVotacao = ({ voto, tituloIni, descTipo, autoresGp, partidoFiltrado }
             <span className="text-[10px] font-semibold text-amber-600 uppercase tracking-wide">Resumo IA</span>
           </div>
           <p className="text-xs text-gray-700 leading-relaxed">{voto.resumo_ia}</p>
+          <p className="text-[10px] text-gray-400 mt-2">Gerado automaticamente · pode conter imprecisões</p>
         </div>
       )}
 
@@ -331,9 +332,12 @@ const CartaoVotacaoMobile = ({ voto, tituloIni, descTipo, autoresGp, partidoFilt
         </div>
       </div>
       {voto.resumo_ia && (
-        <p className="text-[11px] text-gray-500 mt-2 leading-relaxed line-clamp-2 border-l-2 border-amber-300 pl-2">
-          {voto.resumo_ia}
-        </p>
+        <div className="mt-2 border-l-2 border-amber-300 pl-2">
+          <span className="inline-flex items-center gap-1 text-[9px] font-semibold text-amber-600 uppercase tracking-wide">
+            <Sparkles size={9} />Resumo IA
+          </span>
+          <p className="text-[11px] text-gray-500 leading-relaxed line-clamp-2">{voto.resumo_ia}</p>
+        </div>
       )}
       {voto.data_votacao && (
         <p className="text-xs text-gray-400 mt-1.5">
