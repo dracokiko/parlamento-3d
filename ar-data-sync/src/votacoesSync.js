@@ -186,7 +186,13 @@ export async function syncVotacoes() {
       .not('eventos', 'is', null)
       .range(offset, offset + PAGE - 1);
 
-    if (error) { console.error('Erro ao ler ar_iniciativas:', error.message); erroFatal = true; break; }
+    if (error) {
+      console.error('Erro ao ler ar_iniciativas:', error.message);
+      erroFatal = true;
+      erros++;
+      empurrarAmostra(falhas, { motivo: `Falha a ler ar_iniciativas (offset ${offset}): ${error.message}` });
+      break;
+    }
     if (!data?.length) break;
 
     const batch = [];
