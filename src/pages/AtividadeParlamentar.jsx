@@ -513,11 +513,12 @@ export function AtividadeParlamentar() {
         {tab.id === 'votos_mocoes' && (
           <div className="bg-amber-50/70 border border-amber-100 rounded-xl px-4 py-3 mb-4">
             <p className="text-xs text-amber-900 leading-relaxed">
-              <strong>&ldquo;Sem resultado registado&rdquo;</strong> não quer dizer que esteja por votar. Os dados
-              abertos da Assembleia só registam o resultado de parte dos votos: muitos foram aprovados em
-              plenário por aclamação, decididos em comissão, retirados ou substituídos por um voto conjunto,
-              sem que isso fique neste conjunto de dados. Quando a Assembleia regista uma observação, ela
-              aparece no cartão.
+              <strong>&ldquo;Sem resultado registado&rdquo;</strong> não quer dizer que esteja por votar — quer
+              dizer que não sabemos. Cruzámos estes votos com as atas de todas as sessões plenárias desta
+              legislatura: os que têm resultado aparecem lá em 96% dos casos, os que não têm praticamente
+              nunca aparecem. Não foram, portanto, votados em plenário. Alguns foram retirados ou
+              substituídos pelo autor — e nesses a Assembleia regista a observação, que mostramos no cartão.
+              Sobre os restantes, os dados abertos não dizem nada, e nós também não.
             </p>
           </div>
         )}
