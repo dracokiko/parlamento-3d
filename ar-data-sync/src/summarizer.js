@@ -327,12 +327,20 @@ export async function indexarIntervencoes() {
     if (!lote?.length) break;
 
     // Quais deste lote já têm intervenções indexadas?
+    //
+    // Não dá para perguntar pelos debate_id: o PostgREST corta a resposta aos
+    // 1000 registos (max_rows) e 1000 intervenções cobrem menos de 20 debates,
+    // pelo que quase todos apareciam como novos e eram reprocessados a cada
+    // corrida — as ~150 transcrições inteiras, todos os dias. Como cada
+    // intervenção tem id "<debate_id>_<índice>" começado em 0, basta procurar
+    // a primeira de cada debate: é uma consulta por chave primária, devolve no
+    // máximo uma linha por debate do lote.
     const { data: jaIndexados } = await db()
       .from('ar_intervencoes')
-      .select('debate_id')
-      .in('debate_id', lote.map(d => d.id));
+      .select('id')
+      .in('id', lote.map(d => `${d.id}_0`));
 
-    const indexadosSet = new Set((jaIndexados ?? []).map(r => r.debate_id));
+    const indexadosSet = new Set((jaIndexados ?? []).map(r => r.id.slice(0, r.id.lastIndexOf('_'))));
     const novosIds = lote.filter(d => !indexadosSet.has(d.id)).map(d => d.id);
 
     if (novosIds.length) {
