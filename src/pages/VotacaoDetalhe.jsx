@@ -3,12 +3,12 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, CheckCircle2, XCircle, MinusCircle, ExternalLink } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { partidos as PARTIDOS } from '../data/mockPartidos';
+import { contarDeputados, siglasAmbiguas } from '../lib/votos';
 import { InfoTooltip } from '../components/UI/InfoTooltip';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
 
 const GP_COR  = Object.fromEntries(Object.entries(PARTIDOS).map(([k, v]) => [k, v.cor]));
 const GP_DEPS = Object.fromEntries(Object.entries(PARTIDOS).map(([k, v]) => [k, v.deputados ?? 0]));
-const totalDeps = siglas => siglas.reduce((a, s) => a + (GP_DEPS[s.trim()] ?? 0), 0);
 
 const corResultado = r => {
   if (!r) return { bg: 'bg-gray-100', text: 'text-gray-500', icon: MinusCircle };
@@ -32,8 +32,11 @@ const GPBadge = ({ sigla }) => {
 };
 
 const BarraVotos = ({ favor, contra, abstencao }) => {
-  const nF = totalDeps(favor), nC = totalDeps(contra), nA = totalDeps(abstencao);
+  const f = contarDeputados(favor), c = contarDeputados(contra), a = contarDeputados(abstencao);
+  const nF = f.total, nC = c.total, nA = a.total;
   const tot = nF + nC + nA || 1;
+  const ambiguas = siglasAmbiguas({ favor, contra, abstencao });
+  const estimado = !f.exato || !c.exato || !a.exato;
   return (
     <div className="space-y-2">
       <div className="flex rounded-full overflow-hidden h-3 gap-px">
@@ -41,11 +44,22 @@ const BarraVotos = ({ favor, contra, abstencao }) => {
         {nC > 0 && <div className="bg-red-500"   style={{ width: `${nC / tot * 100}%` }} />}
         {nA > 0 && <div className="bg-yellow-400" style={{ width: `${nA / tot * 100}%` }} />}
       </div>
-      <div className="flex gap-4 text-sm text-gray-500">
+      <div className="flex gap-4 text-sm text-gray-500 flex-wrap">
         {nF > 0 && <span><span className="text-green-600 font-bold">{nF}</span> a favor</span>}
         {nC > 0 && <span><span className="text-red-600 font-bold">{nC}</span> contra</span>}
         {nA > 0 && <span><span className="text-yellow-600 font-bold">{nA}</span> abstenção</span>}
       </div>
+      {ambiguas.length > 0 ? (
+        <p className="text-xs text-amber-600">
+          A bancada do {ambiguas.join(' e do ')} dividiu-se nesta votação e a Assembleia não regista
+          quantos deputados votaram de cada lado — os números acima não refletem essa divisão.
+        </p>
+      ) : estimado && (
+        <p className="text-xs text-gray-400">
+          Números estimados a partir do tamanho de cada bancada — a Assembleia regista o sentido de
+          voto de cada grupo parlamentar, não a contagem individual.
+        </p>
+      )}
     </div>
   );
 };

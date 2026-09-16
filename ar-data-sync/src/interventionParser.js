@@ -20,6 +20,12 @@ const TITULOS = [
   'O Presidente', 'A Presidente',
 ].join('|');
 
+// Cargos que aparecem no lugar do nome — nestes casos o parêntesis seguinte
+// identifica a pessoa, não o grupo parlamentar (ver parsearIntervencoes).
+const CARGOS_SEM_GP = new Set([
+  'presidente', 'secretário', 'secretária', 'vice-presidente',
+]);
+
 // Detecta o início de QUALQUER intervenção (com ou sem sigla de GP)
 const RE_QUALQUER = new RegExp(
   `(?:^|\\n)\\s*(?:${TITULOS})[^\\n:]{0,80}?(?:\\s*\\([^)\\n]{1,25}\\))?\\s*:\\s*[—\\-–]`,
@@ -111,8 +117,17 @@ export function parsearIntervencoes(transcricao) {
     const match = RE_DEPUTADO.exec(fatia);
     if (!match) continue; // não é deputado identificável → descarta
 
-    const nome    = match[1].replace(/\s+/g, ' ').trim();
-    const partido = match[2].trim();
+    let nome    = match[1].replace(/\s+/g, ' ').trim();
+    let partido = match[2].trim();
+
+    // "O Sr. Presidente (Rodrigo Saraiva): —" tem a mesma forma que a de um
+    // deputado, mas o que está entre parêntesis é o NOME de quem preside, não
+    // uma sigla de grupo parlamentar. Sem isto ficava registado um orador
+    // chamado "Presidente" filiado no partido "Rodrigo Saraiva".
+    if (CARGOS_SEM_GP.has(nome.toLowerCase())) {
+      nome = partido;      // o parêntesis traz a pessoa
+      partido = null;      // o texto não diz o grupo parlamentar
+    }
 
     // Texto da fala = tudo após o marcador "NOME (SIGLA): —"
     // Truncar no primeiro marcador de orador inline (mudança de linha sem \n)

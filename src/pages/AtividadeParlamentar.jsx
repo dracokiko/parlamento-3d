@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import {
   ArrowLeft, Landmark, Gavel, Mic2, Handshake, Plane, CalendarDays, Wallet, FileSearch,
   ExternalLink, CheckCircle2, XCircle, MinusCircle, Search, X, ChevronLeft, ChevronRight,
-  MessageSquare, ChevronDown, ChevronUp,
+  MessageSquare, ChevronDown, ChevronUp, HelpCircle,
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { partidos as PARTIDOS } from '../data/mockPartidos';
@@ -21,7 +21,7 @@ const GP_COR = Object.fromEntries(Object.entries(PARTIDOS).map(([k, v]) => [k, v
 const TABS = [
   {
     id: 'votos_mocoes', label: 'Votos e Moções', icon: Gavel, tabela: 'ar_votos_mocoes',
-    colunas: 'id, desc_tipo, assunto, numero, data_entrada, resultado, data_votacao, unanime, autores_gp, publicacao, intervencao_ids',
+    colunas: 'id, desc_tipo, assunto, numero, data_entrada, resultado, data_votacao, unanime, autores_gp, publicacao, intervencao_ids, observacoes:json_raw->>Observacoes',
     ordenar: 'data_entrada',
     descricao: 'Votos: declarações do plenário sobre um assunto de interesse público (pesar, condenação, saudação, solidariedade) — não criam lei, são uma tomada de posição política. Moções: forçam uma votação sobre a confiança no Governo (censura ou rejeição do programa) — se aprovadas, o Governo cai.',
   },
@@ -82,11 +82,33 @@ function urlOficial(tab, item) {
 
 // ── Badges reutilizáveis ─────────────────────────────────────────────────────
 
-const corResultado = r => {
-  if (!r) return { bg: 'bg-gray-100', text: 'text-gray-500', icon: MinusCircle, label: 'Por votar' };
-  if (r.toLowerCase().includes('aprovad'))  return { bg: 'bg-green-50', text: 'text-green-700', icon: CheckCircle2, label: r };
-  if (r.toLowerCase().includes('rejeitad')) return { bg: 'bg-red-50',   text: 'text-red-700',   icon: XCircle,      label: r };
-  return { bg: 'bg-yellow-50', text: 'text-yellow-700', icon: MinusCircle, label: r };
+/**
+ * Estado de um voto/moção.
+ *
+ * IMPORTANTE: a ausência de resultado nos dados abertos da AR NÃO significa
+ * "ainda por votar" — significa apenas que este conjunto de dados não regista
+ * um resultado. Confirmado por cruzamento com as atas do DAR: há votos sem
+ * resultado registado que foram aprovados em plenário, outros que foram
+ * retirados pelo autor, substituídos por um voto conjunto, ou decididos em
+ * comissão. Por isso nunca afirmamos que está "por votar" — dizemos o que
+ * sabemos e, quando a AR regista uma observação, mostramos essa observação.
+ */
+const corResultado = (r, observacoes) => {
+  if (r) {
+    if (r.toLowerCase().includes('aprovad'))  return { bg: 'bg-green-50', text: 'text-green-700', icon: CheckCircle2, label: r };
+    if (r.toLowerCase().includes('rejeitad')) return { bg: 'bg-red-50',   text: 'text-red-700',   icon: XCircle,      label: r };
+    return { bg: 'bg-yellow-50', text: 'text-yellow-700', icon: MinusCircle, label: r };
+  }
+  const obs = (observacoes ?? '').toLowerCase();
+  if (/retirad/.test(obs))
+    return { bg: 'bg-gray-100', text: 'text-gray-600', icon: XCircle, label: 'Retirado' };
+  if (/substituído pelo|substituída pelo|substituido pelo/.test(obs))
+    return { bg: 'bg-gray-100', text: 'text-gray-600', icon: MinusCircle, label: 'Substituído' };
+  if (/prescindiu|abdica/.test(obs))
+    return { bg: 'bg-gray-100', text: 'text-gray-600', icon: MinusCircle, label: 'Votação dispensada' };
+  if (/adotado pela|adoptado pela/.test(obs))
+    return { bg: 'bg-blue-50', text: 'text-blue-700', icon: CheckCircle2, label: 'Adotado em comissão' };
+  return { bg: 'bg-gray-100', text: 'text-gray-500', icon: HelpCircle, label: 'Sem resultado registado' };
 };
 
 const AutorBadge = ({ nome }) => {
@@ -174,7 +196,7 @@ function CartaoAtividade({ tab, item }) {
   const url = urlOficial(tab, item);
 
   if (tab.id === 'votos_mocoes') {
-    const { bg, text, icon: Icon, label } = corResultado(item.resultado);
+    const { bg, text, icon: Icon, label } = corResultado(item.resultado, item.observacoes);
     const isMocao = item.desc_tipo === 'Moção';
     return (
       <div className="bg-white border border-gray-100 rounded-2xl p-4 shadow-sm hover:shadow-md transition-shadow">
@@ -190,6 +212,11 @@ function CartaoAtividade({ tab, item }) {
           </div>
         </div>
         <p className="text-sm font-semibold text-gray-900 leading-snug mb-2">{item.assunto ?? '—'}</p>
+        {item.observacoes && (
+          <p className="text-[11px] text-gray-500 italic leading-snug mb-2 border-l-2 border-gray-200 pl-2">
+            {item.observacoes}
+          </p>
+        )}
         {(item.autores_gp ?? []).length > 0 && (
           <div className="flex flex-wrap gap-1 mb-2">
             {item.autores_gp.map((a, i) => <AutorBadge key={i} nome={a} />)}
@@ -371,7 +398,7 @@ function Paginacao({ pagina, total, onChange }) {
 // ── Página principal ───────────────────────────────────────────────────────────
 
 const CAMPOS_PESQUISA = {
-  votos_mocoes: r => [r.assunto, r.desc_tipo].join(' '),
+  votos_mocoes: r => [r.assunto, r.desc_tipo, r.resultado, r.observacoes].join(' '),
   audicoes:     r => [r.assunto, r.entidades].join(' '),
   audiencias:   r => [r.assunto, r.entidades].join(' '),
   deslocacoes:  r => [r.designacao, r.local_evento].join(' '),
@@ -478,6 +505,20 @@ export function AtividadeParlamentar() {
         {tab.descricao && (
           <div className="bg-blue-50/60 border border-blue-100 rounded-xl px-4 py-3 mb-4">
             <p className="text-xs text-blue-900 leading-relaxed">{tab.descricao}</p>
+          </div>
+        )}
+
+        {/* Ressalva sobre o estado — os dados abertos da AR não registam resultado
+            para a maioria dos votos, e ausência de resultado não significa pendente. */}
+        {tab.id === 'votos_mocoes' && (
+          <div className="bg-amber-50/70 border border-amber-100 rounded-xl px-4 py-3 mb-4">
+            <p className="text-xs text-amber-900 leading-relaxed">
+              <strong>&ldquo;Sem resultado registado&rdquo;</strong> não quer dizer que esteja por votar. Os dados
+              abertos da Assembleia só registam o resultado de parte dos votos: muitos foram aprovados em
+              plenário por aclamação, decididos em comissão, retirados ou substituídos por um voto conjunto,
+              sem que isso fique neste conjunto de dados. Quando a Assembleia regista uma observação, ela
+              aparece no cartão.
+            </p>
           </div>
         )}
 

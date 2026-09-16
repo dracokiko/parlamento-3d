@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { partidos as PARTIDOS } from '../data/mockPartidos';
+import { contarDeputados, siglasAmbiguas } from '../lib/votos';
 import { InfoTooltip } from '../components/UI/InfoTooltip';
 import { useIsMobile } from '../hooks/useIsMobile';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
@@ -17,8 +18,6 @@ const SIGLAS  = Object.keys(PARTIDOS);
 
 // Códigos de fase que correspondem a votos procedimentais (não sobre o mérito da proposta)
 const CODIGOS_PROCEDIMENTAIS = new Set(['160', '180', '195', '225', '237', '280', '341', '345']);
-
-const totalDeps = siglas => siglas.reduce((a, s) => a + (GP_DEPS[s.trim()] ?? 0), 0);
 
 const corResultado = r => {
   if (!r) return { bg: 'bg-gray-100', text: 'text-gray-500', icon: MinusCircle };
@@ -102,8 +101,13 @@ const GPBadge = ({ sigla }) => {
 };
 
 const BarraVotos = ({ favor, contra, abstencao }) => {
-  const nF = totalDeps(favor), nC = totalDeps(contra), nA = totalDeps(abstencao);
+  const f = contarDeputados(favor), c = contarDeputados(contra), a = contarDeputados(abstencao);
+  const nF = f.total, nC = c.total, nA = a.total;
   const tot = nF + nC + nA || 1;
+  // Quando um partido aparece em duas secções, a AR não diz como a bancada se
+  // dividiu — os números deixam de ser fiáveis e dizemo-lo em vez de os inventar.
+  const ambiguas = siglasAmbiguas({ favor, contra, abstencao });
+  const estimado = !f.exato || !c.exato || !a.exato;
   return (
     <div className="space-y-1">
       <div className="flex rounded-full overflow-hidden h-2 gap-px">
@@ -111,10 +115,16 @@ const BarraVotos = ({ favor, contra, abstencao }) => {
         {nC > 0 && <div className="bg-red-500"    style={{ width: `${nC/tot*100}%` }} />}
         {nA > 0 && <div className="bg-yellow-400" style={{ width: `${nA/tot*100}%` }} />}
       </div>
-      <div className="flex gap-4 text-xs text-gray-400">
+      <div className="flex gap-4 text-xs text-gray-400 flex-wrap">
         {nF > 0 && <span><span className="text-green-600 font-semibold">{nF}</span> a favor</span>}
         {nC > 0 && <span><span className="text-red-600   font-semibold">{nC}</span> contra</span>}
         {nA > 0 && <span><span className="text-yellow-600 font-semibold">{nA}</span> abstenção</span>}
+        {estimado && !ambiguas.length && <span className="text-gray-300">números estimados pelo tamanho das bancadas</span>}
+        {ambiguas.length > 0 && (
+          <span className="text-amber-600">
+            bancada dividida ({ambiguas.join(', ')}) — a AR não regista a divisão
+          </span>
+        )}
       </div>
     </div>
   );
