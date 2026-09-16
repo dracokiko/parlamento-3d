@@ -268,10 +268,14 @@ const SecaoIntervencoes = ({ intervencoes, carregando, corPartido, onVerIniciati
  * deputados com mais de 300 iniciativas — sem esta nota o leitor assumiria que
  * o texto cobre tudo o que a pessoa fez.
  */
-const ResumoPerfil = ({ perfil, totalIniciativas }) => {
+const ResumoPerfil = ({ perfil }) => {
   if (!perfil?.resumo_ia) return null;
-  const usadas = Math.min(perfil.resumo_ia_iniciativas ?? totalIniciativas, 30, totalIniciativas || 30);
-  const parcial = totalIniciativas > usadas;
+  // Quantas o deputado tinha quando o resumo foi escrito — vem com o perfil, ao
+  // contrário da lista de iniciativas, que só chega uns segundos depois. Usar a
+  // lista faria a nota desaparecer justamente enquanto o painel abre.
+  const base = perfil.resumo_ia_iniciativas ?? null;
+  const usadas = base === null ? null : Math.min(base, 30);
+  const parcial = base !== null && base > 30;
 
   return (
     <div className="bg-amber-50 border border-amber-100 rounded-xl p-3 mb-3">
@@ -284,7 +288,7 @@ const ResumoPerfil = ({ perfil, totalIniciativas }) => {
       <p className="text-xs text-gray-700 leading-relaxed">{perfil.resumo_ia}</p>
       <p className="text-[10px] text-gray-400 mt-2">
         {parcial
-          ? `Escrito a partir das ${usadas} iniciativas mais recentes, de ${totalIniciativas} no total · gerado automaticamente, pode conter imprecisões`
+          ? `Escrito a partir das ${usadas} iniciativas mais recentes, de ${base} no total · gerado automaticamente, pode conter imprecisões`
           : 'Gerado automaticamente · pode conter imprecisões'}
       </p>
     </div>
@@ -421,7 +425,7 @@ export const PainelDeputado = () => {
 
   const conteudo = (
     <>
-      <ResumoPerfil perfil={perfil} totalIniciativas={iniciativas.length} />
+      <ResumoPerfil perfil={perfil} />
       {abaAtiva === 'iniciativas'  && <SecaoIniciativas  iniciativas={iniciativas}  carregando={carregando}    onClickIniciativa={setIniciativaSelecionada} />}
       {abaAtiva === 'intervencoes' && <SecaoIntervencoes intervencoes={intervencoes} carregando={carregandoInt} corPartido={partido?.cor} onVerIniciativa={setIniciativaSelecionada} iniciativasIdMapa={iniciativasIdMapa} />}
     </>
