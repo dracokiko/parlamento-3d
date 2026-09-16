@@ -65,7 +65,7 @@ export const ParlamentoProvider = ({ children }) => {
     };
 
     // Perfis AR — paginar para não perder deputados além do limite de 1000 linhas do Supabase
-    paginar('ar_deputados', 'id, cad_id, nome_parlamentar, nome_completo, partido_sigla, circulo, resumo_ia', null, q => q.eq('legislatura', 'XVII'))
+    paginar('ar_deputados', 'id, cad_id, nome_parlamentar, nome_completo, partido_sigla, circulo, resumo_ia, resumo_ia_iniciativas', null, q => q.eq('legislatura', 'XVII'))
       .then(todos => {
         const mapa = new Map();
         todos.forEach(p => { if (p.nome_parlamentar) mapa.set(p.nome_parlamentar.toLowerCase(), p); });

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { X, MapPin, FileText, Mic, ExternalLink, BookUser, CalendarCheck, AlertTriangle, BookOpen } from 'lucide-react';
+import { X, MapPin, FileText, Mic, ExternalLink, BookUser, CalendarCheck, AlertTriangle, BookOpen, Sparkles } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { useParlamento } from '../../context/ParlamentoContext';
@@ -261,6 +261,36 @@ const SecaoIntervencoes = ({ intervencoes, carregando, corPartido, onVerIniciati
   );
 };
 
+/**
+ * Perfil do deputado escrito por IA a partir das suas iniciativas.
+ *
+ * Diz sempre em quantas se baseou: o prompt só leva as 30 mais recentes, e há
+ * deputados com mais de 300 iniciativas — sem esta nota o leitor assumiria que
+ * o texto cobre tudo o que a pessoa fez.
+ */
+const ResumoPerfil = ({ perfil, totalIniciativas }) => {
+  if (!perfil?.resumo_ia) return null;
+  const usadas = Math.min(perfil.resumo_ia_iniciativas ?? totalIniciativas, 30, totalIniciativas || 30);
+  const parcial = totalIniciativas > usadas;
+
+  return (
+    <div className="bg-amber-50 border border-amber-100 rounded-xl p-3 mb-3">
+      <div className="flex items-center gap-1.5 mb-1.5">
+        <Sparkles size={11} className="text-amber-500" />
+        <span className="text-[10px] font-semibold text-amber-600 uppercase tracking-wide">
+          Perfil resumido por IA
+        </span>
+      </div>
+      <p className="text-xs text-gray-700 leading-relaxed">{perfil.resumo_ia}</p>
+      <p className="text-[10px] text-gray-400 mt-2">
+        {parcial
+          ? `Escrito a partir das ${usadas} iniciativas mais recentes, de ${totalIniciativas} no total · gerado automaticamente, pode conter imprecisões`
+          : 'Gerado automaticamente · pode conter imprecisões'}
+      </p>
+    </div>
+  );
+};
+
 // ── Abas partilhadas entre mobile e desktop ────────────────────
 const Abas = ({ abaAtiva, setAbaAtiva, contagens }) => (
   <div className="flex border-b border-gray-100 px-4 pt-3 gap-1 flex-shrink-0">
@@ -391,6 +421,7 @@ export const PainelDeputado = () => {
 
   const conteudo = (
     <>
+      <ResumoPerfil perfil={perfil} totalIniciativas={iniciativas.length} />
       {abaAtiva === 'iniciativas'  && <SecaoIniciativas  iniciativas={iniciativas}  carregando={carregando}    onClickIniciativa={setIniciativaSelecionada} />}
       {abaAtiva === 'intervencoes' && <SecaoIntervencoes intervencoes={intervencoes} carregando={carregandoInt} corPartido={partido?.cor} onVerIniciativa={setIniciativaSelecionada} iniciativasIdMapa={iniciativasIdMapa} />}
     </>

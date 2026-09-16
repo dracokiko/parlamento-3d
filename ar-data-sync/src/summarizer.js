@@ -66,6 +66,26 @@ export async function resumirIniciativas() {
 
 // ── Deputados ─────────────────────────────────────────────────────────────────
 
+/** Quantas iniciativas entram no perfil. Mais do que isto não cabe no prompt. */
+const MAX_INICIATIVAS_RESUMO = 30;
+
+/**
+ * Um perfil é reescrito quando deixou de descrever o deputado: cresceu pelo
+ * menos metade desde que foi escrito, e pelo menos 5 iniciativas. O mínimo
+ * absoluto evita regenerar um deputado que passou de 2 para 3 (metade, mas
+ * irrelevante); o relativo evita ignorar quem passou de 30 para 300.
+ *
+ * Deputados sem resumo nenhum entram sempre. Os marcados com '' (menos de 2
+ * iniciativas na altura) voltam a ser tentados se entretanto ganharam matéria.
+ */
+export function precisaDeResumo(dep, quantasHoje) {
+  if (dep.resumo_ia === null || dep.resumo_ia === undefined) return true;
+  const base = dep.resumo_ia_iniciativas;
+  if (base === null || base === undefined) return true;   // resumo antigo, sem registo da base
+  const cresceu = quantasHoje - base;
+  return cresceu >= 5 && quantasHoje >= base * 1.5;
+}
+
 export async function resumirDeputados() {
   console.log('\n  [IA] A resumir perfis de deputados...');
   let total = 0, erros = 0;
@@ -76,34 +96,51 @@ export async function resumirDeputados() {
   if (errActivos) { console.error('  ✗ Erro ao buscar deputados activos:', errActivos.message); return { total: 0, inseridos: 0, atualizados: 0, erros: 1, novos, falhas }; }
   const idsActivos = (activos ?? []).map(d => d.id);
 
-  while (true) {
+  // Percorre todos os deputados actuais, não só os que nunca tiveram resumo:
+  // um perfil escrito quando o deputado tinha 5 iniciativas deixa de o
+  // descrever quando ele tem 300, e antes disto nunca era reescrito.
+  const porPagina = 200;
+  for (let i = 0; i < idsActivos.length; i += porPagina) {
     const { data: deps, error } = await db()
       .from('ar_deputados')
-      .select('id, cad_id, nome_parlamentar, partido_sigla, circulo')
-      .is('resumo_ia', null)
-      .in('id', idsActivos)
-      .range(0, PAGINA - 1);
+      .select('id, cad_id, nome_parlamentar, partido_sigla, circulo, resumo_ia, resumo_ia_iniciativas')
+      .in('id', idsActivos.slice(i, i + porPagina));
 
     if (error) { console.error('  ✗ Erro ao buscar deputados:', error.message); break; }
-    if (!deps?.length) break;
+    if (!deps?.length) continue;
 
     for (const dep of deps) {
+      // Quantas iniciativas tem hoje? (só a contagem — não traz os registos)
+      const { count: quantasHoje } = await db()
+        .from('ar_iniciativas')
+        .select('id', { count: 'exact', head: true })
+        .contains('autores_dep', JSON.stringify([{ idCadastro: dep.cad_id }]));
+
+      if (!precisaDeResumo(dep, quantasHoje ?? 0)) continue;
+
+      // As mais recentes: um perfil deve descrever o que o deputado anda a
+      // fazer, não as primeiras que por acaso entraram na base de dados.
       const { data: inis } = await db()
         .from('ar_iniciativas')
         .select('titulo, resumo_ia')
         .contains('autores_dep', JSON.stringify([{ idCadastro: dep.cad_id }]))
-        .limit(30);
+        .order('data_inicio', { ascending: false, nullsFirst: false })
+        .limit(MAX_INICIATIVAS_RESUMO);
 
-      // Sem iniciativas suficientes: marcar resumo_ia='' para sair da fila IS NULL
+      // Sem iniciativas suficientes: marcar resumo_ia='' para sair da fila
       if (!inis || inis.length < 2) {
-        await db().from('ar_deputados').update({ resumo_ia: '' }).eq('id', dep.id);
+        await db().from('ar_deputados')
+          .update({ resumo_ia: '', resumo_ia_iniciativas: quantasHoje ?? 0, resumo_ia_em: new Date().toISOString() })
+          .eq('id', dep.id);
         total++;
         continue;
       }
 
       const resumo = await resumir(promptDeputado(dep, inis));
       if (resumo) {
-        await db().from('ar_deputados').update({ resumo_ia: resumo }).eq('id', dep.id);
+        await db().from('ar_deputados')
+          .update({ resumo_ia: resumo, resumo_ia_iniciativas: quantasHoje ?? 0, resumo_ia_em: new Date().toISOString() })
+          .eq('id', dep.id);
         total++;
         empurrarAmostra(novos, { id: dep.id, label: `${dep.nome_parlamentar || dep.id} (${dep.partido_sigla || '?'})` });
       } else {
@@ -112,8 +149,6 @@ export async function resumirDeputados() {
       }
       process.stdout.write(`  [IA] Deputados: ${total} processados, ${erros} erros\r`);
     }
-
-    if (deps.length < PAGINA) break;
   }
 
   console.log(`\n  [IA] Deputados concluído — ${total} processados, ${erros} erros`);
