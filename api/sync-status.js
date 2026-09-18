@@ -1,11 +1,36 @@
 import { createClient } from '@supabase/supabase-js';
 
 /**
- * Endpoint público de estado do job diário de sincronização (ar-sync).
- * Lê o resumo agregado gravado pelo pipeline em ar-data-sync/src/sync.js
- * na tabela pública `sync_status` (RLS: leitura pública, escrita só via
- * service_role).
+ * Endpoint público de estado dos jobs de sincronização.
+ * Lê os resumos agregados que os pipelines gravam na tabela pública
+ * `sync_status` (RLS: leitura pública, escrita só via service_role).
+ *
+ * Forma da resposta: o topo (`status`/`lastRunAt`/`message`/`summary`) é
+ * sempre o job diário `ar-sync` — é o contrato que os consumidores já usam e
+ * não muda. `jobs` acrescenta todos os jobs, incluindo o semanal do EUR-Lex,
+ * para quem quiser o quadro completo.
  */
+
+/** Ordem em que os jobs aparecem em `jobs`; o primeiro é o que define o topo da resposta. */
+const JOBS = [
+  { job: 'ar-sync', label: 'Sincronização diária da AR', schedule: 'Diário · 03:00 UTC' },
+  { job: 'eurlex-sync', label: 'Diretivas UE (EUR-Lex)', schedule: 'Semanal · domingos, 04:00 UTC' },
+];
+
+const JOB_PRINCIPAL = JOBS[0].job;
+
+function normalizar(meta, row) {
+  return {
+    job: meta.job,
+    label: meta.label,
+    schedule: meta.schedule,
+    status: row.status,
+    lastRunAt: row.last_run_at,
+    message: row.message ?? undefined,
+    summary: row.summary ?? undefined,
+  };
+}
+
 export default async function handler(req, res) {
   res.setHeader('Cache-Control', 'public, max-age=60, stale-while-revalidate=300');
 
@@ -20,21 +45,36 @@ export default async function handler(req, res) {
     const supabase = createClient(url, key);
     const { data, error } = await supabase
       .from('sync_status')
-      .select('status, last_run_at, message, summary')
-      .eq('job', 'ar-sync')
-      .maybeSingle();
+      .select('job, status, last_run_at, message, summary')
+      .in('job', JOBS.map((j) => j.job));
 
     if (error) throw error;
 
-    if (!data) {
-      return res.status(200).json({ status: 'error', lastRunAt: null, message: 'Ainda sem execuções registadas' });
+    const rows = data ?? [];
+    const jobs = JOBS.map((meta) => {
+      const row = rows.find((r) => r.job === meta.job);
+      return row ? normalizar(meta, row) : null;
+    }).filter(Boolean);
+
+    const principal = jobs.find((j) => j.job === JOB_PRINCIPAL);
+
+    // Sem o job diário não há topo que fazer — mas os outros jobs já podem ter
+    // corrido, por isso `jobs` vai na mesma.
+    if (!principal) {
+      return res.status(200).json({
+        status: 'error',
+        lastRunAt: null,
+        message: 'Ainda sem execuções registadas',
+        jobs,
+      });
     }
 
     return res.status(200).json({
-      status: data.status,
-      lastRunAt: data.last_run_at,
-      message: data.message ?? undefined,
-      summary: data.summary ?? undefined,
+      status: principal.status,
+      lastRunAt: principal.lastRunAt,
+      message: principal.message,
+      summary: principal.summary,
+      jobs,
     });
   } catch (err) {
     return res.status(200).json({ status: 'error', lastRunAt: null, message: `Falha ao consultar estado: ${err.message}` });
