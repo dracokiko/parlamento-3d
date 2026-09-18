@@ -11,6 +11,7 @@ import { syncAudicoes, syncAudiencias, syncDeslocacoes, syncEventos, syncOrcamen
 import { syncDarLinks } from './linkDarIniciativas.js';
 import { crawlerPresencas } from './presencasCrawler.js';
 import { crawlerBiografias } from './biografiasCrawler.js';
+import { syncDeputadosAtuais } from './deputadosAtuais.js';
 import { linkIntervencoesIniciativas } from './linkIntervencoesIni.js';
 import { linkIntervencoesViaDarLinks } from './linkIntervencoesDAR.js';
 import { juntarAmostra } from './resumoPublico.js';
@@ -412,6 +413,14 @@ async function main() {
     catch (err) { console.warn(`\n  ⚠ resumirVotacoes falhou (${err.message})`); avisos.push('resumirVotacoes'); }
     acumularAi(rVotAi);
   }
+
+  // Assentos — quem está sentado hoje, derivado de ar_deputados.situacao.
+  // Corre depois dos deputados (precisa da situação acabada de sincronizar) e
+  // antes das biografias e presenças, que lêem a tabela dos 230.
+  let rAssentos = null;
+  try { rAssentos = await syncDeputadosAtuais(); }
+  catch (err) { console.warn(`\n  ⚠ syncDeputadosAtuais falhou (${err.message})`); avisos.push('syncDeputadosAtuais'); }
+  if (!(await logSimples('assentos', rAssentos))) avisos.push('assentos');
 
   // Biografias (scraping parlamento.pt)
   let rBio = null;

@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { useParlamento } from '../../context/ParlamentoContext';
 import { partidos } from '../../data/mockPartidos';
-import { obterIniciais } from '../../utils/formatters';
+import { obterIniciais, formatarDataCurta } from '../../utils/formatters';
 import { useArDeputado } from '../../hooks/useArDeputado';
 import { useIntervencoesDeputado } from '../../hooks/useIntervencoesDeputado';
 import { useBiografiaDeputado } from '../../hooks/useBiografiaDeputado';
@@ -528,6 +528,14 @@ export const PainelDeputado = () => {
                   <MapPin size={9} className="text-gray-400 flex-shrink-0" />
                   <span className="text-xs text-gray-400 truncate">{deputadoSelecionado.circulo}</span>
                 </div>
+              )}
+              {/* Entrou a meio da legislatura: sem isto, ter poucas ou
+                  nenhumas intervenções parece um buraco nos dados. */}
+              {deputadoSelecionado.substituiu && (
+                <p className="text-[11px] text-gray-400 mt-1 leading-snug">
+                  Substituiu {deputadoSelecionado.substituiu}
+                  {deputadoSelecionado.substituiuDesde && ` em ${formatarDataCurta(deputadoSelecionado.substituiuDesde)}`}
+                </p>
               )}
             </div>
 

@@ -127,17 +127,20 @@ export const ParlamentoProvider = ({ children }) => {
   useEffect(() => {
     const carregarDeputados = async () => {
       try {
-        // Tenta incluir a coluna foto; se o schema cache ainda não a reconhecer,
-        // faz fallback sem ela (erro comum após adicionar coluna nova no Supabase).
+        // Tenta incluir as colunas opcionais — a foto e o rasto de
+        // substituição, que só existe depois de a migração correr. Se o
+        // schema cache ainda não as reconhecer, faz fallback sem elas.
+        const BASE = 'id, nome, nome_completo, partido_sigla, circulo_eleitoral, lugar';
         let { data, error } = await supabase
           .from('deputados')
-          .select('id, nome, nome_completo, partido_sigla, circulo_eleitoral, lugar, foto');
+          .select(`${BASE}, foto, substitui_nome, substitui_desde`);
 
+        if (error?.message?.includes('substitui')) {
+          ({ data, error } = await supabase.from('deputados').select(`${BASE}, foto`));
+        }
         if (error?.message?.includes('foto')) {
           console.warn('Coluna foto ainda não no cache do schema — a carregar sem foto. Faz Reload Schema Cache no painel do Supabase.');
-          ({ data, error } = await supabase
-            .from('deputados')
-            .select('id, nome, nome_completo, partido_sigla, circulo_eleitoral, lugar'));
+          ({ data, error } = await supabase.from('deputados').select(BASE));
         }
 
         if (error) throw error;
@@ -151,6 +154,10 @@ export const ParlamentoProvider = ({ children }) => {
           circulo:           d.circulo_eleitoral,
           lugar:             d.lugar,           // ex: "A1", "C15", "H40"
           foto:              d.foto ?? null,
+          // Quem ocupava este lugar antes, quando o actual ocupante entrou a
+          // meio da legislatura (substituição). Ausente antes da migração.
+          substituiu:        d.substitui_nome ?? null,
+          substituiuDesde:   d.substitui_desde ?? null,
           // Campos que ainda não existem no Supabase — ficam null
           taxaPresenca:      null,
           totalIntervencoes: null,
