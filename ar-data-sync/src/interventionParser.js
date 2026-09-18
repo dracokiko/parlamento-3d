@@ -1,16 +1,23 @@
 /**
- * Parseia transcrições do DAR e extrai intervenções individuais por deputado.
+ * Parseia transcrições do DAR e extrai as intervenções individuais.
  *
  * Estratégia em dois passos:
- *  1. Detectar TODOS os marcadores de mudança de orador (incluindo Presidente de
- *     sessão, membros do Governo, etc.) para dividir o texto correctamente.
- *  2. Emitir apenas as intervenções de oradores que tenham sigla de GP em parêntesis.
+ *  1. Detectar TODOS os marcadores de mudança de orador — incluindo os que
+ *     aparecem a meio da linha (apartes) — para dividir o texto correctamente.
+ *  2. Classificar cada fatia: deputado, presidência da sessão ou membro do
+ *     Governo. Oradores que não caiam em nenhum dos três servem só de
+ *     fronteira e não são emitidos.
  *
- * Formato típico do DAR:
- *   "O Sr. Nome Sobrenome (SIGLA): — texto do discurso"
- *   "A Sr.ª Nome Sobrenome (SIGLA): — texto do discurso"
- *   "O Sr. Presidente: — texto"           ← sem sigla → divide mas não emite
- *   "O Sr. Ministro Tal: — texto"          ← sem sigla → divide mas não emite
+ * Formatos típicos do DAR:
+ *   "O Sr. Nome Sobrenome (SIGLA): — texto"        ← deputado
+ *   "O Sr. Presidente: — texto"                    ← quem preside, sem nome
+ *   "A Sr.ª Presidente (Nome): — texto"            ← quem preside, nomeado
+ *   "O Sr. Ministro da Justiça (Nome): — texto"    ← Governo
+ *
+ * Quem preside não se identifica em cada turno: o DAR nomeia-o no cabeçalho
+ * ("Presidente: Ex.mo Sr. …") e só volta a nomeá-lo quando a presidência
+ * muda. Por isso acompanhamos quem está na cadeira ao longo da sessão — sem
+ * isso, o orador que mais fala em cada sessão ficava sem registo nenhum.
  */
 
 // Títulos reconhecidos no início de turno de palavra
@@ -20,29 +27,126 @@ const TITULOS = [
   'O Presidente', 'A Presidente',
 ].join('|');
 
-// Cargos que aparecem no lugar do nome — nestes casos o parêntesis seguinte
-// identifica a pessoa, não o grupo parlamentar (ver parsearIntervencoes).
-const CARGOS_SEM_GP = new Set([
-  'presidente', 'secretário', 'secretária', 'vice-presidente',
+/** Cargos da Mesa: o que estiver entre parêntesis é a pessoa, não um grupo parlamentar. */
+const CARGOS_PRESIDENCIA = new Set([
+  'presidente', 'vice-presidente',
+  'secretário', 'secretária', 'vice-secretário', 'vice-secretária',
+  'secretário da mesa', 'secretária da mesa',
 ]);
 
-// Detecta o início de QUALQUER intervenção (com ou sem sigla de GP)
-const RE_QUALQUER = new RegExp(
-  `(?:^|\\n)\\s*(?:${TITULOS})[^\\n:]{0,80}?(?:\\s*\\([^)\\n]{1,25}\\))?\\s*:\\s*[—\\-–]`,
-  'g'
+/** Cargos do Governo — idem: o parêntesis traz o nome de quem exerce o cargo. */
+const RE_CARGO_GOVERNO = /^(?:vice-)?(?:primeiro-ministr[oa]|ministr[oa]\b|secretári[oa] de estado|subsecretári[oa])/i;
+
+/**
+ * Um marcador de mudança de orador. Aceita início de linha ou meio de linha
+ * (apartes como "… Aplausos do PS. O Sr. Fulano (PS): — O pacote já caiu!"),
+ * que antes só serviam para cortar a fala anterior e desapareciam.
+ */
+const MARCADOR = `(?:${TITULOS})[^\\n:]{0,80}?(?:\\s*\\([^)\\n]{1,40}\\))?\\s*:\\s*[—\\-–]`;
+const RE_MARCADOR_GLOBAL = new RegExp(`(?:^|\\n|(?<=\\s))${MARCADOR}`, 'g');
+
+/** Cabeçalho da fatia: título + nome/cargo + (parêntesis opcional). */
+const RE_CABECALHO = new RegExp(
+  `^\\s*(?:${TITULOS})\\s*([^()\\n:]{2,70}?)\\s*(?:\\(([^)\\n]{1,40})\\))?\\s*:\\s*[—\\-–]`
 );
 
-// Detecta apenas intervenções de deputados (têm sigla de GP em parêntesis)
-const RE_DEPUTADO = new RegExp(
-  `(?:^|\\n)\\s*(?:O Sr\\.|A Sr\\.ª|A Sra\\.)\\s+([^()\\n]{2,60}?)\\s*\\(([^)\\n]{1,20})\\)\\s*:\\s*[—\\-–]`,
-  'g'
-);
+/** Uma sigla de grupo parlamentar não tem espaços e é toda em maiúsculas (PS, CDS-PP, PSD/CDS). */
+const ehSiglaGP = (s) => !!s && !/\s/.test(s) && s === s.toUpperCase() && /[A-ZÀ-Ú]/.test(s);
 
-// Marcador de orador inline — sem exigir \n, para truncar falas que contêm
-// mudanças de orador numa só linha (interjeiçõoes no meio do texto)
-const RE_INLINE_ORADOR = new RegExp(
-  `\\s+(?:${TITULOS})[^:]{0,80}?(?:\\([^)]{1,25}\\))?\\s*:\\s*[—\\-–]`
-);
+const normalizarCargo = (s) => s.toLowerCase().replace(/\s+/g, ' ').trim();
+
+/**
+ * Nome de quem abre a sessão na cadeira da presidência, lido do cabeçalho do
+ * DAR ("Presidente: Ex.mo Sr. José Pedro Correia de Aguiar-Branco").
+ * Só procura no cabeçalho, para não confundir com um turno de palavra.
+ */
+export function extrairPresidenteDaSessao(transcricao) {
+  if (!transcricao) return null;
+  const m = transcricao.slice(0, 3000).match(/Presidente:\s*Ex\.?\s*m[oa]\.?\s*Sr\.?ª?\s*([^\n]{5,70})/);
+  return m ? (m[1].replace(/\s+/g, ' ').trim() || null) : null;
+}
+
+/**
+ * Classifica uma fatia de texto que começa num marcador de orador.
+ * Devolve `null` quando o orador não é identificável (fica só como fronteira).
+ *
+ * `titulares` (cargo normalizado → nome) acompanha quem exerce cada cargo ao
+ * longo da sessão: tanto a presidência como o Governo são nomeados à primeira
+ * intervenção e passam a aparecer só pelo cargo daí em diante. É por cargo e
+ * não uma variável única porque "O Sr. Secretário (Fulano)" não faz de Fulano
+ * o presidente da sessão.
+ */
+function classificar(fatia, titulares) {
+  const m = RE_CABECALHO.exec(fatia);
+  if (!m) return null;
+
+  const etiqueta  = m[1].replace(/\s+/g, ' ').trim();
+  const parentese = m[2]?.replace(/\s+/g, ' ').trim() || null;
+  const texto     = fatia.slice(m.index + m[0].length).trim();
+  if (!texto) return null;
+
+  const cargo = normalizarCargo(etiqueta);
+
+  // Presidência da sessão — o parêntesis, quando existe, nomeia quem assumiu
+  // a cadeira; sem ele, continua quem lá estava.
+  if (CARGOS_PRESIDENCIA.has(cargo)) {
+    const nome = parentese ?? titulares.get(cargo);
+    if (!nome) return null;   // ninguém identificado ainda → não inventamos
+    return { nome, partido: null, cargo: etiqueta, papel: 'presidencia', texto, registar: parentese ? { cargo, nome: parentese } : null };
+  }
+
+  // Governo — "Ministro da Justiça (Rita Alarcão Júdice)". O nome da pessoa
+  // vai para `nome_dep` e o cargo para o seu próprio campo; antes o cargo
+  // ficava como nome do orador e a pessoa aparecia no campo do partido.
+  // Quando a sessão já o nomeou, os turnos seguintes só trazem o cargo.
+  if (RE_CARGO_GOVERNO.test(etiqueta)) {
+    const nome = parentese ?? titulares.get(cargo) ?? etiqueta;
+    return { nome, partido: null, cargo: etiqueta, papel: 'governo', texto, registar: parentese ? { cargo, nome: parentese } : null };
+  }
+
+  // Deputado — só quando o parêntesis é mesmo uma sigla de grupo parlamentar.
+  if (parentese && ehSiglaGP(parentese)) {
+    return { nome: etiqueta, partido: parentese, cargo: null, papel: 'deputado', texto };
+  }
+
+  return null;
+}
+
+/**
+ * Percorre a transcrição e devolve as intervenções pela ordem em que ocorrem,
+ * cada uma com a posição onde começa. Núcleo partilhado por
+ * `parsearIntervencoes` e `indexarPaginasTranscricao` — os índices têm de
+ * bater certo entre os dois (são o sufixo `_i` do id da intervenção).
+ */
+function extrairIntervencoes(transcricao) {
+  if (!transcricao) return [];
+
+  const posicoes = [];
+  RE_MARCADOR_GLOBAL.lastIndex = 0;
+  let m;
+  while ((m = RE_MARCADOR_GLOBAL.exec(transcricao)) !== null) posicoes.push(m.index);
+  if (!posicoes.length) return [];
+  posicoes.push(transcricao.length); // sentinela
+
+  const titulares = new Map();
+  const presidenteInicial = extrairPresidenteDaSessao(transcricao);
+  if (presidenteInicial) titulares.set('presidente', presidenteInicial);
+
+  const resultado = [];
+
+  for (let i = 0; i < posicoes.length - 1; i++) {
+    const inicio = posicoes[i];
+    const item = classificar(transcricao.slice(inicio, posicoes[i + 1]), titulares);
+    if (!item) continue;
+    if (item.registar) titulares.set(item.registar.cargo, item.registar.nome);
+    resultado.push({
+      inicio, nome: item.nome, partido: item.partido,
+      cargo: item.cargo, papel: item.papel, texto: item.texto,
+    });
+  }
+
+  return resultado;
+}
 
 /**
  * Constrói um Map de índice de intervenção (_i) para número de página aproximado.
@@ -54,12 +158,11 @@ const RE_INLINE_ORADOR = new RegExp(
 export function indexarPaginasTranscricao(transcricao) {
   if (!transcricao) return new Map();
 
-  // Marcadores de página: \n{1-3 dígitos}\n
   const pageMarkers = [];
   for (const m of transcricao.matchAll(/\n(\d{1,3})\n/g)) {
     pageMarkers.push({ pg: parseInt(m[1], 10), idx: m.index });
   }
-  const paginaEm = pos => {
+  const paginaEm = (pos) => {
     let pg = 1;
     for (const { pg: p, idx } of pageMarkers) {
       if (idx > pos) break;
@@ -68,78 +171,21 @@ export function indexarPaginasTranscricao(transcricao) {
     return pg;
   };
 
-  // Posições de todos os oradores (mesmo os sem sigla de GP)
-  const todos = [];
-  RE_QUALQUER.lastIndex = 0;
-  let m;
-  while ((m = RE_QUALQUER.exec(transcricao)) !== null) todos.push(m.index);
-  todos.push(transcricao.length);
-
   const paginaPorI = new Map();
-  let di = 0; // índice entre os deputados (= sufixo _i no id)
-  for (let i = 0; i < todos.length - 1; i++) {
-    const fatia = transcricao.slice(todos[i], todos[i + 1]);
-    RE_DEPUTADO.lastIndex = 0;
-    if (!RE_DEPUTADO.exec(fatia)) continue;
-    paginaPorI.set(di, paginaEm(todos[i]));
-    di++;
-  }
+  extrairIntervencoes(transcricao).forEach((iv, i) => paginaPorI.set(i, paginaEm(iv.inicio)));
   return paginaPorI;
 }
 
 /**
- * Dado o texto completo de uma transcrição do DAR, devolve todas as intervenções
- * de deputados (com sigla de GP).
+ * Dado o texto completo de uma transcrição do DAR, devolve todas as
+ * intervenções identificáveis — de deputados, de quem preside e de membros
+ * do Governo, distinguidas por `papel`.
  *
  * @param {string} transcricao
- * @returns {{ nome: string, partido: string, texto: string }[]}
+ * @returns {{ nome: string, partido: string|null, cargo: string|null, papel: 'deputado'|'presidencia'|'governo', texto: string }[]}
  */
 export function parsearIntervencoes(transcricao) {
-  if (!transcricao) return [];
-
-  // Passo 1: encontrar posições de TODOS os marcadores de orador
-  const todos = [];
-  RE_QUALQUER.lastIndex = 0;
-  let m;
-  while ((m = RE_QUALQUER.exec(transcricao)) !== null) {
-    todos.push(m.index);
-  }
-  todos.push(transcricao.length); // sentinela final
-
-  if (todos.length <= 1) return [];
-
-  // Passo 2: para cada fatia, verificar se é de um deputado (tem sigla GP)
-  const resultado = [];
-  for (let i = 0; i < todos.length - 1; i++) {
-    const fatia = transcricao.slice(todos[i], todos[i + 1]);
-
-    RE_DEPUTADO.lastIndex = 0;
-    const match = RE_DEPUTADO.exec(fatia);
-    if (!match) continue; // não é deputado identificável → descarta
-
-    let nome    = match[1].replace(/\s+/g, ' ').trim();
-    let partido = match[2].trim();
-
-    // "O Sr. Presidente (Rodrigo Saraiva): —" tem a mesma forma que a de um
-    // deputado, mas o que está entre parêntesis é o NOME de quem preside, não
-    // uma sigla de grupo parlamentar. Sem isto ficava registado um orador
-    // chamado "Presidente" filiado no partido "Rodrigo Saraiva".
-    if (CARGOS_SEM_GP.has(nome.toLowerCase())) {
-      nome = partido;      // o parêntesis traz a pessoa
-      partido = null;      // o texto não diz o grupo parlamentar
-    }
-
-    // Texto da fala = tudo após o marcador "NOME (SIGLA): —"
-    // Truncar no primeiro marcador de orador inline (mudança de linha sem \n)
-    const fimMarcador = match.index + match[0].length;
-    const raw         = fatia.slice(fimMarcador);
-    const inlineCorte = raw.search(RE_INLINE_ORADOR);
-    const texto       = (inlineCorte > 0 ? raw.slice(0, inlineCorte) : raw).trim();
-
-    if (!texto) continue;
-
-    resultado.push({ nome, partido, texto });
-  }
-
-  return resultado;
+  return extrairIntervencoes(transcricao).map(({ nome, partido, cargo, papel, texto }) => ({
+    nome, partido, cargo, papel, texto,
+  }));
 }

@@ -342,9 +342,21 @@ export async function obterTranscricoesDebates() {
 
 // ── Intervenções individuais ──────────────────────────────────────────────────
 
+/**
+ * `papel`/`cargo` distinguem deputado, presidência da sessão e Governo. São
+ * colunas novas (ver supabase/migrations) — enquanto a migração não correr,
+ * a indexação continua a funcionar sem elas em vez de rebentar a cada linha.
+ */
+async function temColunasPapelCargo() {
+  const { error } = await db().from('ar_intervencoes').select('papel, cargo').limit(1);
+  if (error) console.warn('  [INT] colunas papel/cargo ainda não existem — a indexar sem elas');
+  return !error;
+}
+
 export async function indexarIntervencoes() {
   console.log('\n  [INT] A indexar intervenções...');
 
+  const temPapel = await temColunasPapelCargo();
   let totalInt = 0, totalDeb = 0, erros = 0;
   let offset = 0;
   const PAGE = 50;
@@ -399,6 +411,7 @@ export async function indexarIntervencoes() {
           assunto:      debate.assunto,
           url_diario:   debate.url_diario,
           num_palavras: iv.texto.trim().split(/\s+/).filter(Boolean).length,
+          ...(temPapel ? { papel: iv.papel, cargo: iv.cargo } : {}),
         }));
 
         const { error: upsertErr } = await db()

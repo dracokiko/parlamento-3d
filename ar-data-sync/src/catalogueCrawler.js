@@ -2,7 +2,7 @@
  * Crawler do catálogo de debates do DAR (debates.parlamento.pt).
  *
  * Estratégia:
- *   1. Listar todos os (numero, data) do DAR na sessão actual
+ *   1. Listar todos os (numero, data) do DAR em todas as sessões legislativas
  *   2. Para cada par novo, buscar o texto completo via ?sft=true
  *   3. Guardar em ar_debates (id: dar_NNN_DATE) com transcricao preenchida
  *   4. Ligar as iniciativas que referenciam esse DAR (iniciativa_ids)
@@ -93,11 +93,35 @@ async function listarNumerosDar(sessaoLeg) {
       numeros.push({ numero: m[1], data: m[2], id: `dar_${m[1]}_${m[2]}` });
     }
   }
-  const resultado = numeros.sort((a, b) => a.data.localeCompare(b.data));
-  if (resultado.length === 0) {
-    console.error(`⚠ ATENÇÃO: 0 sessões encontradas para a legislatura ${LEGISLATURA} / sessão legislativa ${sessaoLeg} — verificar URL do catálogo DAR`);
+  return numeros.sort((a, b) => a.data.localeCompare(b.data));
+}
+
+/**
+ * O mesmo, mas para TODAS as sessões legislativas da legislatura.
+ *
+ * Olhar só para a sessão em curso parece natural e está errado: a sessão
+ * legislativa muda a 15 de Setembro e a nova abre vazia, enquanto os últimos
+ * DAR da anterior ainda estão por publicar. Nesse período a listagem da
+ * sessão nova não devolve nada e os atrasados da antiga nunca seriam
+ * descobertos — ficavam invisíveis, porque o modo 'missing' só repesca
+ * sessões que já existam em ar_debates.
+ */
+async function listarNumerosDarTodas() {
+  const sessoes = await descobrirSessoes();
+  const porId = new Map();
+
+  for (const sessaoLeg of sessoes) {
+    const lista = await listarNumerosDar(sessaoLeg);
+    console.log(`  [DAR-CRAWL] sessão legislativa ${sessaoLeg}: ${lista.length} no catálogo`);
+    for (const item of lista) {
+      if (!porId.has(item.id)) porId.set(item.id, { ...item, sessaoLeg });
+    }
   }
-  return resultado;
+
+  if (porId.size === 0) {
+    console.error(`⚠ ATENÇÃO: 0 sessões encontradas em toda a legislatura ${LEGISLATURA} (sessões: ${sessoes.join(', ')}) — verificar URL do catálogo DAR`);
+  }
+  return [...porId.values()].sort((a, b) => a.data.localeCompare(b.data));
 }
 
 /** Sessões DAR referenciadas em ar_iniciativas.dar_links mas sem transcrição. */
@@ -203,7 +227,7 @@ export async function crawlerDebatesDAR(modo = 'new') {
     sessoes = await sessoesMissing();
     console.log(`  [DAR-CRAWL] ${sessoes.length} sessões com placeholder sem transcrição`);
   } else {
-    const todas = await listarNumerosDar(sessaoLeg);
+    const todas = await listarNumerosDarTodas();
     if (modo === 'new') {
       const ultima = await dataUltimaCrawlada();
       sessoes = ultima ? todas.filter(s => s.data > ultima) : todas;
@@ -218,7 +242,12 @@ export async function crawlerDebatesDAR(modo = 'new') {
   let novos = 0, actualizados = 0, ignorados = 0, erros = 0;
   const amostraNovos = [], falhas = [];
 
-  for (const { numero, data, id } of sessoes) {
+  for (const { numero, data, id, sessaoLeg: sessaoDoItem } of sessoes) {
+    // A sessão legislativa a que este DAR pertence — só a sabemos quando veio
+    // da listagem do catálogo; no modo 'missing' o id não a guarda, e aí
+    // partimos da actual (fetchTextoSessao tenta as outras a seguir).
+    const sessaoItem = sessaoDoItem ?? sessaoLeg;
+
     // Verificar se já tem transcrição
     const { data: existing } = await db()
       .from('ar_debates')
@@ -230,13 +259,13 @@ export async function crawlerDebatesDAR(modo = 'new') {
 
     await sleep(DELAY);
     try {
-      const sessao = await fetchTextoSessao(numero, data, sessaoLeg);
+      const sessao = await fetchTextoSessao(numero, data, sessaoItem);
       if (!sessao) { ignorados++; continue; }
 
       const payload = {
         id,
         data_debate:   data,
-        sessao:        sessaoLeg,
+        sessao:        sessaoItem,
         legislatura:   LEGISLATURA,
         url_diario:    sessao.url,
         transcricao:   sessao.texto,
