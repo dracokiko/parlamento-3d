@@ -118,7 +118,7 @@ function classificar(fatia, titulares) {
  * `parsearIntervencoes` e `indexarPaginasTranscricao` — os índices têm de
  * bater certo entre os dois (são o sufixo `_i` do id da intervenção).
  */
-function extrairIntervencoes(transcricao) {
+function extrairIntervencoes(transcricao, titularesGoverno = new Map()) {
   if (!transcricao) return [];
 
   const posicoes = [];
@@ -128,7 +128,11 @@ function extrairIntervencoes(transcricao) {
   if (!posicoes.length) return [];
   posicoes.push(transcricao.length); // sentinela
 
-  const titulares = new Map();
+  // Titulares do Governo conhecidos de outras sessões: há sessões em que o
+  // DAR nunca nomeia o ministro, e sem isto ficava "Ministra do Ambiente e
+  // Energia" como nome do orador, separada da pessoa. Só para o Governo — a
+  // presidência muda de sessão para sessão e tem de vir sempre do texto.
+  const titulares = new Map(titularesGoverno);
   const presidenteInicial = extrairPresidenteDaSessao(transcricao);
   if (presidenteInicial) titulares.set('presidente', presidenteInicial);
 
@@ -155,7 +159,7 @@ function extrairIntervencoes(transcricao) {
  * @param {string} transcricao
  * @returns {Map<number, number>}  _i → pagina
  */
-export function indexarPaginasTranscricao(transcricao) {
+export function indexarPaginasTranscricao(transcricao, titularesGoverno) {
   if (!transcricao) return new Map();
 
   const pageMarkers = [];
@@ -172,7 +176,7 @@ export function indexarPaginasTranscricao(transcricao) {
   };
 
   const paginaPorI = new Map();
-  extrairIntervencoes(transcricao).forEach((iv, i) => paginaPorI.set(i, paginaEm(iv.inicio)));
+  extrairIntervencoes(transcricao, titularesGoverno).forEach((iv, i) => paginaPorI.set(i, paginaEm(iv.inicio)));
   return paginaPorI;
 }
 
@@ -184,8 +188,8 @@ export function indexarPaginasTranscricao(transcricao) {
  * @param {string} transcricao
  * @returns {{ nome: string, partido: string|null, cargo: string|null, papel: 'deputado'|'presidencia'|'governo', texto: string }[]}
  */
-export function parsearIntervencoes(transcricao) {
-  return extrairIntervencoes(transcricao).map(({ nome, partido, cargo, papel, texto }) => ({
+export function parsearIntervencoes(transcricao, titularesGoverno) {
+  return extrairIntervencoes(transcricao, titularesGoverno).map(({ nome, partido, cargo, papel, texto }) => ({
     nome, partido, cargo, papel, texto,
   }));
 }

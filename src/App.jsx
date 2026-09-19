@@ -8,6 +8,8 @@ import { LegendaPartidos } from './components/Hemiciclo/LegendaPartidos';
 import { ControlosCamara } from './components/Hemiciclo/ControlosCamara';
 import { PainelDeputado } from './components/PainelDeputado/PainelDeputado';
 import { TooltipDeputado, CoatOfArmsAR } from './components/UI/TooltipDeputado';
+import { TooltipGovernante } from './components/UI/TooltipGovernante';
+import { PainelGovernante } from './components/PainelGoverno/PainelGovernante';
 import { Header } from './components/UI/Header';
 import { PesquisaDeputado } from './components/UI/PesquisaDeputado';
 import { DiretivasUE } from './pages/DiretivasUE';
@@ -248,6 +250,8 @@ function HemicicloPage() {
       {/* Coat of arms — oculto em mobile */}
       <CoatOfArmsAR />
       <TooltipDeputado />
+      <TooltipGovernante />
+      <PainelGovernante />
       <TelaCarregamento />
     </>
   );

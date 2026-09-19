@@ -183,7 +183,7 @@ const CartaoIntervencao = ({ iv, texto, carregandoTextos, expandido, onToggle, i
   );
 };
 
-const SecaoIntervencoes = ({ intervencoes, carregando, corPartido, onVerIniciativa, iniciativasIdMapa }) => {
+export const SecaoIntervencoes = ({ intervencoes, carregando, corPartido, onVerIniciativa, iniciativasIdMapa }) => {
   const [textos, setTextos]             = useState({});
   const [carregandoTextos, setLoadTx]   = useState(false);
   const [expandido, setExpandido]       = useState(null);

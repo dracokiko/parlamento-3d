@@ -2,6 +2,7 @@ import { Canvas, useFrame } from '@react-three/fiber';
 import { OrbitControls, PerspectiveCamera } from '@react-three/drei';
 import { Suspense, useRef } from 'react';
 import { Assento } from './Assento';
+import { BancadaGoverno } from './BancadaGoverno';
 import { EstruturaHemiciclo } from './EstruturaHemiciclo';
 import { useParlamento } from '../../context/ParlamentoContext';
 import { useIsMobile, useIsTabletPortrait, useIsTouch } from '../../hooks/useIsMobile';
@@ -122,6 +123,7 @@ export const CenaHemiciclo = () => {
         <group scale={sceneScale}>
           <EstruturaHemiciclo />
           <SinalPronto />
+          <BancadaGoverno />
 
           {deputados.map((deputado) => {
             const pos = posicoes3D.get(deputado.id);

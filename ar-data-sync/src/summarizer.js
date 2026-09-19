@@ -13,6 +13,7 @@ import { SUPABASE_URL, SUPABASE_KEY } from './config.js';
 import { resumir, promptIniciativa, promptDeputado, promptDebate, promptVotacao, promptTemas, TEMAS_DISPONIVEIS } from './ai.js';
 import { obterTranscricao } from './scraper.js';
 import { parsearIntervencoes } from './interventionParser.js';
+import { carregarTitularesGoverno, titularesNaData } from './titularesGoverno.js';
 import { empurrarAmostra } from './resumoPublico.js';
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
@@ -357,6 +358,9 @@ export async function indexarIntervencoes() {
   console.log('\n  [INT] A indexar intervenções...');
 
   const temPapel = await temColunasPapelCargo();
+  // Quem exerce cada cargo do Governo, visto de todas as sessões — há sessões
+  // que nunca nomeiam o ministro (ver titularesGoverno.js).
+  const titulares = temPapel ? await carregarTitularesGoverno(db()) : new Map();
   let totalInt = 0, totalDeb = 0, erros = 0;
   let offset = 0;
   const PAGE = 50;
@@ -398,7 +402,7 @@ export async function indexarIntervencoes() {
         .in('id', novosIds);
 
       for (const debate of debates ?? []) {
-        const intervencoes = parsearIntervencoes(debate.transcricao);
+        const intervencoes = parsearIntervencoes(debate.transcricao, titularesNaData(titulares, debate.data_debate));
         if (!intervencoes.length) continue;
 
         const registos = intervencoes.map((iv, i) => ({

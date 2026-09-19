@@ -20,6 +20,40 @@ import { mapaLugares, calcularFocoPartido } from '../utils/posicoes3D';
 
 const ParlamentoContext = createContext(null);
 
+/** Ordem na bancada: o Primeiro-Ministro à cabeça, depois ministros, depois secretários de Estado. */
+const escalaoDoCargo = (cargo = '') => {
+  if (/^(?:vice-)?primeiro-ministr/i.test(cargo)) return 0;
+  if (/^ministr/i.test(cargo)) return 1;
+  return 2;
+};
+
+/**
+ * Os membros do Governo que falaram em plenário, um por pessoa.
+ *
+ * Não há tabela de governantes — o Governo não é eleito para a Assembleia e
+ * quem lá entra suspende o mandato de deputado. O que existe são as suas
+ * intervenções, com o cargo que o DAR lhes dá. O cargo mostrado é o da
+ * intervenção mais recente: quem muda de pasta aparece na actual, não na
+ * primeira que teve.
+ */
+function derivarMembrosGoverno(intervencoes) {
+  const porPessoa = new Map();
+
+  for (const iv of intervencoes) {
+    if (iv.papel !== 'governo' || !iv.nome_dep) continue;
+    const actual = porPessoa.get(iv.nome_dep) ?? { nome: iv.nome_dep, cargo: iv.cargo, intervencoes: 0, ultima: '', primeira: '' };
+    actual.intervencoes++;
+    const data = iv.data_debate ?? '';
+    if (data > actual.ultima)   { actual.ultima = data; actual.cargo = iv.cargo ?? actual.cargo; }
+    if (!actual.primeira || (data && data < actual.primeira)) actual.primeira = data;
+    porPessoa.set(iv.nome_dep, actual);
+  }
+
+  return [...porPessoa.values()].sort((a, b) =>
+    escalaoDoCargo(a.cargo) - escalaoDoCargo(b.cargo) || b.intervencoes - a.intervencoes,
+  );
+}
+
 export const ParlamentoProvider = ({ children }) => {
   // ─── Dados remotos ────────────────────────────────────────────────────────
   const [deputados, setDeputados]   = useState([]);
@@ -34,6 +68,10 @@ export const ParlamentoProvider = ({ children }) => {
   const [iniciativasIdMapa, setIniciativasIdMapa] = useState(new Map()); // id → iniciativa
   const [biografiasMapa, setBiografiasMapa]       = useState(new Map());
   const [presencasMapa, setPresencasMapa]         = useState(new Map());
+  // Membros do Governo que usaram da palavra em plenário — derivados das
+  // intervenções, porque não são deputados e não existem em lado nenhum na
+  // base como pessoas. É esta lista que povoa a bancada do Governo.
+  const [membrosGoverno, setMembrosGoverno]       = useState([]);
 
   // Flags individuais para saber quando cada recurso terminou
   const [perfisProntos, setPerfisProntos]             = useState(false);
@@ -83,6 +121,7 @@ export const ParlamentoProvider = ({ children }) => {
           mapa.get(key).push(iv);
         });
         setIntervencoesMapa(mapa);
+        setMembrosGoverno(derivarMembrosGoverno(todas));
         setIntervencoesProntas(true);
       });
 
@@ -200,19 +239,35 @@ export const ParlamentoProvider = ({ children }) => {
   // Deputado em hover (para tooltip 3D)
   const [deputadoHover, setDeputadoHover] = useState(null);
 
+  // Membro do Governo selecionado / em hover na bancada
+  const [governanteSelecionado, setGovernanteSelecionado] = useState(null);
+  const [governanteHover, setGovernanteHover]             = useState(null);
+
   // Ref partilhada para o OrbitControls do hemiciclo 3D — permite que
   // componentes fora do Canvas (ex: botão de reset em ControlosCamara)
   // chamem métodos da câmara sem recorrer a window.location.reload().
   const cameraControlsRef = useRef(null);
 
-  // Selecionar um deputado (abre painel lateral)
+  // Selecionar um deputado (abre painel lateral). Só um painel de cada vez:
+  // abrir um deputado fecha o membro do Governo que estivesse aberto.
   const selecionarDeputado = useCallback((deputado) => {
+    setGovernanteSelecionado(null);
     setDeputadoSelecionado(deputado);
   }, []);
 
   // Fechar painel do deputado
   const fecharPainel = useCallback(() => {
     setDeputadoSelecionado(null);
+  }, []);
+
+  // Selecionar um membro do Governo na bancada
+  const selecionarGovernante = useCallback((membro) => {
+    setDeputadoSelecionado(null);
+    setGovernanteSelecionado(membro);
+  }, []);
+
+  const fecharPainelGoverno = useCallback(() => {
+    setGovernanteSelecionado(null);
   }, []);
 
   // Destacar partido no hemiciclo
@@ -242,17 +297,23 @@ export const ParlamentoProvider = ({ children }) => {
     iniciativasIdMapa,
     biografiasMapa,
     presencasMapa,
+    membrosGoverno,
     tudoCarregado: !carregando && perfisProntos && intervencoesProntas && iniciativasProntas && biografiasProntas && presencasProntas && cena3DPronta,
     setCena3DPronta,
     // UI
     deputadoSelecionado,
     partidoDestaque,
     deputadoHover,
+    governanteSelecionado,
+    governanteHover,
     // Ações
     selecionarDeputado,
     fecharPainel,
     destacarPartido,
     setDeputadoHover,
+    selecionarGovernante,
+    fecharPainelGoverno,
+    setGovernanteHover,
     calcularFocoDePartido,
     cameraControlsRef,
   }), [
@@ -266,6 +327,7 @@ export const ParlamentoProvider = ({ children }) => {
     iniciativasIdMapa,
     biografiasMapa,
     presencasMapa,
+    membrosGoverno,
     perfisProntos,
     intervencoesProntas,
     iniciativasProntas,
@@ -275,7 +337,11 @@ export const ParlamentoProvider = ({ children }) => {
     deputadoSelecionado,
     partidoDestaque,
     deputadoHover,
+    governanteSelecionado,
+    governanteHover,
     selecionarDeputado,
+    selecionarGovernante,
+    fecharPainelGoverno,
     fecharPainel,
     destacarPartido,
     calcularFocoDePartido,

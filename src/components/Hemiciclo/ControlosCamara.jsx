@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Info, RotateCcw, Maximize2 } from 'lucide-react';
+import { Info, RotateCcw, Maximize2, Landmark } from 'lucide-react';
 import { useParlamento } from '../../context/ParlamentoContext';
 
 /**
@@ -17,8 +17,30 @@ export const ControlosCamara = () => {
     cameraControlsRef.current?.reset();
   };
 
+  /**
+   * A bancada do Governo fica encostada à boca do hemiciclo, de frente para
+   * os deputados — vê-se na vista inicial, mas rasante. Isto baixa e aproxima
+   * a câmara para a altura de quem lá está sentado.
+   */
+  const handleVerGoverno = () => {
+    const controlos = cameraControlsRef.current;
+    if (!controlos) return;
+    controlos.object.position.set(0, 5.5, 14);
+    controlos.target.set(0, 1, 1.5);
+    controlos.update();
+  };
+
   return (
     <div className="absolute bottom-4 left-3 z-10 hidden md:flex flex-col gap-2">
+      <button
+        onClick={handleVerGoverno}
+        className="bg-white/95 backdrop-blur-sm hover:bg-gray-50 p-2 rounded-lg shadow-lg transition-colors"
+        title="Ver a bancada do Governo"
+        aria-label="Focar a câmara na bancada do Governo"
+      >
+        <Landmark size={18} className="text-gray-700" />
+      </button>
+
       <button
         onClick={handleReset}
         className="bg-white/95 backdrop-blur-sm hover:bg-gray-50 p-2 rounded-lg shadow-lg transition-colors"
