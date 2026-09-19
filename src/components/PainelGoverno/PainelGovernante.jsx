@@ -23,18 +23,29 @@ export const PainelGovernante = () => {
 
   if (!governanteSelecionado) return null;
 
-  const { nome, cargo, ultima, primeira } = governanteSelecionado;
+  const { nome, cargo, ultima, primeira, partido, desde } = governanteSelecionado;
 
   return (
     <div className="fixed top-0 right-0 h-full w-full sm:w-[420px] bg-white shadow-2xl z-50 flex flex-col">
       <div className="border-b border-gray-100 p-4" style={{ borderLeft: '4px solid #6b7280' }}>
         <div className="flex items-start gap-3">
-          <div
-            className="w-11 h-11 rounded-full flex items-center justify-center text-white text-sm font-semibold flex-shrink-0"
-            style={{ background: '#6b7280' }}
-          >
-            {obterIniciais(nome)}
-          </div>
+          {/* Retrato quando a composição oficial o traz (Commons); iniciais
+              quando não há, como nos deputados sem foto. */}
+          {governanteSelecionado.foto ? (
+            <img
+              src={governanteSelecionado.foto}
+              alt={nome}
+              loading="lazy"
+              className="w-11 h-11 rounded-full object-cover flex-shrink-0 border border-gray-200"
+            />
+          ) : (
+            <div
+              className="w-11 h-11 rounded-full flex items-center justify-center text-white text-sm font-semibold flex-shrink-0"
+              style={{ background: '#6b7280' }}
+            >
+              {obterIniciais(nome)}
+            </div>
+          )}
 
           <div className="min-w-0 flex-1">
             <p className="text-base font-semibold text-gray-900 leading-tight truncate">{nome}</p>
@@ -43,7 +54,8 @@ export const PainelGovernante = () => {
               <span className="text-xs text-gray-500 leading-snug">{cargo ?? 'Membro do Governo'}</span>
             </div>
             <p className="text-[11px] text-gray-400 mt-1">
-              Membro do Governo — não é deputado, por isso não ocupa lugar no hemiciclo.
+              Membro do Governo{partido ? ` (${partido})` : ''} — não é deputado, por isso não ocupa lugar
+              no hemiciclo.{desde ? ` Em funções desde ${desde}.` : ''}
             </p>
           </div>
 

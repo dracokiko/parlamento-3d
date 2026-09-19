@@ -12,6 +12,7 @@ import { syncDarLinks } from './linkDarIniciativas.js';
 import { crawlerPresencas } from './presencasCrawler.js';
 import { crawlerBiografias } from './biografiasCrawler.js';
 import { syncDeputadosAtuais } from './deputadosAtuais.js';
+import { syncGoverno } from './governoCrawler.js';
 import { linkIntervencoesIniciativas } from './linkIntervencoesIni.js';
 import { linkIntervencoesViaDarLinks } from './linkIntervencoesDAR.js';
 import { juntarAmostra } from './resumoPublico.js';
@@ -421,6 +422,12 @@ async function main() {
   try { rAssentos = await syncDeputadosAtuais(); }
   catch (err) { console.warn(`\n  ⚠ syncDeputadosAtuais falhou (${err.message})`); avisos.push('syncDeputadosAtuais'); }
   if (!(await logSimples('assentos', rAssentos))) avisos.push('assentos');
+
+  // Governo — composição e retratos, da Wikipédia
+  let rGov = null;
+  try { rGov = await syncGoverno(); }
+  catch (err) { console.warn(`\n  ⚠ syncGoverno falhou (${err.message})`); avisos.push('syncGoverno'); }
+  if (!(await logSimples('governo', rGov))) avisos.push('governo');
 
   // Biografias (scraping parlamento.pt)
   let rBio = null;

@@ -13,7 +13,7 @@
  *     Temporário ou Efetivo Definitivo) — são exactamente 230;
  *   - quem entra herda o lugar de quem sai, preferindo o mesmo partido e
  *     círculo (é assim que a substituição funciona na prática);
- *   - a foto não vem da AR, por isso quem entra fica sem ela até ser carregada.
+ *   - quem entra leva o retrato oficial da AR, servido por cad_id.
  *
  * Uso: node src/deputadosAtuais.js
  */
@@ -56,6 +56,14 @@ async function todos(tabela, campos) {
 }
 
 /**
+ * Retrato oficial servido pela AR, por cad_id. Quem entra a meio da
+ * legislatura chegava sem fotografia — as que lá estavam vieram de um
+ * carregamento manual — e ficava com as iniciais no lugar da cara.
+ */
+const fotoDaAR = (cadId) =>
+  cadId ? `https://app.parlamento.pt/webutils/getimage.aspx?id=${cadId}&type=deputado` : null;
+
+/**
  * `substitui_*` é opcional: são colunas novas (ver supabase/migrations) e o
  * sync tem de funcionar antes e depois da migração correr.
  */
@@ -73,7 +81,7 @@ export async function syncDeputadosAtuais() {
   const hoje = hojeISO();
   const comSubstituicao = await temColunasSubstituicao();
 
-  const ar = await todos('ar_deputados', 'id, nome_parlamentar, nome_completo, partido_sigla, circulo, situacao');
+  const ar = await todos('ar_deputados', 'id, cad_id, nome_parlamentar, nome_completo, partido_sigla, circulo, situacao');
   const assentos = await todos('deputados', 'id, nome, nome_completo, partido_sigla, circulo_eleitoral, lugar');
 
   const sentados = ar.filter(d => estaSentado(d, hoje));
@@ -129,6 +137,7 @@ export async function syncDeputadosAtuais() {
       partido_sigla:     d.partido_sigla,
       circulo_eleitoral: d.circulo,
       lugar:             anterior.lugar,
+      foto:              fotoDaAR(d.cad_id),
       ...(comSubstituicao ? {
         substitui_id:    anterior.id,
         substitui_nome:  anterior.nome,

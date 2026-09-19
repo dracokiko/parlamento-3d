@@ -127,6 +127,8 @@ export const ParlamentoProvider = ({ children }) => {
   // intervenções, porque não são deputados e não existem em lado nenhum na
   // base como pessoas. É esta lista que povoa a bancada do Governo.
   const [membrosGoverno, setMembrosGoverno]       = useState([]);
+  // Composição oficial do Governo (tabela governo_membros), quando existe.
+  const [governoOficial, setGovernoOficial]       = useState(null);
   // Quem se senta à Mesa: Presidente e Secretários em funções.
   const [mesaAR, setMesaAR]                       = useState({ presidente: null, secretarios: [], vicePresidentes: [], viceSecretarios: [] });
 
@@ -167,6 +169,20 @@ export const ParlamentoProvider = ({ children }) => {
         setPerfisMapa(mapa);
         setMesaAR(derivarMesa(todos));
         setPerfisProntos(true);
+      });
+
+    // Governo — a composição oficial, quando a tabela já existe. É ela que
+    // manda: traz retratos, partido e período, e quem saiu do Governo deixa
+    // de vir (em_funcoes). Sem tabela, a bancada continua a ser inferida das
+    // intervenções, que é o que havia antes.
+    supabase
+      .from('governo_membros')
+      .select('nome, cargo, partido, foto_url, ordem, inicio, em_funcoes')
+      .eq('em_funcoes', true)
+      .order('ordem')
+      .then(({ data, error }) => {
+        if (error) { console.info('[governo] tabela ainda não existe — bancada inferida das intervenções'); return; }
+        setGovernoOficial(data ?? []);
       });
 
     // Intervenções (sem texto — carregado em batch ao abrir painel do deputado)
@@ -346,6 +362,35 @@ export const ParlamentoProvider = ({ children }) => {
     return calcularFocoPartido(posicoes3D, deputados, idPartido);
   }, [posicoes3D, deputados]);
 
+  /**
+   * Quem ocupa a bancada do Governo.
+   *
+   * A composição oficial manda, quando existe: é a única que sabe quem está
+   * em funções hoje e traz retrato e partido. Sem ela, resta o que se infere
+   * das intervenções — que mostra quem já saiu do Governo enquanto houver
+   * falas dele no Diário, e é precisamente o que a tabela veio resolver.
+   *
+   * O número de intervenções vem sempre do Diário, casado pelo nome.
+   */
+  const bancadaGoverno = useMemo(() => {
+    if (!governoOficial?.length) return membrosGoverno;
+
+    return governoOficial.map((m) => {
+      const suas = intervencoesMapa.get(m.nome.toLowerCase()) ?? [];
+      const datas = suas.map(iv => iv.data_debate ?? '').filter(Boolean).sort();
+      return {
+        nome: m.nome,
+        cargo: m.cargo,
+        partido: m.partido,
+        foto: m.foto_url ?? null,
+        desde: m.inicio ?? null,
+        intervencoes: suas.length,
+        primeira: datas[0] ?? '',
+        ultima: datas[datas.length - 1] ?? '',
+      };
+    });
+  }, [governoOficial, membrosGoverno, intervencoesMapa]);
+
   // Memoizar o value para evitar re-renders desnecessários
   const value = useMemo(() => ({
     // Dados
@@ -360,6 +405,8 @@ export const ParlamentoProvider = ({ children }) => {
     biografiasMapa,
     presencasMapa,
     membrosGoverno,
+    bancadaGoverno,
+    governoOficial,
     mesaAR,
     tudoCarregado: !carregando && perfisProntos && intervencoesProntas && iniciativasProntas && biografiasProntas && presencasProntas && cena3DPronta,
     setCena3DPronta,
@@ -393,6 +440,8 @@ export const ParlamentoProvider = ({ children }) => {
     biografiasMapa,
     presencasMapa,
     membrosGoverno,
+    bancadaGoverno,
+    governoOficial,
     mesaAR,
     perfisProntos,
     intervencoesProntas,

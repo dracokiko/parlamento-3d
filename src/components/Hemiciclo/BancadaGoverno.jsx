@@ -182,7 +182,7 @@ SecretariaFila.propTypes = { largura: PropTypes.number.isRequired, x: PropTypes.
  * aqui: é uma bancada de quem falou, não a composição do Governo.
  */
 const BancadaGovernoComponent = () => {
-  const { membrosGoverno } = useParlamento();
+  const { bancadaGoverno: membrosGoverno } = useParlamento();
   if (!membrosGoverno?.length) return null;
 
   const lugares = calcularLugaresGoverno(membrosGoverno.length);

@@ -32,7 +32,7 @@ const normalizarAngulo = (a) => Math.atan2(Math.sin(a), Math.cos(a));
  * torno do eixo da sala; só o destino é que é escolhido.
  */
 export const BotaoVirarParaGoverno = () => {
-  const { cameraControlsRef, membrosGoverno, deputadoSelecionado, governanteSelecionado, setVistaGoverno } = useParlamento();
+  const { cameraControlsRef, bancadaGoverno: membrosGoverno, deputadoSelecionado, governanteSelecionado, setVistaGoverno } = useParlamento();
   const isMobile = useIsMobile();
   const isTabletPortrait = useIsTabletPortrait();
 
