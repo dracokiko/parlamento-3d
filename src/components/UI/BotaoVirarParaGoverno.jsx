@@ -1,65 +1,108 @@
 import { useState, useRef, useEffect } from 'react';
 import { RotateCw } from 'lucide-react';
 import { useParlamento } from '../../context/ParlamentoContext';
+import { useIsMobile, useIsTabletPortrait } from '../../hooks/useIsMobile';
+import { VISTA_GOVERNO, escalaDaVista } from '../../utils/bancadaGoverno';
 
-/** Duração da rotação. Devagar o suficiente para se perceber que a sala girou. */
+/** Duração da volta. Devagar o suficiente para se perceber que a sala girou. */
 const DURACAO_MS = 1400;
 
-/** Aceleração e travagem suaves — uma rotação a velocidade constante parece um corte. */
+/** Aceleração e travagem suaves — a velocidade constante parece um corte de plano. */
 const suavizar = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
 
-/** Roda um ponto 180°×`fracao` em torno do eixo vertical que passa no centro da sala. */
-function rodar([x, y, z], angulo) {
-  const cos = Math.cos(angulo);
-  const sen = Math.sin(angulo);
-  return [x * cos + z * sen, y, -x * sen + z * cos];
-}
+const lerp = (a, b, t) => a + (b - a) * t;
+
+/** Ângulo em torno do eixo vertical da sala, e distância a esse eixo. */
+const paraPolar = ([x, y, z]) => ({ raio: Math.hypot(x, z), azimute: Math.atan2(x, z), altura: y });
+const paraCartesiano = ({ raio, azimute, altura }) => [Math.sin(azimute) * raio, altura, Math.cos(azimute) * raio];
+
+/** Leva o ângulo para o intervalo [-π, π] — evita dar a volta pelo caminho mais longo. */
+const normalizarAngulo = (a) => Math.atan2(Math.sin(a), Math.cos(a));
 
 /**
  * O botão que vira a sala ao contrário.
  *
- * O Governo senta-se de frente para os deputados, o que quer dizer que da
- * vista de origem só se lhe vêem as costas. Em vez de mais um controlo de
- * câmara escondido a um canto, isto roda a sala meia volta: a Assembleia
- * fica de costas para nós e o Governo de frente. Voltar a carregar traz a
- * vista inicial.
+ * O Governo senta-se de frente para os deputados, portanto da vista de
+ * origem só se lhe vêem as costas. Isto dá meia volta à sala e pousa numa
+ * vista fixa, de frente para a bancada, por cima das últimas filas.
+ *
+ * A vista de chegada é fixa de propósito: rodar 180° a câmara onde o
+ * utilizador a tivesse deixado dava vistas de cima da sala — que é tudo
+ * menos olhar alguém de frente. O caminho continua a ser uma meia volta em
+ * torno do eixo da sala; só o destino é que é escolhido.
  */
 export const BotaoVirarParaGoverno = () => {
   const { cameraControlsRef, membrosGoverno, deputadoSelecionado, governanteSelecionado } = useParlamento();
+  const isMobile = useIsMobile();
+  const isTabletPortrait = useIsTabletPortrait();
+
   const [aVerGoverno, setAVerGoverno] = useState(false);
   const [aRodar, setARodar] = useState(false);
   const animacaoRef = useRef(null);
+  // Vista de onde viemos, para o caminho de volta ser o inverso exacto.
+  const vistaAnterior = useRef(null);
 
-  // Uma rotação a meio caminho deixava a câmara num sítio arbitrário.
   useEffect(() => () => cancelAnimationFrame(animacaoRef.current), []);
+
+  const escala = isTabletPortrait ? 2.2 : (isMobile ? 2.7 : 1);
+
+  const animarAte = (destino, aoTerminar) => {
+    const controlos = cameraControlsRef.current;
+    if (!controlos) return;
+
+    const camaraDe = paraPolar(controlos.object.position.toArray());
+    const alvoDe   = controlos.target.toArray();
+    const camaraPara = paraPolar(destino.camera);
+    const alvoPara   = destino.alvo;
+
+    // Meia volta no sentido mais curto até ao azimute de chegada.
+    const voltaExtra = Math.sign(normalizarAngulo(camaraPara.azimute - camaraDe.azimute) || 1) * Math.PI;
+    const azimuteFinal = camaraDe.azimute + normalizarAngulo(camaraPara.azimute - camaraDe.azimute - voltaExtra) + voltaExtra;
+
+    const inicio = performance.now();
+    setARodar(true);
+
+    const passo = (agora) => {
+      const t = suavizar(Math.min((agora - inicio) / DURACAO_MS, 1));
+
+      controlos.object.position.set(...paraCartesiano({
+        raio:    lerp(camaraDe.raio, camaraPara.raio, t),
+        azimute: lerp(camaraDe.azimute, azimuteFinal, t),
+        altura:  lerp(camaraDe.altura, camaraPara.altura, t),
+      }));
+      controlos.target.set(
+        lerp(alvoDe[0], alvoPara[0], t),
+        lerp(alvoDe[1], alvoPara[1], t),
+        lerp(alvoDe[2], alvoPara[2], t),
+      );
+      controlos.update();
+
+      if ((agora - inicio) < DURACAO_MS) {
+        animacaoRef.current = requestAnimationFrame(passo);
+      } else {
+        setARodar(false);
+        aoTerminar?.();
+      }
+    };
+
+    animacaoRef.current = requestAnimationFrame(passo);
+  };
 
   const virar = () => {
     const controlos = cameraControlsRef.current;
     if (!controlos || aRodar) return;
 
-    const camaraInicial = controlos.object.position.toArray();
-    const alvoInicial   = controlos.target.toArray();
-    const inicio = performance.now();
+    if (aVerGoverno) {
+      const destino = vistaAnterior.current ?? { camera: [0, 12, 24], alvo: [0, 10, -16] };
+      animarAte(destino, () => setAVerGoverno(false));
+      return;
+    }
 
-    setARodar(true);
-
-    const passo = (agora) => {
-      const t = Math.min((agora - inicio) / DURACAO_MS, 1);
-      const angulo = Math.PI * suavizar(t);
-
-      controlos.object.position.set(...rodar(camaraInicial, angulo));
-      controlos.target.set(...rodar(alvoInicial, angulo));
-      controlos.update();
-
-      if (t < 1) {
-        animacaoRef.current = requestAnimationFrame(passo);
-      } else {
-        setARodar(false);
-        setAVerGoverno(v => !v);
-      }
+    vistaAnterior.current = {
+      camera: controlos.object.position.toArray(),
+      alvo:   controlos.target.toArray(),
     };
-
-    animacaoRef.current = requestAnimationFrame(passo);
+    animarAte(escalaDaVista(VISTA_GOVERNO, escala), () => setAVerGoverno(true));
   };
 
   // Sem ninguém na bancada não há nada para onde virar. Com um painel aberto

@@ -27,8 +27,33 @@ export const ALTURA_ESTRADO = 0.25;
  * rodar a câmara — e ninguém ia procurar o que não sabe que existe.
  */
 export const Z_PRIMEIRA_FILA = 0.6;
-/** Acima disto a fila fica mais larga do que a sala; passa para a fila seguinte. */
-export const MAX_POR_FILA = 17;
+/**
+ * Acima disto a fila passa a ser mais larga do que a boca do hemiciclo
+ * (~14 m) e a bancada deixa de parecer que pertence à sala.
+ */
+export const MAX_POR_FILA = 13;
+
+/**
+ * Vista de onde se olha para a bancada de frente: do fundo da sala, por cima
+ * das últimas filas de deputados, com o olhar quase horizontal.
+ *
+ * Fixa, e não "o que lá estiver rodado 180°": rodar a câmara onde o
+ * utilizador a tivesse deixado dava vistas de cima, que é tudo menos olhar
+ * alguém de frente. Em unidades de cena — em ecrãs pequenos a cena é
+ * ampliada e estes valores acompanham (ver escalaDaVista).
+ */
+export const VISTA_GOVERNO = {
+  // Dentro da sala: a parede (raio 17) é opaca dos dois lados, e a câmara
+  // fora dela via o reverso do estuque em vez do plenário.
+  camera: [0, 4.8, -14],
+  alvo:   [0, 1.4, 2.6],
+};
+
+/** A cena é ampliada em ecrãs estreitos; a vista tem de crescer com ela. */
+export const escalaDaVista = (vista, escala) => ({
+  camera: vista.camera.map(v => v * escala),
+  alvo:   vista.alvo.map(v => v * escala),
+});
 
 /**
  * Distribui `total` lugares por filas: a da frente é a primeira a encher,

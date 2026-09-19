@@ -111,10 +111,12 @@ const BancadaGovernoComponent = () => {
 
   return (
     <group>
-      {/* Estrado, para a bancada assentar em algo e não flutuar sobre o chão */}
+      {/* Estrado, para a bancada assentar em algo e não flutuar sobre o chão.
+          Em tom de madeira, como o resto do piso: a branco lia-se como uma
+          laje pousada em cima da sala. */}
       <mesh position={[0, ALTURA_ESTRADO / 2, zCentro]} receiveShadow castShadow>
         <boxGeometry args={[larguraMaior, ALTURA_ESTRADO, profundidade]} />
-        <meshStandardMaterial color="#d6d3d1" roughness={0.9} />
+        <meshStandardMaterial color="#a68a64" roughness={0.85} />
       </mesh>
 
       {membrosGoverno.map((membro, i) => {
