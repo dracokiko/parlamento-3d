@@ -13,6 +13,7 @@ import { crawlerPresencas } from './presencasCrawler.js';
 import { crawlerBiografias } from './biografiasCrawler.js';
 import { syncDeputadosAtuais } from './deputadosAtuais.js';
 import { syncGoverno } from './governoCrawler.js';
+import { alinharComGoverno } from './alinharComGoverno.js';
 import { linkIntervencoesIniciativas } from './linkIntervencoesIni.js';
 import { linkIntervencoesViaDarLinks } from './linkIntervencoesDAR.js';
 import { juntarAmostra } from './resumoPublico.js';
@@ -428,6 +429,13 @@ async function main() {
   try { rGov = await syncGoverno(); }
   catch (err) { console.warn(`\n  ⚠ syncGoverno falhou (${err.message})`); avisos.push('syncGoverno'); }
   if (!(await logSimples('governo', rGov))) avisos.push('governo');
+
+  // Alinhar os oradores do Governo com a composição acabada de sincronizar
+  let rAlinhar = null;
+  try { rAlinhar = await alinharComGoverno(); }
+  catch (err) { console.warn(`
+  ⚠ alinharComGoverno falhou (${err.message})`); avisos.push("alinharComGoverno"); }
+  if (!(await logSimples('governo_oradores', rAlinhar))) avisos.push('governo_oradores');
 
   // Biografias (scraping parlamento.pt)
   let rBio = null;

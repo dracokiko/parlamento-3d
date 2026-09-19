@@ -38,6 +38,16 @@ const CARGOS_PRESIDENCIA = new Set([
 const RE_CARGO_GOVERNO = /^(?:vice-)?(?:primeiro-ministr[oa]|ministr[oa]\b|secretári[oa] de estado|subsecretári[oa])/i;
 
 /**
+ * Nem tudo o que começa por "Ministra" é um cargo: quando um deputado diz
+ * "A Sr.ª Ministra está quase no Chega!" a meio da fala, o marcador de
+ * orador apanha a frase inteira e nascia daí um governante chamado
+ * "Ministra está quase no Chega! O Sr. Presidente". Um cargo não leva
+ * pontuação de frase nem passa de meia dúzia de palavras.
+ */
+const cargoPlausivel = (etiqueta = '') =>
+  !/[!?;:]/.test(etiqueta) && etiqueta.split(/\s+/).length <= 9;
+
+/**
  * Um marcador de mudança de orador. Aceita início de linha ou meio de linha
  * (apartes como "… Aplausos do PS. O Sr. Fulano (PS): — O pacote já caiu!"),
  * que antes só serviam para cortar a fala anterior e desapareciam.
@@ -99,7 +109,7 @@ function classificar(fatia, titulares) {
   // vai para `nome_dep` e o cargo para o seu próprio campo; antes o cargo
   // ficava como nome do orador e a pessoa aparecia no campo do partido.
   // Quando a sessão já o nomeou, os turnos seguintes só trazem o cargo.
-  if (RE_CARGO_GOVERNO.test(etiqueta)) {
+  if (RE_CARGO_GOVERNO.test(etiqueta) && cargoPlausivel(etiqueta)) {
     const nome = parentese ?? titulares.get(cargo) ?? etiqueta;
     return { nome, partido: null, cargo: etiqueta, papel: 'governo', texto, registar: parentese ? { cargo, nome: parentese } : null };
   }
