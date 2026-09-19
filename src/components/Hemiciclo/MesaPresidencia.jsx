@@ -23,12 +23,14 @@ const COR_ESTOFO         = '#3b2f2a';
 const Z_ESTRADO = 7.2;
 const ALTURA_ESTRADO = 1.8;
 const LARGURA_MESA = 9;
+/** O púlpito fica à frente de tudo, no piso do plenário e virado para os deputados. */
+const Z_PULPITO = -0.6;
 
 const ArmasDaRepublica = () => {
   const armas = useTexture('/Coat_of_arms_of_the_Assembly_of_the_Portuguese_Republic.svg.png');
   return (
-    <mesh position={[0, ALTURA_ESTRADO + 2.5, Z_ESTRADO + 1.62]} rotation={[0, Math.PI, 0]}>
-      <planeGeometry args={[2.6, 2.6]} />
+    <mesh position={[0, ALTURA_ESTRADO + 2.3, Z_ESTRADO + 1.62]} rotation={[0, Math.PI, 0]}>
+      <planeGeometry args={[2.35, 2.35]} />
       <meshStandardMaterial map={armas} transparent alphaTest={0.05} roughness={0.5} />
     </mesh>
   );
@@ -82,13 +84,29 @@ const MesaPresidenciaComponent = () => (
       </group>
     ))}
 
+    {/* Secretárias dos estenógrafos, ao nível do chão à frente do estrado —
+        é um dos elementos próprios da sala, entre a Mesa e o púlpito. */}
+    {[-1, 1].map((lado) => (
+      <group key={`estenografo-${lado}`} position={[lado * 2.6, 0, Z_ESTRADO - 2.0]}>
+        <mesh position={[0, 0.36, 0]} castShadow receiveShadow>
+          <boxGeometry args={[1.7, 0.72, 0.6]} />
+          <meshStandardMaterial color={COR_CARVALHO_FUNDO} roughness={0.65} />
+          <Edges threshold={20} color="#4a3721" />
+        </mesh>
+        <mesh position={[0, 0.75, 0]} castShadow>
+          <boxGeometry args={[1.8, 0.06, 0.7]} />
+          <meshStandardMaterial color={COR_TAMPO} roughness={0.45} />
+        </mesh>
+      </group>
+    ))}
+
     {/* Tribuna do orador, à frente e abaixo da Mesa */}
-    <mesh position={[0, 0.62, Z_ESTRADO - 2.9]} castShadow receiveShadow>
+    <mesh position={[0, 0.62, Z_PULPITO]} castShadow receiveShadow>
       <boxGeometry args={[1.5, 1.24, 0.9]} />
       <meshStandardMaterial color={COR_CARVALHO} roughness={0.55} />
       <Edges threshold={20} color="#4a3721" />
     </mesh>
-    <mesh position={[0, 1.28, Z_ESTRADO - 2.9]} castShadow>
+    <mesh position={[0, 1.28, Z_PULPITO]} castShadow>
       <boxGeometry args={[1.66, 0.08, 1.02]} />
       <meshStandardMaterial color={COR_TAMPO} roughness={0.45} />
     </mesh>

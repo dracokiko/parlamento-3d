@@ -28,10 +28,17 @@ export const ALTURA_ESTRADO = 0.25;
  */
 export const Z_PRIMEIRA_FILA = 0.6;
 /**
- * Acima disto a fila passa a ser mais larga do que a boca do hemiciclo
- * (~14 m) e a bancada deixa de parecer que pertence à sala.
+ * Dez por fila, cinco de cada lado do corredor central.
+ *
+ * O corredor não é enfeite: na sala real o eixo tribuna–Mesa–estátua da
+ * República está desimpedido, e é por ele que o orador sobe ao púlpito. Uma
+ * bancada corrida a tapar esse eixo era o que fazia a composição parecer
+ * errada mesmo sem se saber porquê.
  */
-export const MAX_POR_FILA = 13;
+export const MAX_POR_FILA = 10;
+
+/** Largura do corredor central, à medida do púlpito do orador (1,5 m). */
+export const CORREDOR = 1.7;
 
 /**
  * Vista de onde se olha para a bancada de frente: do fundo da sala, por cima
@@ -83,13 +90,16 @@ export function calcularLugaresGoverno(total) {
   const filas = distribuirPorFilas(total);
 
   filas.forEach((nesta, fila) => {
-    const larguraFila = (nesta - 1) * ESPACO_LUGAR;
     const z = Z_PRIMEIRA_FILA + fila * ESPACO_FILA;
     const y = ALTURA_ESTRADO + fila * SUBIDA_FILA;
+    const larguraFila = (nesta - 1) * ESPACO_LUGAR + CORREDOR;
+    const metade = Math.ceil(nesta / 2);
 
     for (let i = 0; i < nesta; i++) {
+      // O corredor abre-se ao meio da fila; a segunda metade desloca-se.
+      const passo = i * ESPACO_LUGAR + (i >= metade ? CORREDOR : 0);
       lugares.push({
-        position: [-larguraFila / 2 + i * ESPACO_LUGAR, y, z],
+        position: [-larguraFila / 2 + passo, y, z],
         // Viradas para o hemiciclo, que está todo em Z negativo.
         rotation: [0, Math.PI, 0],
         fila,

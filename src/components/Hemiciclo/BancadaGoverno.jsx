@@ -7,16 +7,22 @@ import { useParlamento } from '../../context/ParlamentoContext';
 import { useIsTouch } from '../../hooks/useIsMobile';
 import {
   calcularLugaresGoverno, distribuirPorFilas,
-  ESPACO_LUGAR, ESPACO_FILA, SUBIDA_FILA, Z_PRIMEIRA_FILA, ALTURA_ESTRADO,
+  ESPACO_LUGAR, ESPACO_FILA, SUBIDA_FILA, Z_PRIMEIRA_FILA, ALTURA_ESTRADO, CORREDOR,
 } from '../../utils/bancadaGoverno';
 
-/** Sem cor de partido: o Governo não é um grupo parlamentar. Couro escuro e madeira. */
-const COR_CADEIRA = '#2f3542';
-const COR_CADEIRA_PM = '#1f2430';   // o lugar do Primeiro-Ministro, um tom mais fundo
-const COR_TAMPO   = '#8b6f47';
-const COR_FRENTE  = '#6f5637';
-const COR_LATAO   = '#b08d3f';
-const COR_DEGRAU  = '#a68a64';
+/**
+ * Couro verde-garrafa e nogueira, que é a madeira das carteiras da sala
+ * (nogueira trabalhada ao estilo inglês). Sem cor de partido — o Governo não
+ * é um grupo parlamentar — e sem os cinzentos anteriores, que à distância
+ * liam-se como buracos pretos.
+ */
+const COR_CADEIRA    = '#27443a';
+const COR_CADEIRA_PM = '#1d3830';   // o lugar do Primeiro-Ministro, um tom mais fundo
+const COR_MADEIRA    = '#5b3a24';   // nogueira
+const COR_TAMPO      = '#6b462b';
+const COR_FRENTE     = '#4c3020';
+const COR_LATAO      = '#b08d3f';
+const COR_DEGRAU     = '#7a5536';
 
 const ehPrimeiroMinistro = (cargo = '') => /^(?:vice-)?primeiro-ministr/i.test(cargo);
 
@@ -86,24 +92,39 @@ const CadeiraGoverno = ({ membro, position, rotation }) => {
   return (
     <group position={position} rotation={rotation}>
       <group ref={meshRef}>
-        {/* Assento */}
-        <mesh {...eventos} position={[0, 0.42, 0.02]} castShadow receiveShadow>
-          <boxGeometry args={[0.56, 0.10, 0.50]} />
+        {/* Almofada do assento, com debrum de madeira em redor */}
+        <mesh {...eventos} position={[0, 0.44, 0.02]} castShadow receiveShadow>
+          <boxGeometry args={[0.50, 0.11, 0.46]} />
           {material(brilho)}
-          <Edges threshold={20} color="#11131a" />
+        </mesh>
+        <mesh position={[0, 0.39, 0.02]} castShadow>
+          <boxGeometry args={[0.56, 0.07, 0.52]} />
+          <meshStandardMaterial color={COR_MADEIRA} roughness={0.55} />
+          <Edges threshold={25} color="#2e1c10" />
         </mesh>
 
-        {/* Encosto, ligeiramente reclinado */}
-        <mesh {...eventos} position={[0, 0.78, -0.22]} rotation={[-0.12, 0, 0]} castShadow>
-          <boxGeometry args={[0.56, 0.62, 0.09]} />
+        {/* Encosto reclinado, com remate arredondado em cima */}
+        <mesh {...eventos} position={[0, 0.76, -0.21]} rotation={[-0.12, 0, 0]} castShadow>
+          <boxGeometry args={[0.50, 0.56, 0.09]} />
           {material(brilho * 0.8)}
-          <Edges threshold={20} color="#11131a" />
+        </mesh>
+        <mesh position={[0, 1.03, -0.245]} rotation={[0, 0, Math.PI / 2]} castShadow>
+          <cylinderGeometry args={[0.055, 0.055, 0.50, 10]} />
+          <meshStandardMaterial color={COR_MADEIRA} roughness={0.5} />
         </mesh>
 
-        {/* Pé central — evita a cadeira a flutuar sobre o degrau */}
+        {/* Braços */}
+        {[-1, 1].map((lado) => (
+          <mesh key={`braco-${lado}`} position={[lado * 0.29, 0.62, 0.0]} castShadow>
+            <boxGeometry args={[0.05, 0.05, 0.40]} />
+            <meshStandardMaterial color={COR_MADEIRA} roughness={0.5} />
+          </mesh>
+        ))}
+
+        {/* Pé central */}
         <mesh position={[0, 0.19, 0.02]} castShadow>
-          <cylinderGeometry args={[0.07, 0.11, 0.38, 12]} />
-          <meshStandardMaterial color="#3f4450" roughness={0.5} metalness={0.35} />
+          <cylinderGeometry args={[0.06, 0.10, 0.38, 12]} />
+          <meshStandardMaterial color="#3a2a1c" roughness={0.5} metalness={0.25} />
         </mesh>
       </group>
     </group>
@@ -117,12 +138,18 @@ CadeiraGoverno.propTypes = {
 };
 
 /** A secretária corrida de uma fila: tampo, frente e friso de latão. */
-const SecretariaFila = ({ largura, y, z }) => (
-  <group position={[0, y, z]}>
+const SecretariaFila = ({ largura, x, y, z }) => (
+  <group position={[x, y, z]}>
     <mesh position={[0, ALTURA_SECRETARIA, 0]} castShadow receiveShadow>
       <boxGeometry args={[largura, 0.07, 0.52]} />
       <meshStandardMaterial color={COR_TAMPO} roughness={0.45} metalness={0.05} />
-      <Edges threshold={20} color="#4a3721" />
+      <Edges threshold={20} color="#2e1c10" />
+    </mesh>
+
+    {/* Pala de couro sobre o tampo, como nas carteiras da sala */}
+    <mesh position={[0, ALTURA_SECRETARIA + 0.037, 0.02]}>
+      <boxGeometry args={[largura - 0.18, 0.008, 0.34]} />
+      <meshStandardMaterial color={COR_CADEIRA} roughness={0.55} />
     </mesh>
 
     <mesh position={[0, ALTURA_SECRETARIA / 2 + 0.04, -0.22]} castShadow>
@@ -138,7 +165,7 @@ const SecretariaFila = ({ largura, y, z }) => (
   </group>
 );
 
-SecretariaFila.propTypes = { largura: PropTypes.number.isRequired, y: PropTypes.number.isRequired, z: PropTypes.number.isRequired };
+SecretariaFila.propTypes = { largura: PropTypes.number.isRequired, x: PropTypes.number.isRequired, y: PropTypes.number.isRequired, z: PropTypes.number.isRequired };
 
 /**
  * A bancada do Governo — na metade da sala que o hemiciclo deixa vazia, de
@@ -159,14 +186,21 @@ const BancadaGovernoComponent = () => {
 
   const lugares = calcularLugaresGoverno(membrosGoverno.length);
   const filas = distribuirPorFilas(membrosGoverno.length);
-  const larguraMaior = (Math.max(...filas) - 1) * ESPACO_LUGAR + 1.4;
+  const larguraMaior = (Math.max(...filas) - 1) * ESPACO_LUGAR + CORREDOR + 1.4;
 
   return (
     <group>
       {filas.map((nesta, fila) => {
         const alturaDegrau = ALTURA_ESTRADO + fila * SUBIDA_FILA;
         const zFila = Z_PRIMEIRA_FILA + fila * ESPACO_FILA;
-        const larguraFila = (nesta - 1) * ESPACO_LUGAR + 1.4;
+        // A secretária parte-se em duas ao corredor central, como os lugares.
+        const metade = Math.ceil(nesta / 2);
+        const larguraFila = (nesta - 1) * ESPACO_LUGAR + CORREDOR;
+        const xInicio = -larguraFila / 2;
+        const troços = [
+          { de: xInicio, ate: xInicio + (metade - 1) * ESPACO_LUGAR },
+          { de: xInicio + metade * ESPACO_LUGAR + CORREDOR, ate: xInicio + (nesta - 1) * ESPACO_LUGAR + CORREDOR },
+        ].filter(t => t.ate >= t.de);
 
         return (
           <group key={`fila-governo-${fila}`}>
@@ -176,7 +210,15 @@ const BancadaGovernoComponent = () => {
               <meshStandardMaterial color={COR_DEGRAU} roughness={0.85} />
             </mesh>
 
-            <SecretariaFila largura={larguraFila} y={alturaDegrau} z={zFila - RECUO_SECRETARIA} />
+            {troços.map((t, i) => (
+              <SecretariaFila
+                key={`secretaria-${fila}-${i}`}
+                largura={t.ate - t.de + 0.95}
+                x={(t.de + t.ate) / 2}
+                y={alturaDegrau}
+                z={zFila - RECUO_SECRETARIA}
+              />
+            ))}
           </group>
         );
       })}
