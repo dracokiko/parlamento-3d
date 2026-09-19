@@ -10,6 +10,7 @@ import { PainelDeputado } from './components/PainelDeputado/PainelDeputado';
 import { TooltipDeputado, CoatOfArmsAR } from './components/UI/TooltipDeputado';
 import { TooltipGovernante } from './components/UI/TooltipGovernante';
 import { PainelGovernante } from './components/PainelGoverno/PainelGovernante';
+import { BotaoVirarParaGoverno } from './components/UI/BotaoVirarParaGoverno';
 import { Header } from './components/UI/Header';
 import { PesquisaDeputado } from './components/UI/PesquisaDeputado';
 import { DiretivasUE } from './pages/DiretivasUE';
@@ -236,6 +237,7 @@ function HemicicloPage() {
           <div className="hemiciclo-canvas-wrap relative flex-1 min-h-0">
             <BlocoHemiciclo />
             <ControlosCamara />
+            <BotaoVirarParaGoverno />
             {/* Pesquisa flutuante */}
             <div className="absolute top-14 md:top-3 right-3 z-20">
               <PesquisaDeputado />
