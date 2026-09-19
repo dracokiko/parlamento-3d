@@ -20,6 +20,40 @@ import { mapaLugares, calcularFocoPartido } from '../utils/posicoes3D';
 
 const ParlamentoContext = createContext(null);
 
+/**
+ * A Mesa da Assembleia, a partir dos cargos que a AR publica em
+ * ar_deputados (DepCargo, com datas).
+ *
+ * O Regimento diz que, nas reuniões plenárias, a Mesa é constituída pelo
+ * Presidente da Assembleia e pelos Secretários — os Vice-Presidentes
+ * substituem o Presidente na cadeira e os Vice-Secretários substituem os
+ * Secretários, mas não se sentam à Mesa ao mesmo tempo. É por isso que só
+ * estes dois cargos vão para a cena.
+ */
+function derivarMesa(perfis) {
+  const hoje = new Date().toISOString().slice(0, 10);
+  const emFuncoes = (c) => (c.carDtInicio ?? '') <= hoje && (!c.carDtFim || c.carDtFim >= hoje);
+
+  const porCargo = { Presidente: [], 'Vice-Presidente': [], 'Secretário': [], 'Vice-Secretário': [] };
+
+  for (const p of perfis) {
+    const cargos = p.DepCargo;
+    if (!cargos) continue;
+    for (const c of (Array.isArray(cargos) ? cargos : [cargos])) {
+      if (!emFuncoes(c) || !porCargo[c.carDes]) continue;
+      porCargo[c.carDes].push({ nome: p.nome_parlamentar, partido: p.partido_sigla, cargo: c.carDes, desde: c.carDtInicio });
+    }
+  }
+
+  const porNome = (a, b) => a.nome.localeCompare(b.nome, 'pt');
+  return {
+    presidente:      porCargo.Presidente[0] ?? null,
+    secretarios:     porCargo['Secretário'].sort(porNome),
+    vicePresidentes: porCargo['Vice-Presidente'].sort(porNome),
+    viceSecretarios: porCargo['Vice-Secretário'].sort(porNome),
+  };
+}
+
 /** Ordem na bancada: o Primeiro-Ministro à cabeça, depois ministros, depois secretários de Estado. */
 const escalaoDoCargo = (cargo = '') => {
   if (/^(?:vice-)?primeiro-ministr/i.test(cargo)) return 0;
@@ -72,6 +106,8 @@ export const ParlamentoProvider = ({ children }) => {
   // intervenções, porque não são deputados e não existem em lado nenhum na
   // base como pessoas. É esta lista que povoa a bancada do Governo.
   const [membrosGoverno, setMembrosGoverno]       = useState([]);
+  // Quem se senta à Mesa: Presidente e Secretários em funções.
+  const [mesaAR, setMesaAR]                       = useState({ presidente: null, secretarios: [], vicePresidentes: [], viceSecretarios: [] });
 
   // Flags individuais para saber quando cada recurso terminou
   const [perfisProntos, setPerfisProntos]             = useState(false);
@@ -103,11 +139,12 @@ export const ParlamentoProvider = ({ children }) => {
     };
 
     // Perfis AR — paginar para não perder deputados além do limite de 1000 linhas do Supabase
-    paginar('ar_deputados', 'id, cad_id, nome_parlamentar, nome_completo, partido_sigla, circulo, resumo_ia, resumo_ia_iniciativas', null, q => q.eq('legislatura', 'XVII'))
+    paginar('ar_deputados', 'id, cad_id, nome_parlamentar, nome_completo, partido_sigla, circulo, resumo_ia, resumo_ia_iniciativas, json_raw->DepCargo', null, q => q.eq('legislatura', 'XVII'))
       .then(todos => {
         const mapa = new Map();
         todos.forEach(p => { if (p.nome_parlamentar) mapa.set(p.nome_parlamentar.toLowerCase(), p); });
         setPerfisMapa(mapa);
+        setMesaAR(derivarMesa(todos));
         setPerfisProntos(true);
       });
 
@@ -302,6 +339,7 @@ export const ParlamentoProvider = ({ children }) => {
     biografiasMapa,
     presencasMapa,
     membrosGoverno,
+    mesaAR,
     tudoCarregado: !carregando && perfisProntos && intervencoesProntas && iniciativasProntas && biografiasProntas && presencasProntas && cena3DPronta,
     setCena3DPronta,
     // UI
@@ -334,6 +372,7 @@ export const ParlamentoProvider = ({ children }) => {
     biografiasMapa,
     presencasMapa,
     membrosGoverno,
+    mesaAR,
     perfisProntos,
     intervencoesProntas,
     iniciativasProntas,

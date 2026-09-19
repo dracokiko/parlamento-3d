@@ -1,5 +1,6 @@
 import { memo, Suspense } from 'react';
 import { useTexture, Edges } from '@react-three/drei';
+import { useParlamento } from '../../context/ParlamentoContext';
 
 /**
  * A Mesa da Assembleia — o estrado da presidência, ao fundo da sala, virado
@@ -33,6 +34,76 @@ const ArmasDaRepublica = () => {
       <planeGeometry args={[2.35, 2.35]} />
       <meshStandardMaterial map={armas} transparent alphaTest={0.05} roughness={0.5} />
     </mesh>
+  );
+};
+
+/**
+ * Quem se senta à Mesa, com os nomes reais.
+ *
+ * O Regimento é explícito: nas reuniões plenárias a Mesa é constituída pelo
+ * Presidente da Assembleia e pelos Secretários. Os Vice-Presidentes assumem a
+ * cadeira quando o Presidente não preside — não se sentam lá ao lado dele — e
+ * os Vice-Secretários substituem os Secretários nas faltas. Por isso só estes
+ * dois cargos aparecem.
+ *
+ * O Presidente ao centro, com cadeira mais alta, e os Secretários a
+ * distribuir-se dois para cada lado. A ordem entre eles não está fixada em
+ * lado nenhum que eu tenha encontrado: fica a alfabética, que é a que os
+ * dados da AR dão.
+ *
+ * Clicar num lugar abre o perfil do deputado, porque é isso que eles são.
+ */
+const LugaresDaMesa = () => {
+  const { mesaAR, deputados, selecionarDeputado, setDeputadoHover } = useParlamento();
+
+  const presidente = mesaAR?.presidente;
+  const secretarios = mesaAR?.secretarios ?? [];
+  if (!presidente && !secretarios.length) return null;
+
+  // Presidente ao centro (0); secretários a alternar para cada lado.
+  const lados = [-1, 1, -2, 2];
+  const ocupantes = [
+    { membro: presidente, x: 0, presidencial: true },
+    ...secretarios.slice(0, 4).map((s, i) => ({ membro: s, x: (lados[i] ?? 0) * 1.75, presidencial: false })),
+  ].filter(o => o.membro);
+
+  const abrirPerfil = (membro) => {
+    const dep = deputados.find(d => d.nomeAbrev === membro.nome || d.nome === membro.nome);
+    if (dep) selecionarDeputado(dep);
+  };
+
+  return (
+    <group>
+      {ocupantes.map(({ membro, x, presidencial }) => (
+        <group
+          key={`lugar-mesa-${membro.nome}`}
+          position={[x, ALTURA_ESTRADO, Z_ESTRADO + 0.15]}
+          onClick={(e) => { e.stopPropagation(); abrirPerfil(membro); }}
+          onPointerOver={(e) => {
+            e.stopPropagation();
+            const dep = deputados.find(d => d.nomeAbrev === membro.nome || d.nome === membro.nome);
+            if (dep) { setDeputadoHover(dep); document.body.style.cursor = 'pointer'; }
+          }}
+          onPointerOut={(e) => { e.stopPropagation(); setDeputadoHover(null); document.body.style.cursor = 'default'; }}
+        >
+          <mesh position={[0, 0.45, 0]} castShadow>
+            <boxGeometry args={[0.6, 0.1, 0.55]} />
+            <meshStandardMaterial color={COR_ESTOFO} roughness={0.5} />
+          </mesh>
+          <mesh position={[0, 0.9 + (presidencial ? 0.18 : 0), 0.26]} castShadow>
+            <boxGeometry args={[0.6, presidencial ? 1.15 : 0.8, 0.1]} />
+            <meshStandardMaterial color={COR_ESTOFO} roughness={0.5} />
+          </mesh>
+          {presidencial && (
+            /* Remate dourado no espaldar do Presidente */
+            <mesh position={[0, 1.52, 0.26]}>
+              <boxGeometry args={[0.62, 0.06, 0.12]} />
+              <meshStandardMaterial color={COR_LATAO} roughness={0.3} metalness={0.75} />
+            </mesh>
+          )}
+        </group>
+      ))}
+    </group>
   );
 };
 
@@ -70,19 +141,8 @@ const MesaPresidenciaComponent = () => (
       <meshStandardMaterial color={COR_TAMPO} roughness={0.45} />
     </mesh>
 
-    {/* Presidente ao centro, secretários de cada lado */}
-    {[-2.6, 0, 2.6].map((x) => (
-      <group key={`cadeira-mesa-${x}`} position={[x, ALTURA_ESTRADO, Z_ESTRADO + 0.15]}>
-        <mesh position={[0, 0.45, 0]} castShadow>
-          <boxGeometry args={[0.6, 0.1, 0.55]} />
-          <meshStandardMaterial color={COR_ESTOFO} roughness={0.5} />
-        </mesh>
-        <mesh position={[0, 0.9, 0.26]} castShadow>
-          <boxGeometry args={[0.6, 0.8 + (x === 0 ? 0.35 : 0), 0.1]} />
-          <meshStandardMaterial color={COR_ESTOFO} roughness={0.5} />
-        </mesh>
-      </group>
-    ))}
+    {/* Presidente ao centro, Secretários de cada lado — ver LugaresDaMesa */}
+    <LugaresDaMesa />
 
     {/* Secretárias dos estenógrafos, ao nível do chão à frente do estrado —
         é um dos elementos próprios da sala, entre a Mesa e o púlpito. */}
