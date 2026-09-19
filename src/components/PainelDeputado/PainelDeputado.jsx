@@ -102,6 +102,19 @@ const CartaoIntervencao = ({ iv, texto, carregandoTextos, expandido, onToggle, i
       >
         {/* Badges */}
         <div className="flex items-center gap-1.5 mb-1.5 flex-wrap">
+          {/* Falou como presidente da sessão ou membro do Governo, não em nome
+              do seu grupo parlamentar — sem isto, conduzir os trabalhos passava
+              por intervenção política. */}
+          {iv.papel === 'presidencia' && (
+            <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200">
+              🪑 {iv.cargo ?? 'presidência'}
+            </span>
+          )}
+          {iv.papel === 'governo' && (
+            <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100">
+              🏛️ {iv.cargo ?? 'Governo'}
+            </span>
+          )}
           {iv.fase_debate && (
             <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-violet-50 text-violet-600 border border-violet-100">
               {iv.fase_debate}
