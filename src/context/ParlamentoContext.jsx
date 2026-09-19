@@ -375,8 +375,21 @@ export const ParlamentoProvider = ({ children }) => {
   const bancadaGoverno = useMemo(() => {
     if (!governoOficial?.length) return membrosGoverno;
 
+    // A composição e o Diário nem sempre escrevem o nome da mesma maneira
+    // ("Gonçalo Saraiva Matias" e "Gonçalo Matias" são a mesma pessoa, com
+    // 247 intervenções). Falhar o cruzamento mostrava-o com zero.
+    const chaveAlternativa = (nome) => {
+      const partes = nome.toLowerCase().split(/\s+/);
+      for (const [chave] of intervencoesMapa) {
+        const outras = chave.split(/\s+/);
+        if (outras[0] === partes[0] && outras[outras.length - 1] === partes[partes.length - 1]) return chave;
+      }
+      return null;
+    };
+
     return governoOficial.map((m) => {
-      const suas = intervencoesMapa.get(m.nome.toLowerCase()) ?? [];
+      const chave = m.nome.toLowerCase();
+      const suas = intervencoesMapa.get(chave) ?? intervencoesMapa.get(chaveAlternativa(m.nome)) ?? [];
       const datas = suas.map(iv => iv.data_debate ?? '').filter(Boolean).sort();
       return {
         nome: m.nome,
