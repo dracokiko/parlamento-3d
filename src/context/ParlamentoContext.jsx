@@ -239,6 +239,10 @@ export const ParlamentoProvider = ({ children }) => {
   // Deputado em hover (para tooltip 3D)
   const [deputadoHover, setDeputadoHover] = useState(null);
 
+  // A sala está virada para o Governo? Muda o que faz sentido mostrar: a
+  // publicidade e o brasão sobreposto são da vista do hemiciclo.
+  const [vistaGoverno, setVistaGoverno] = useState(false);
+
   // Membro do Governo selecionado / em hover na bancada
   const [governanteSelecionado, setGovernanteSelecionado] = useState(null);
   const [governanteHover, setGovernanteHover]             = useState(null);
@@ -306,6 +310,7 @@ export const ParlamentoProvider = ({ children }) => {
     deputadoHover,
     governanteSelecionado,
     governanteHover,
+    vistaGoverno,
     // Ações
     selecionarDeputado,
     fecharPainel,
@@ -314,6 +319,7 @@ export const ParlamentoProvider = ({ children }) => {
     selecionarGovernante,
     fecharPainelGoverno,
     setGovernanteHover,
+    setVistaGoverno,
     calcularFocoDePartido,
     cameraControlsRef,
   }), [
@@ -339,6 +345,7 @@ export const ParlamentoProvider = ({ children }) => {
     deputadoHover,
     governanteSelecionado,
     governanteHover,
+    vistaGoverno,
     selecionarDeputado,
     selecionarGovernante,
     fecharPainelGoverno,

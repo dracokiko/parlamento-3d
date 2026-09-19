@@ -12,8 +12,13 @@ const POSICAO = {
 };
 
 export const CoatOfArmsAR = () => {
-  const { deputadoHover, deputadoSelecionado } = useParlamento();
+  const { deputadoHover, deputadoSelecionado, vistaGoverno } = useParlamento();
   const isMobile = useIsMobile();
+
+  // Virados para o Governo, as armas da República estão no seu sítio — na
+  // parede atrás da Mesa. Duas ao mesmo tempo, uma delas a pairar sobre a
+  // claraboia, não.
+  if (vistaGoverno) return null;
 
   // No desktop esconde quando há hover/seleção (o tooltip sobrepõe-se).
   // No mobile o tooltip aparece no centro e o brasão fica no topo — não se sobrepõem.

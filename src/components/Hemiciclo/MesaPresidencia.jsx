@@ -27,7 +27,7 @@ const LARGURA_MESA = 9;
 const ArmasDaRepublica = () => {
   const armas = useTexture('/Coat_of_arms_of_the_Assembly_of_the_Portuguese_Republic.svg.png');
   return (
-    <mesh position={[0, ALTURA_ESTRADO + 2.5, Z_ESTRADO + 1.72]} rotation={[0, Math.PI, 0]}>
+    <mesh position={[0, ALTURA_ESTRADO + 2.5, Z_ESTRADO + 1.62]} rotation={[0, Math.PI, 0]}>
       <planeGeometry args={[2.6, 2.6]} />
       <meshStandardMaterial map={armas} transparent alphaTest={0.05} roughness={0.5} />
     </mesh>

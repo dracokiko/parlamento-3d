@@ -32,7 +32,7 @@ const normalizarAngulo = (a) => Math.atan2(Math.sin(a), Math.cos(a));
  * torno do eixo da sala; só o destino é que é escolhido.
  */
 export const BotaoVirarParaGoverno = () => {
-  const { cameraControlsRef, membrosGoverno, deputadoSelecionado, governanteSelecionado } = useParlamento();
+  const { cameraControlsRef, membrosGoverno, deputadoSelecionado, governanteSelecionado, setVistaGoverno } = useParlamento();
   const isMobile = useIsMobile();
   const isTabletPortrait = useIsTabletPortrait();
 
@@ -94,6 +94,8 @@ export const BotaoVirarParaGoverno = () => {
 
     if (aVerGoverno) {
       const destino = vistaAnterior.current ?? { camera: [0, 12, 24], alvo: [0, 10, -16] };
+      // Logo no arranque: a publicidade e o brasão voltam com a sala, não no fim.
+      setVistaGoverno(false);
       animarAte(destino, () => setAVerGoverno(false));
       return;
     }
@@ -102,6 +104,7 @@ export const BotaoVirarParaGoverno = () => {
       camera: controlos.object.position.toArray(),
       alvo:   controlos.target.toArray(),
     };
+    setVistaGoverno(true);
     animarAte(escalaDaVista(VISTA_GOVERNO, escala), () => setAVerGoverno(true));
   };
 

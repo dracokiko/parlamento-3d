@@ -4,6 +4,7 @@ import { useFrame } from '@react-three/fiber';
 import { useTexture } from '@react-three/drei';
 import { RAIO_INTERNO, NUM_FILAS, ESPACAMENTO_FILA, ALTURA_DEGRAU } from '../../utils/posicoes3D';
 import { useIsMobile } from '../../hooks/useIsMobile';
+import { useParlamento } from '../../context/ParlamentoContext';
 
 class TexturaBoundary extends Component {
   constructor(props) { super(props); this.state = { erro: false }; }
@@ -154,6 +155,7 @@ const BannerPublicitario = () => {
 };
 
 const EstruturaHemicicloComponent = () => {
+  const { vistaGoverno } = useParlamento();
   const alturaUltimaDegrau = (NUM_FILAS - 1) * ALTURA_DEGRAU;
   const isMobile = useIsMobile();
 
@@ -321,13 +323,13 @@ const EstruturaHemicicloComponent = () => {
           const meia = Math.sqrt(Math.max((RAIO_INTERNO - 1.1) ** 2 - desvio ** 2, 0));
           return (
             <group key={`caixilho-${i}`}>
-              <mesh position={[desvio, WALL_HEIGHT + 0.18, 0]}>
-                <boxGeometry args={[0.07, 0.05, meia * 2]} />
-                <meshStandardMaterial color="#6b6257" roughness={0.6} metalness={0.4} />
+              <mesh rotation={[Math.PI / 2, 0, 0]} position={[desvio, WALL_HEIGHT + 0.18, 0]}>
+                <planeGeometry args={[0.07, meia * 2]} />
+                <meshStandardMaterial color="#6b6257" roughness={0.6} metalness={0.4} side={THREE.FrontSide} />
               </mesh>
-              <mesh position={[0, WALL_HEIGHT + 0.18, desvio]}>
-                <boxGeometry args={[meia * 2, 0.05, 0.07]} />
-                <meshStandardMaterial color="#6b6257" roughness={0.6} metalness={0.4} />
+              <mesh rotation={[Math.PI / 2, 0, 0]} position={[0, WALL_HEIGHT + 0.18, desvio]}>
+                <planeGeometry args={[meia * 2, 0.07]} />
+                <meshStandardMaterial color="#6b6257" roughness={0.6} metalness={0.4} side={THREE.FrontSide} />
               </mesh>
             </group>
           );
@@ -337,7 +339,11 @@ const EstruturaHemicicloComponent = () => {
         <pointLight position={[0, WALL_HEIGHT - 0.6, 0]} intensity={0.9} color="#fff6e0" distance={34} decay={2} />
       </group>
 
-      {/* ── Banda separadora (entre hemiciclo e banner) ─────── */}
+      {/* ── Banda separadora e publicidade ───────────────────
+          Só na vista do hemiciclo: virados para o Governo, o anúncio ficava
+          a ladear a Mesa da Assembleia. */}
+      {!vistaGoverno && (
+       <>
       <mesh position={[0, SEPARADOR_Y, 0]}>
         <cylinderGeometry
           args={[WALL_RADIUS - 0.04, WALL_RADIUS - 0.04, SEPARADOR_HEIGHT, 80, 1, true, WALL_THETA_START, WALL_THETA_LENGTH]}
@@ -345,8 +351,9 @@ const EstruturaHemicicloComponent = () => {
         <meshStandardMaterial color="#ffffff" roughness={0.25} metalness={0.08} side={DOUBLE_SIDE} />
       </mesh>
 
-      {/* ── Banner publicitário ──────────────────────────────── */}
       <BannerPublicitario />
+       </>
+      )}
 
     </group>
   );
