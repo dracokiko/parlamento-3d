@@ -11,13 +11,14 @@ import {
 } from '../../utils/bancadaGoverno';
 
 /**
- * Couro verde-garrafa e nogueira, que é a madeira das carteiras da sala
+ * Couro verde-salva e nogueira, que é a madeira das carteiras da sala
  * (nogueira trabalhada ao estilo inglês). Sem cor de partido — o Governo não
- * é um grupo parlamentar — e sem os cinzentos anteriores, que à distância
- * liam-se como buracos pretos.
+ * é um grupo parlamentar. Claro o suficiente para se distinguir da madeira
+ * à distância: o verde-garrafa anterior, contra a nogueira e com a sala em
+ * contraluz, voltava a ler-se como uma mancha escura.
  */
-const COR_CADEIRA    = '#27443a';
-const COR_CADEIRA_PM = '#1d3830';   // o lugar do Primeiro-Ministro, um tom mais fundo
+const COR_CADEIRA    = '#6f9c85';
+const COR_CADEIRA_PM = '#5c8872';   // o lugar do Primeiro-Ministro, um tom mais fundo
 const COR_MADEIRA    = '#5b3a24';   // nogueira
 const COR_TAMPO      = '#6b462b';
 const COR_FRENTE     = '#4c3020';
