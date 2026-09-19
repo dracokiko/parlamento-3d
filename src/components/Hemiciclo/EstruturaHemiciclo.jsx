@@ -63,6 +63,11 @@ const WALL_THETA_LENGTH = 25 * Math.PI / 18;
 const RING_THETA_START  = -7 * Math.PI / 36;
 const RING_THETA_LENGTH = 25 * Math.PI / 18;
 
+// Os 110° que faltavam para fechar a sala, atrás da bancada do Governo.
+const FECHO_THETA_START      = WALL_THETA_START + WALL_THETA_LENGTH;
+const FECHO_THETA_LENGTH     = 2 * Math.PI - WALL_THETA_LENGTH;
+const FECHO_RING_THETA_START = RING_THETA_START + RING_THETA_LENGTH;
+
 // Geometria computada uma única vez
 const RAIO_EXTERIOR  = RAIO_INTERNO + NUM_FILAS * ESPACAMENTO_FILA;
 const WALL_RADIUS    = RAIO_EXTERIOR + 1.0;
@@ -218,6 +223,35 @@ const EstruturaHemicicloComponent = () => {
         <ringGeometry args={[RAIO_EXTERIOR + 0.35, WALL_RADIUS + 0.1, 80, 1, RING_THETA_START, RING_THETA_LENGTH]} />
         <meshStandardMaterial color={COR_SOALHO} roughness={0.30} metalness={0.08} />
       </mesh>
+
+      {/* ── Fecho do círculo, atrás da bancada do Governo ─────
+          A sala tinha 110° em aberto — por onde a câmara inicial espreita.
+          Fechá-la com uma parede normal tapava essa vista, por isso este
+          troço só existe do lado de dentro (BackSide): quem está fora
+          continua a ver o plenário, quem se vira para o Governo deixa de ver
+          o vazio branco. */}
+      <group>
+        <mesh position={[0, WALL_CENTER_Y, 0]} receiveShadow>
+          <cylinderGeometry args={[WALL_RADIUS, WALL_RADIUS, WALL_HEIGHT, 80, 1, true, FECHO_THETA_START, FECHO_THETA_LENGTH]} />
+          <meshStandardMaterial color={COR_PAREDE} roughness={0.78} metalness={0.04} side={THREE.BackSide} />
+        </mesh>
+
+        {/* Rodapé e cornija, para o fecho ser do mesmo edifício */}
+        <mesh position={[0, 0.25, 0]}>
+          <cylinderGeometry args={[WALL_RADIUS + 0.07, WALL_RADIUS + 0.07, 0.50, 80, 1, true, FECHO_THETA_START, FECHO_THETA_LENGTH]} />
+          <meshStandardMaterial color={COR_CORNIJA} roughness={0.72} side={THREE.BackSide} />
+        </mesh>
+        <mesh position={[0, WALL_HEIGHT - 0.05, 0]}>
+          <cylinderGeometry args={[WALL_RADIUS + 0.10, WALL_RADIUS + 0.10, 0.30, 80, 1, true, FECHO_THETA_START, FECHO_THETA_LENGTH]} />
+          <meshStandardMaterial color={COR_CORNIJA} roughness={0.72} side={THREE.BackSide} />
+        </mesh>
+
+        {/* Soalho do sector que faltava — sem ele a bancada assentava no vazio */}
+        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.06, 0]} receiveShadow>
+          <circleGeometry args={[WALL_RADIUS + 0.1, 80, FECHO_RING_THETA_START, FECHO_THETA_LENGTH]} />
+          <meshStandardMaterial color={COR_SOALHO} roughness={0.30} metalness={0.08} />
+        </mesh>
+      </group>
 
       {/* ── Parede traseira ──────────────────────────────────── */}
       <mesh position={[0, WALL_CENTER_Y, 0]} receiveShadow castShadow>
