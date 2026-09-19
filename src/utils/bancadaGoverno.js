@@ -67,14 +67,17 @@ export const escalaDaVista = (vista, escala) => ({
  * porque é onde ficam o Primeiro-Ministro e os ministros.
  */
 export function distribuirPorFilas(total, maxPorFila = MAX_POR_FILA) {
-  const filas = [];
-  let restantes = total;
-  while (restantes > 0) {
-    const nesta = Math.min(restantes, maxPorFila);
-    filas.push(nesta);
-    restantes -= nesta;
-  }
-  return filas;
+  if (total <= 0) return [];
+
+  // Equilibradas, e não a encher até ao limite e deixar o resto na última:
+  // 42 lugares davam 10+10+10+10+2, com dois lugares perdidos na fila de
+  // trás. Assim dão 9+9+8+8+8. As filas da frente ficam com os que sobram,
+  // por serem as de quem tem precedência.
+  const nFilas = Math.ceil(total / maxPorFila);
+  const base = Math.floor(total / nFilas);
+  const sobra = total % nFilas;
+
+  return Array.from({ length: nFilas }, (_, i) => base + (i < sobra ? 1 : 0));
 }
 
 /**
@@ -95,17 +98,23 @@ export function calcularLugaresGoverno(total) {
     const larguraFila = (nesta - 1) * ESPACO_LUGAR + CORREDOR;
     const metade = Math.ceil(nesta / 2);
 
+    const daFila = [];
     for (let i = 0; i < nesta; i++) {
       // O corredor abre-se ao meio da fila; a segunda metade desloca-se.
       const passo = i * ESPACO_LUGAR + (i >= metade ? CORREDOR : 0);
-      lugares.push({
+      daFila.push({
         position: [-larguraFila / 2 + passo, y, z],
         // Viradas para o hemiciclo, que está todo em Z negativo.
         rotation: [0, Math.PI, 0],
         fila,
-        indice: lugares.length,
       });
     }
+
+    // Do centro para fora, alternando os lados: quem chega primeiro senta-se
+    // junto ao corredor. Sem isto o Primeiro-Ministro ficava na ponta
+    // esquerda da primeira fila, que não é lugar de quem chefia o Governo.
+    daFila.sort((a, b) => Math.abs(a.position[0]) - Math.abs(b.position[0]) || a.position[0] - b.position[0]);
+    for (const lugar of daFila) lugares.push({ ...lugar, indice: lugares.length });
   });
 
   return lugares;

@@ -2,6 +2,7 @@ import { createContext, useContext, useState, useCallback, useMemo, useEffect, u
 import PropTypes from 'prop-types';
 import { supabase } from '../lib/supabase';
 import { mapaLugares, calcularFocoPartido } from '../utils/posicoes3D';
+import { ordenarPorPrecedencia, cargoCredivel } from '../utils/governo';
 
 /**
  * Context global da aplicação.
@@ -54,13 +55,6 @@ function derivarMesa(perfis) {
   };
 }
 
-/** Ordem na bancada: o Primeiro-Ministro à cabeça, depois ministros, depois secretários de Estado. */
-const escalaoDoCargo = (cargo = '') => {
-  if (/^(?:vice-)?primeiro-ministr/i.test(cargo)) return 0;
-  if (/^ministr/i.test(cargo)) return 1;
-  return 2;
-};
-
 /**
  * Os membros do Governo que falaram em plenário, um por pessoa.
  *
@@ -83,9 +77,36 @@ function derivarMembrosGoverno(intervencoes) {
     porPessoa.set(iv.nome_dep, actual);
   }
 
-  return [...porPessoa.values()].sort((a, b) =>
-    escalaoDoCargo(a.cargo) - escalaoDoCargo(b.cargo) || b.intervencoes - a.intervencoes,
+  const identificados = [...porPessoa.values()].filter(m =>
+    // Sem nome próprio (o DAR nunca o nomeou) não há quem sentar, e uma
+    // cadeira chamada "Ministro das Finanças" não é ninguém.
+    cargoCredivel(m.cargo) && m.nome !== m.cargo,
   );
+
+  return ordenarPorPrecedencia(juntarVariantesDeNome(identificados));
+}
+
+/**
+ * O DAR trata a mesma pessoa por "Rita Alarcão Júdice" e "Rita Júdice".
+ * Com o mesmo cargo e o mesmo primeiro e último nome, é a mesma pessoa —
+ * fica o nome mais completo, e as intervenções somam-se.
+ */
+function juntarVariantesDeNome(membros) {
+  const mesmaPessoa = (a, b) => {
+    if (a.cargo !== b.cargo) return false;
+    const pa = a.nome.toLowerCase().split(/\s+/), pb = b.nome.toLowerCase().split(/\s+/);
+    return pa[0] === pb[0] && pa[pa.length - 1] === pb[pb.length - 1];
+  };
+
+  const juntos = [];
+  for (const m of membros) {
+    const igual = juntos.find(j => mesmaPessoa(j, m));
+    if (!igual) { juntos.push({ ...m }); continue; }
+    igual.intervencoes += m.intervencoes;
+    if (m.nome.length > igual.nome.length) igual.nome = m.nome;
+    if ((m.ultima ?? '') > (igual.ultima ?? '')) igual.ultima = m.ultima;
+  }
+  return juntos;
 }
 
 export const ParlamentoProvider = ({ children }) => {
