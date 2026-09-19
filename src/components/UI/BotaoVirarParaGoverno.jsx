@@ -113,12 +113,14 @@ export const BotaoVirarParaGoverno = () => {
   if (!membrosGoverno?.length || deputadoSelecionado || governanteSelecionado) return null;
 
   return (
-    <div className="absolute bottom-5 left-1/2 -translate-x-1/2 z-20 px-3 w-full max-w-md">
+    /* Encostado à direita: ao centro tapava os lugares da frente, que é
+       justamente onde está quem estamos a tentar mostrar. */
+    <div className="absolute bottom-5 right-4 z-20 max-w-[calc(100%-2rem)]">
       <button
         onClick={virar}
         disabled={aRodar}
-        className={`w-full flex items-center justify-center gap-3 rounded-2xl px-6 py-4 shadow-xl border transition-all
-          text-base sm:text-lg font-semibold tracking-tight
+        className={`flex items-center justify-center gap-3 rounded-2xl px-5 py-3.5 shadow-xl border transition-all
+          text-sm sm:text-base font-semibold tracking-tight
           ${aRodar
             ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-wait'
             : 'bg-white/95 backdrop-blur text-gray-900 border-gray-200 hover:bg-white hover:shadow-2xl active:scale-[0.99]'}`}
