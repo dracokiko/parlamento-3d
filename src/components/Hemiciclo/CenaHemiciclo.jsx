@@ -3,6 +3,7 @@ import { OrbitControls, PerspectiveCamera } from '@react-three/drei';
 import { Suspense, useRef } from 'react';
 import { Assento } from './Assento';
 import { BancadaGoverno } from './BancadaGoverno';
+import { MesaPresidencia } from './MesaPresidencia';
 import { EstruturaHemiciclo } from './EstruturaHemiciclo';
 import { useParlamento } from '../../context/ParlamentoContext';
 import { useIsMobile, useIsTabletPortrait, useIsTouch } from '../../hooks/useIsMobile';
@@ -124,6 +125,7 @@ export const CenaHemiciclo = () => {
           <EstruturaHemiciclo />
           <SinalPronto />
           <BancadaGoverno />
+          <MesaPresidencia />
 
           {deputados.map((deputado) => {
             const pos = posicoes3D.get(deputado.id);

@@ -51,8 +51,14 @@ const PLATAFORMAS = [
 ];
 
 const COR_SOALHO  = '#e8dcc8'; // bege claro polido
-const COR_PAREDE  = '#200045'; // âmbar dourado
+// Estuque claro, como a sala real: neoclássico de Ventura Terra, iluminado de
+// cima pela claraboia. Estava #200045 — roxo quase preto — e era o que fazia a
+// sala parecer um estúdio de televisão em vez do Palácio de São Bento.
+const COR_PAREDE   = '#e7ddc9';
+const COR_CARVALHO = '#8a6236'; // lambril e mobiliário, em carvalho
 const COR_CORNIJA = '#a07830';
+const COR_TECTO   = '#f2ece0';
+const COR_VIDRO   = '#fbf7e8'; // vidro da claraboia, aceso de dia
 const DOUBLE_SIDE = 2;
 
 // 250° centrado no fundo (cilindros): thetaStart=55°, length=250°
@@ -276,6 +282,60 @@ const EstruturaHemicicloComponent = () => {
         <cylinderGeometry args={[WALL_RADIUS + 0.10, WALL_RADIUS + 0.10, 0.30, 80, 1, true, WALL_THETA_START, WALL_THETA_LENGTH]} />
         <meshStandardMaterial color={COR_CORNIJA} roughness={0.72} side={DOUBLE_SIDE} />
       </mesh>
+
+      {/* ── Lambril de carvalho ──────────────────────────────
+          A parede real não é estuque até ao chão: tem um lambril de madeira
+          à altura das bancadas, que é o que liga visualmente as carteiras à
+          sala. Dois troços, porque o fecho atrás do Governo só existe visto
+          de dentro. */}
+      <mesh position={[0, 1.45, 0]} receiveShadow>
+        <cylinderGeometry args={[WALL_RADIUS - 0.03, WALL_RADIUS - 0.03, 1.9, 80, 1, true, WALL_THETA_START, WALL_THETA_LENGTH]} />
+        <meshStandardMaterial color={COR_CARVALHO} roughness={0.62} metalness={0.05} side={DOUBLE_SIDE} />
+      </mesh>
+      <mesh position={[0, 1.45, 0]} receiveShadow>
+        <cylinderGeometry args={[WALL_RADIUS - 0.03, WALL_RADIUS - 0.03, 1.9, 80, 1, true, FECHO_THETA_START, FECHO_THETA_LENGTH]} />
+        <meshStandardMaterial color={COR_CARVALHO} roughness={0.62} metalness={0.05} side={THREE.BackSide} />
+      </mesh>
+
+      {/* ── Tecto e claraboia ────────────────────────────────
+          A sala é iluminada de cima, por uma claraboia de ferro e vidro — é
+          a marca da Sala das Sessões. Tudo virado para baixo (só se vê de
+          dentro): a câmara inicial está acima desta cota e um tecto opaco
+          fechava-lhe a vista. */}
+      <group>
+        <mesh rotation={[Math.PI / 2, 0, 0]} position={[0, WALL_HEIGHT - 0.05, 0]}>
+          <ringGeometry args={[RAIO_INTERNO - 1.2, WALL_RADIUS + 0.1, 64, 1]} />
+          <meshStandardMaterial color={COR_TECTO} roughness={0.9} side={THREE.FrontSide} />
+        </mesh>
+
+        {/* Vidro, ligeiramente acima do plano do tecto */}
+        <mesh rotation={[Math.PI / 2, 0, 0]} position={[0, WALL_HEIGHT + 0.25, 0]}>
+          <circleGeometry args={[RAIO_INTERNO - 1.1, 64]} />
+          <meshStandardMaterial color={COR_VIDRO} emissive={COR_VIDRO} emissiveIntensity={0.55} roughness={0.2} side={THREE.FrontSide} />
+        </mesh>
+
+        {/* Caixilharia de ferro — dois sentidos, como na sala */}
+        {Array.from({ length: 7 }).map((_, i) => {
+          const passo = (2 * (RAIO_INTERNO - 1.1)) / 8;
+          const desvio = -(RAIO_INTERNO - 1.1) + (i + 1) * passo;
+          const meia = Math.sqrt(Math.max((RAIO_INTERNO - 1.1) ** 2 - desvio ** 2, 0));
+          return (
+            <group key={`caixilho-${i}`}>
+              <mesh position={[desvio, WALL_HEIGHT + 0.18, 0]}>
+                <boxGeometry args={[0.07, 0.05, meia * 2]} />
+                <meshStandardMaterial color="#6b6257" roughness={0.6} metalness={0.4} />
+              </mesh>
+              <mesh position={[0, WALL_HEIGHT + 0.18, desvio]}>
+                <boxGeometry args={[meia * 2, 0.05, 0.07]} />
+                <meshStandardMaterial color="#6b6257" roughness={0.6} metalness={0.4} />
+              </mesh>
+            </group>
+          );
+        })}
+
+        {/* A luz que entra por ela */}
+        <pointLight position={[0, WALL_HEIGHT - 0.6, 0]} intensity={0.9} color="#fff6e0" distance={34} decay={2} />
+      </group>
 
       {/* ── Banda separadora (entre hemiciclo e banner) ─────── */}
       <mesh position={[0, SEPARADOR_Y, 0]}>
