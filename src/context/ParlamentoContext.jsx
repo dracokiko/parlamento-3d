@@ -405,12 +405,11 @@ export const ParlamentoProvider = ({ children }) => {
         ehMinistro: ehMinistro(m.cargo),
       };
     })
-      // A bancada do Governo não tem lugar permanente para os 43 secretários
-      // de Estado: quem lá está sempre é o Primeiro-Ministro e os ministros,
-      // e um secretário de Estado desce ao plenário quando o assunto é da
-      // sua área. Sentá-los a todos era encher a sala com gente que nunca lá
-      // pôs os pés — ficam os que alguma vez usaram da palavra.
-      .filter(m => m.ehMinistro || m.intervencoes > 0);
+      // Só o Primeiro-Ministro e os ministros. A bancada do Governo não tem
+      // lugar para os 43 secretários de Estado: eles descem ao plenário
+      // quando o assunto é da sua área, não têm cadeira permanente. As suas
+      // intervenções continuam todas na base — o que não têm é lugar.
+      .filter(m => m.ehMinistro);
   }, [governoOficial, membrosGoverno, intervencoesMapa]);
 
   // Memoizar o value para evitar re-renders desnecessários

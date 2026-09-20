@@ -114,13 +114,21 @@ function parsearTabelas(wikitexto) {
     // por posição, mas pelo que cada uma é.
     if (!/!\s*(Nome|Detentor)/i.test(corpo)) continue;
 
+    // O cargo também vem em rowspan quando a mesma pasta muda de titular no
+    // decurso da legislatura: a Administração Interna tem três linhas — a
+    // ministra que se demitiu, o Primeiro-Ministro interino e o sucessor — e
+    // só a primeira traz a célula do cargo. Sem arrastar o cargo pelas
+    // linhas seguintes, os sucessores desapareciam.
+    let cargoArrastado = null;
+
     for (const linha of corpo.split(/^\|-/m).slice(1)) {
       const brutas = linha.split(/^\s*\|(?!\})/m).slice(1);
       if (brutas.length < 3) continue;
 
       const limpasPorCelula = brutas.map(limparWiki);
       const iCargo = limpasPorCelula.findIndex(ehCargo);
-      if (iCargo < 0) continue;
+      if (iCargo >= 0) cargoArrastado = limpasPorCelula[iCargo];
+      else if (!cargoArrastado) continue;
 
       // O retrato procura-se fora da célula do cargo, que é onde mora o
       // logótipo do ministério, e tem de parecer uma pessoa.
@@ -129,7 +137,7 @@ function parsearTabelas(wikitexto) {
         .find(pareceRetrato) ?? null;
 
       const limpas = limpasPorCelula.filter(Boolean);
-      const cargo = limpasPorCelula[iCargo];
+      const cargo = iCargo >= 0 ? limpasPorCelula[iCargo] : cargoArrastado;
 
       const iPeriodo = limpas.findLastIndex(c => /\d{4}/.test(c));
       if (iPeriodo < 0) continue;
