@@ -2,7 +2,8 @@ import { useMemo } from 'react';
 import { X, Mic, CalendarDays, Landmark } from 'lucide-react';
 import { useParlamento } from '../../context/ParlamentoContext';
 import { SecaoIntervencoes } from '../PainelDeputado/PainelDeputado';
-import { formatarDataCurta, obterIniciais } from '../../utils/formatters';
+import { formatarDataCurta } from '../../utils/formatters';
+import { RetratoGovernante, VERDE_GOVERNO } from '../UI/RetratoGovernante';
 
 /**
  * Painel de um membro do Governo, aberto ao clicar na bancada.
@@ -17,8 +18,24 @@ export const PainelGovernante = () => {
 
   const intervencoes = useMemo(() => {
     if (!governanteSelecionado) return [];
-    const lista = intervencoesMapa.get(governanteSelecionado.nome.toLowerCase()) ?? [];
-    return [...lista].sort((a, b) => (b.data_debate ?? '').localeCompare(a.data_debate ?? ''));
+    const nome = governanteSelecionado.nome;
+
+    // A mesma tolerância que a bancada usa para contar: o Diário e a
+    // composição nem sempre escrevem o nome por extenso da mesma maneira, e
+    // sem isto o cartão dizia 247 intervenções e a lista aparecia vazia.
+    let lista = intervencoesMapa.get(nome.toLowerCase());
+    if (!lista) {
+      const partes = nome.toLowerCase().split(/\s+/);
+      for (const [chave, valores] of intervencoesMapa) {
+        const outras = chave.split(/\s+/);
+        if (outras[0] === partes[0] && outras[outras.length - 1] === partes[partes.length - 1]) {
+          lista = valores;
+          break;
+        }
+      }
+    }
+
+    return [...(lista ?? [])].sort((a, b) => (b.data_debate ?? '').localeCompare(a.data_debate ?? ''));
   }, [governanteSelecionado, intervencoesMapa]);
 
   if (!governanteSelecionado) return null;
@@ -27,59 +44,69 @@ export const PainelGovernante = () => {
 
   return (
     <div className="fixed top-0 right-0 h-full w-full sm:w-[420px] bg-white shadow-2xl z-50 flex flex-col">
-      <div className="border-b border-gray-100 p-4" style={{ borderLeft: '4px solid #6b7280' }}>
-        <div className="flex items-start gap-3">
-          {/* Retrato quando a composição oficial o traz (Commons); iniciais
-              quando não há, como nos deputados sem foto. */}
-          {governanteSelecionado.foto ? (
-            <img
-              src={governanteSelecionado.foto}
-              alt={nome}
-              loading="lazy"
-              className="w-11 h-11 rounded-full object-cover flex-shrink-0 border border-gray-200"
-            />
-          ) : (
-            <div
-              className="w-11 h-11 rounded-full flex items-center justify-center text-white text-sm font-semibold flex-shrink-0"
-              style={{ background: '#6b7280' }}
-            >
-              {obterIniciais(nome)}
-            </div>
-          )}
+      {/* Cartão de apresentação: retrato grande sobre um fundo em verde da
+          bancada, para o painel do Governo se distinguir do de um deputado
+          sem recorrer a cor de partido, que aqui não existe. */}
+      <div className="relative">
+        <div
+          className="h-20"
+          style={{ background: `linear-gradient(135deg, ${VERDE_GOVERNO} 0%, #4e7a66 100%)` }}
+        />
 
-          <div className="min-w-0 flex-1">
-            <p className="text-base font-semibold text-gray-900 leading-tight truncate">{nome}</p>
-            <div className="flex items-center gap-1.5 mt-0.5">
-              <Landmark size={11} className="text-gray-400 flex-shrink-0" />
-              <span className="text-xs text-gray-500 leading-snug">{cargo ?? 'Membro do Governo'}</span>
-            </div>
-            <p className="text-[11px] text-gray-400 mt-1">
-              Membro do Governo{partido ? ` (${partido})` : ''} — não é deputado, por isso não ocupa lugar
-              no hemiciclo.{desde ? ` Em funções desde ${desde}.` : ''}
-            </p>
+        <button
+          onClick={fecharPainelGoverno}
+          className="absolute top-3 right-3 text-white/80 hover:text-white transition-colors"
+          aria-label="Fechar"
+        >
+          <X size={18} />
+        </button>
+
+        <div className="px-4 pb-4 -mt-10">
+          <RetratoGovernante nome={nome} foto={governanteSelecionado.foto} tamanho={84} />
+
+          <p className="text-lg font-semibold text-gray-900 leading-tight mt-2">{nome}</p>
+
+          <div className="flex items-start gap-1.5 mt-1">
+            <Landmark size={12} className="text-gray-400 flex-shrink-0 mt-0.5" />
+            <span className="text-sm text-gray-600 leading-snug">{cargo ?? 'Membro do Governo'}</span>
           </div>
 
-          <button
-            onClick={fecharPainelGoverno}
-            className="text-gray-400 hover:text-gray-700 transition-colors flex-shrink-0"
-            aria-label="Fechar"
-          >
-            <X size={18} />
-          </button>
-        </div>
+          <div className="flex flex-wrap items-center gap-2 mt-2.5">
+            {partido && (
+              <span className="text-[11px] font-semibold text-gray-700 bg-gray-100 rounded-full px-2 py-0.5">
+                {partido}
+              </span>
+            )}
+            {desde && (
+              <span className="text-[11px] text-gray-500 bg-gray-50 border border-gray-100 rounded-full px-2 py-0.5">
+                Em funções desde {desde}
+              </span>
+            )}
+          </div>
 
-        <div className="flex gap-4 mt-3 text-xs text-gray-500">
-          <span className="flex items-center gap-1">
-            <Mic size={11} className="text-gray-400" />
-            {intervencoes.length} {intervencoes.length === 1 ? 'intervenção' : 'intervenções'}
-          </span>
-          {(primeira || ultima) && (
-            <span className="flex items-center gap-1">
-              <CalendarDays size={11} className="text-gray-400" />
-              {primeira && formatarDataCurta(primeira)}
-              {primeira && ultima && primeira !== ultima && ` – ${formatarDataCurta(ultima)}`}
-            </span>
-          )}
+          <div className="grid grid-cols-2 gap-2 mt-3">
+            <div className="bg-gray-50 border border-gray-100 rounded-xl px-3 py-2">
+              <p className="text-base font-semibold text-gray-900 tabular-nums">{intervencoes.length}</p>
+              <p className="text-[10px] text-gray-500 flex items-center gap-1">
+                <Mic size={9} /> {intervencoes.length === 1 ? 'intervenção' : 'intervenções'}
+              </p>
+            </div>
+            {(primeira || ultima) && (
+              <div className="bg-gray-50 border border-gray-100 rounded-xl px-3 py-2">
+                <p className="text-[11px] font-medium text-gray-800 leading-tight">
+                  {primeira && formatarDataCurta(primeira)}
+                  {primeira && ultima && primeira !== ultima && ` – ${formatarDataCurta(ultima)}`}
+                </p>
+                <p className="text-[10px] text-gray-500 flex items-center gap-1 mt-0.5">
+                  <CalendarDays size={9} /> no plenário
+                </p>
+              </div>
+            )}
+          </div>
+
+          <p className="text-[11px] text-gray-400 mt-3 leading-snug">
+            Membro do Governo — não é deputado, por isso não ocupa lugar no hemiciclo.
+          </p>
         </div>
       </div>
 
@@ -87,7 +114,7 @@ export const PainelGovernante = () => {
         <SecaoIntervencoes
           intervencoes={intervencoes}
           carregando={false}
-          corPartido="#6b7280"
+          corPartido={VERDE_GOVERNO}
           onVerIniciativa={() => {}}
           iniciativasIdMapa={iniciativasIdMapa}
         />
