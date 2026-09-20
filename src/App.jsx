@@ -47,9 +47,42 @@ const MENSAGENS = [
   'A garantir que a tribuna está bem aparafusada...',
 ];
 
+/**
+ * O que se vai buscar ao arrancar, pela ordem por que costuma chegar. A
+ * etiqueta é o que o utilizador reconhece, não o nome da tabela.
+ */
+const ETAPAS = [
+  { chave: 'deputados',   label: 'Lugares do hemiciclo' },
+  { chave: 'perfis',      label: 'Perfis dos deputados' },
+  { chave: 'biografias',  label: 'Biografias' },
+  { chave: 'presencas',   label: 'Presenças em plenário' },
+  { chave: 'iniciativas', label: 'Iniciativas legislativas' },
+  { chave: 'intervencoes', label: 'Intervenções do Diário' },
+  { chave: 'cena',        label: 'Sala das Sessões' },
+];
+
+/**
+ * Factos verdadeiros sobre a sala e sobre os dados — ao contrário das
+ * mensagens de espera, que são piadas. Enchem o tempo com alguma coisa que
+ * se leva dali.
+ */
+const CURIOSIDADES = [
+  'A Sala das Sessões foi inaugurada em 1903, projectada por Ventura Terra depois de um incêndio ter destruído a anterior.',
+  'A luz entra por uma claraboia de ferro e vidro — é a marca da sala, e a razão de o plenário ser iluminado de cima.',
+  'Atrás da tribuna da Presidência está a estátua da República, com uma esfera armilar nas mãos, de Anjos Teixeira, 1916.',
+  'As carteiras dos deputados são de nogueira trabalhada ao estilo inglês, em bancadas simples.',
+  'São 230 lugares, dispostos em seis filas concêntricas, da esquerda para a direita segundo a tradição parlamentar.',
+  'Nas reuniões plenárias, a Mesa é composta pelo Presidente e pelos Secretários — os Vice-Presidentes só lá se sentam quando presidem.',
+  'As galerias do primeiro andar têm 660 lugares para o público, com seis estátuas: Constituição, Lei, Jurisprudência, Eloquência, Justiça e Diplomacia.',
+  'O Governo não ocupa lugar no hemiciclo: quem entra para o Governo suspende o mandato de deputado.',
+  'Um relógio monumental de pedra, renovado em 1990, domina o balcão da galeria central.',
+  'Tudo o que aqui vê vem dos Dados Abertos da Assembleia e do Diário da Assembleia da República, sincronizados todos os dias de madrugada.',
+];
+
 const TelaCarregamento = () => {
-  const { tudoCarregado } = useParlamento();
+  const { tudoCarregado, progresso } = useParlamento();
   const [idx, setIdx] = useState(() => Math.floor(Math.random() * MENSAGENS.length));
+  const [facto, setFacto] = useState(() => Math.floor(Math.random() * CURIOSIDADES.length));
 
   useEffect(() => {
     const t = setInterval(() => {
@@ -59,24 +92,71 @@ const TelaCarregamento = () => {
         return next;
       });
     }, 2800);
-    return () => clearInterval(t);
+    const f = setInterval(() => {
+      setFacto(prev => (prev + 1) % CURIOSIDADES.length);
+    }, 6500);
+    return () => { clearInterval(t); clearInterval(f); };
   }, []);
+
+  const feitas = ETAPAS.filter(e => progresso?.[e.chave]).length;
+  const percentagem = Math.round((feitas / ETAPAS.length) * 100);
 
   return (
     <div
-      className="fixed inset-0 z-[9999] flex items-center justify-center bg-[#1a1a2e] transition-opacity duration-700"
+      className="fixed inset-0 z-[9999] flex items-center justify-center bg-[#1a1a2e] transition-opacity duration-700 overflow-y-auto"
       style={{ opacity: tudoCarregado ? 0 : 1, pointerEvents: tudoCarregado ? 'none' : 'all' }}
     >
-      <div className="text-center px-8">
+      <div className="w-full max-w-lg px-8 py-10 text-center">
         <img
           src="/logo_com_nome.png"
           alt="Parlamento 3D"
-          className="mx-auto mb-4"
-          style={{ width: '280px', height: 'auto', opacity: 0.92 }}
+          className="mx-auto mb-6"
+          style={{ width: '240px', height: 'auto', opacity: 0.92 }}
         />
-        <div className="inline-block w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-6" />
 
-        <p className="text-blue-300 text-sm transition-all duration-500">{MENSAGENS[idx]}</p>
+        {/* Barra de progresso real: anda porque alguma coisa chegou */}
+        <div className="flex items-center gap-3 mb-2">
+          <div className="flex-1 h-1.5 bg-white/10 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-blue-500 rounded-full transition-all duration-700 ease-out"
+              style={{ width: `${Math.max(percentagem, 6)}%` }}
+            />
+          </div>
+          <span className="text-[11px] text-blue-300/80 tabular-nums w-9 text-right">{percentagem}%</span>
+        </div>
+
+        {/* O que já chegou e o que falta */}
+        <ul className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-left mt-5 mb-6">
+          {ETAPAS.map((etapa) => {
+            const pronta = !!progresso?.[etapa.chave];
+            return (
+              <li key={etapa.chave} className="flex items-center gap-2 text-[11px]">
+                <span
+                  className={`flex items-center justify-center w-3.5 h-3.5 rounded-full flex-shrink-0 transition-colors duration-500 ${
+                    pronta ? 'bg-emerald-500/90' : 'bg-white/10'
+                  }`}
+                >
+                  {pronta && (
+                    <svg viewBox="0 0 12 12" className="w-2 h-2 text-white" fill="none" stroke="currentColor" strokeWidth="2.5">
+                      <path d="M2 6.5 L4.5 9 L10 3" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  )}
+                </span>
+                <span className={pronta ? 'text-white/70' : 'text-white/35'}>{etapa.label}</span>
+              </li>
+            );
+          })}
+        </ul>
+
+        <p className="text-blue-300 text-sm transition-all duration-500 min-h-[2.5rem]">{MENSAGENS[idx]}</p>
+
+        {/* Um facto de cada vez, para haver o que ler enquanto se espera */}
+        <div className="mt-6 rounded-2xl border border-white/10 bg-white/[0.04] px-5 py-4 text-left">
+          <p className="text-[10px] uppercase tracking-widest text-blue-300/60 mb-1.5">Enquanto espera</p>
+          <p className="text-[12.5px] leading-relaxed text-white/70 transition-opacity duration-500">
+            {CURIOSIDADES[facto]}
+          </p>
+        </div>
       </div>
     </div>
   );
