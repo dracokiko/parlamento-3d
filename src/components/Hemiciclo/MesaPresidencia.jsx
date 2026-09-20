@@ -1,6 +1,7 @@
 import { memo, Suspense } from 'react';
 import { useTexture, Edges } from '@react-three/drei';
 import { useParlamento } from '../../context/ParlamentoContext';
+import { EstatuaRepublica } from './EstatuaRepublica';
 import { FrenteAlmofadada, TampoComPala, Microfone, CadeiraEstofada, BORDEAUX_FUNDO } from './Mobiliario';
 
 /**
@@ -18,6 +19,15 @@ import { FrenteAlmofadada, TampoComPala, Microfone, CadeiraEstofada, BORDEAUX_FU
 
 const COR_CARVALHO       = '#8a6236';
 const COR_CARVALHO_FUNDO = '#6d4d29';
+/**
+ * O pano de fundo da presidência era castanho-escuro e ocupava toda a
+ * largura: à distância lia-se como um muro, e era a mancha mais pesada da
+ * sala. Em madeira clara acompanha o estuque das paredes e deixa respirar o
+ * que está à frente.
+ */
+const COR_PANO     = '#b39466';
+const VAO_ESTATUA  = 2.3;
+const LARGURA_PANO = (9 + 1.6 - VAO_ESTATUA) / 2;
 
 const Z_ESTRADO = 7.2;
 const ALTURA_ESTRADO = 1.8;
@@ -28,8 +38,8 @@ const Z_PULPITO = -0.6;
 const ArmasDaRepublica = () => {
   const armas = useTexture('/Coat_of_arms_of_the_Assembly_of_the_Portuguese_Republic.svg.png');
   return (
-    <mesh position={[0, ALTURA_ESTRADO + 2.3, Z_ESTRADO + 1.62]} rotation={[0, Math.PI, 0]}>
-      <planeGeometry args={[2.35, 2.35]} />
+    <mesh position={[0, ALTURA_ESTRADO + 3.05, Z_ESTRADO + 1.62]} rotation={[0, Math.PI, 0]}>
+      <planeGeometry args={[1.75, 1.75]} />
       <meshStandardMaterial map={armas} transparent alphaTest={0.05} roughness={0.5} />
     </mesh>
   );
@@ -168,11 +178,23 @@ const MesaPresidenciaComponent = () => (
     </group>
     <Microfone position={[0, 1.33, Z_PULPITO - 0.26]} />
 
-    {/* Pano de fundo da presidência, contra a parede */}
-    <mesh position={[0, ALTURA_ESTRADO + 1.8, Z_ESTRADO + 1.7]} rotation={[0, Math.PI, 0]}>
-      <planeGeometry args={[LARGURA_MESA + 1.6, 3.9]} />
-      <meshStandardMaterial color={COR_CARVALHO_FUNDO} roughness={0.7} />
-    </mesh>
+    {/* Pano de fundo da presidência, em dois panos com um vão ao meio.
+        O vão é o nicho da estátua da República, que na sala está atrás da
+        tribuna da Presidência — e é ele que justifica partir o pano em dois
+        em vez de uma parede corrida. */}
+    {[-1, 1].map((lado) => (
+      <mesh
+        key={`pano-${lado}`}
+        position={[lado * (VAO_ESTATUA / 2 + LARGURA_PANO / 2), ALTURA_ESTRADO + 1.8, Z_ESTRADO + 1.7]}
+        rotation={[0, Math.PI, 0]}
+      >
+        <planeGeometry args={[LARGURA_PANO, 3.9]} />
+        <meshStandardMaterial color={COR_PANO} roughness={0.68} />
+      </mesh>
+    ))}
+
+    {/* A estátua, no vão, sobre o estrado */}
+    <EstatuaRepublica position={[0, ALTURA_ESTRADO, Z_ESTRADO + 1.35]} escala={0.62} />
 
     <Suspense fallback={null}>
       <ArmasDaRepublica />

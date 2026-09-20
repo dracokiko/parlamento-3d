@@ -25,6 +25,7 @@ const COR_TAMPO      = '#6b462b';
 const COR_FRENTE     = '#4c3020';
 const COR_LATAO      = '#b08d3f';
 const COR_DEGRAU     = '#7a5536';
+const COR_PALA       = '#6d2233';   // bordeaux do balcão, distinto do estofo
 
 const ehPrimeiroMinistro = (cargo = '') => /^(?:vice-)?primeiro-ministr/i.test(cargo);
 
@@ -146,7 +147,9 @@ CadeiraGoverno.propTypes = {
 const SecretariaFila = ({ largura, x, y, z, lugares = [] }) => (
   <group position={[x, y, z]}>
     <group position={[0, ALTURA_SECRETARIA, 0]}>
-      <TampoComPala largura={largura} profundidade={0.52} corMadeira={COR_TAMPO} corPala={COR_CADEIRA} />
+      {/* Pala em bordeaux e não no verde das cadeiras: com a mesma cor, o
+          balcão e quem lá se senta liam-se como uma peça só. */}
+      <TampoComPala largura={largura} profundidade={0.52} corMadeira={COR_TAMPO} corPala={COR_PALA} />
     </group>
 
     <group position={[0, ALTURA_SECRETARIA / 2 + 0.04, -0.26]}>
