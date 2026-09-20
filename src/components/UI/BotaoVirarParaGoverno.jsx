@@ -119,16 +119,15 @@ export const BotaoVirarParaGoverno = () => {
       <button
         onClick={virar}
         disabled={aRodar}
-        className={`flex items-center justify-center gap-3 rounded-2xl px-5 py-3.5 shadow-xl border transition-all
-          text-sm sm:text-base font-semibold tracking-tight
+        className={`flex items-center justify-center gap-2 rounded-xl px-3 py-2 shadow-lg border transition-all
+          text-xs font-medium tracking-tight
           ${aRodar
             ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-wait'
             : 'bg-white/95 backdrop-blur text-gray-900 border-gray-200 hover:bg-white hover:shadow-2xl active:scale-[0.99]'}`}
         aria-label={aVerGoverno ? 'Rodar a sala de volta para o hemiciclo' : 'Rodar a sala para ver a bancada do Governo'}
       >
-        <RotateCw size={22} className={aRodar ? 'animate-spin text-gray-400' : 'text-gray-500'} />
-        <span>{aVerGoverno ? 'Voltar ao hemiciclo' : 'Virar para o Governo'}</span>
-        <span className="hidden sm:inline text-xs font-normal text-gray-400">180°</span>
+        <RotateCw size={15} className={aRodar ? 'animate-spin text-gray-400' : 'text-gray-500'} />
+        <span>{aVerGoverno ? 'Ver hemiciclo' : 'Ver Governo'}</span>
       </button>
     </div>
   );

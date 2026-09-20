@@ -387,6 +387,8 @@ export const ParlamentoProvider = ({ children }) => {
       return null;
     };
 
+    const ehMinistro = (cargo = '') => !/secret[áa]ri[oa]\s+de\s+estado|subsecret/i.test(cargo);
+
     return governoOficial.map((m) => {
       const chave = m.nome.toLowerCase();
       const suas = intervencoesMapa.get(chave) ?? intervencoesMapa.get(chaveAlternativa(m.nome)) ?? [];
@@ -400,8 +402,15 @@ export const ParlamentoProvider = ({ children }) => {
         intervencoes: suas.length,
         primeira: datas[0] ?? '',
         ultima: datas[datas.length - 1] ?? '',
+        ehMinistro: ehMinistro(m.cargo),
       };
-    });
+    })
+      // A bancada do Governo não tem lugar permanente para os 43 secretários
+      // de Estado: quem lá está sempre é o Primeiro-Ministro e os ministros,
+      // e um secretário de Estado desce ao plenário quando o assunto é da
+      // sua área. Sentá-los a todos era encher a sala com gente que nunca lá
+      // pôs os pés — ficam os que alguma vez usaram da palavra.
+      .filter(m => m.ehMinistro || m.intervencoes > 0);
   }, [governoOficial, membrosGoverno, intervencoesMapa]);
 
   // Memoizar o value para evitar re-renders desnecessários

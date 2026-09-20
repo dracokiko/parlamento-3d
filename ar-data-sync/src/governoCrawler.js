@@ -64,16 +64,23 @@ function normalizarCargo(cargo = '') {
 
 const ehCargo = (t = '') => /^(?:vice-)?(?:primeiro-ministr|ministr[oa]\b|secret[áa]ri[oa] de estado|subsecret)/i.test(t);
 
-/** Nome do ficheiro de retrato de uma célula, se houver. */
-function extrairRetrato(celula = '') {
-  const m = celula.match(/\[\[\s*(?:Ficheiro|File|Imagem|Image)\s*:\s*([^|\]]+)/i);
-  if (!m) return null;
-  const ficheiro = m[1].trim();
-  // Os logótipos dos ministérios também são ficheiros; o retrato é o da
-  // coluna própria, mas por segurança ignoramos o que se anuncia como logo.
-  if (/logo|bras[aã]o|ministry/i.test(ficheiro)) return null;
-  return ficheiro;
-}
+/**
+ * Ficheiros de imagem de uma célula.
+ *
+ * A célula do cargo traz o logótipo do ministério e a do retrato traz a
+ * cara — e o logótipo vem primeiro na linha. Apanhar simplesmente o primeiro
+ * ficheiro dava ministros com a bandeira do Primeiro-Ministro ou o brasão do
+ * Ministério da Economia por retrato.
+ */
+const ficheirosDaCelula = (celula = '') =>
+  [...celula.matchAll(/\[\[\s*(?:Ficheiro|File|Imagem|Image)\s*:\s*([^|\]]+)/gi)].map(m => m[1].trim());
+
+/**
+ * Um retrato é uma fotografia de pessoa. Logótipos, brasões, bandeiras e
+ * emblemas de governo não são — e no artigo aparecem todos como ficheiros.
+ */
+const pareceRetrato = (ficheiro = '') =>
+  !/logo|bras[aã]o|ministry|minist[ée]rio|flag|bandeira|governo|coat[_ ]of[_ ]arms|\.svg$/i.test(ficheiro);
 
 const fotoDoCommons = (ficheiro) =>
   `${COMMONS}/${encodeURIComponent(ficheiro.replace(/ /g, '_'))}?width=${LARGURA_FOTO}`;
@@ -111,11 +118,18 @@ function parsearTabelas(wikitexto) {
       const brutas = linha.split(/^\s*\|(?!\})/m).slice(1);
       if (brutas.length < 3) continue;
 
-      const retrato = brutas.map(extrairRetrato).find(Boolean) ?? null;
-      const limpas = brutas.map(limparWiki).filter(Boolean);
+      const limpasPorCelula = brutas.map(limparWiki);
+      const iCargo = limpasPorCelula.findIndex(ehCargo);
+      if (iCargo < 0) continue;
 
-      const cargo = limpas.find(ehCargo);
-      if (!cargo) continue;
+      // O retrato procura-se fora da célula do cargo, que é onde mora o
+      // logótipo do ministério, e tem de parecer uma pessoa.
+      const retrato = brutas
+        .flatMap((celula, i) => (i === iCargo ? [] : ficheirosDaCelula(celula)))
+        .find(pareceRetrato) ?? null;
+
+      const limpas = limpasPorCelula.filter(Boolean);
+      const cargo = limpasPorCelula[iCargo];
 
       const iPeriodo = limpas.findLastIndex(c => /\d{4}/.test(c));
       if (iPeriodo < 0) continue;
