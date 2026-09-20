@@ -9,6 +9,7 @@ import {
   calcularLugaresGoverno, distribuirPorFilas,
   ESPACO_LUGAR, ESPACO_FILA, SUBIDA_FILA, Z_PRIMEIRA_FILA, ALTURA_ESTRADO, CORREDOR,
 } from '../../utils/bancadaGoverno';
+import { FrenteAlmofadada, TampoComPala, Microfone } from './Mobiliario';
 
 /**
  * Couro verde-salva e nogueira, que é a madeira das carteiras da sala
@@ -138,35 +139,34 @@ CadeiraGoverno.propTypes = {
   rotation: PropTypes.array.isRequired,
 };
 
-/** A secretária corrida de uma fila: tampo, frente e friso de latão. */
-const SecretariaFila = ({ largura, x, y, z }) => (
+/**
+ * A secretária corrida de uma fila: tampo com pala de couro, frente
+ * almofadada virada para os deputados, e um microfone por lugar.
+ */
+const SecretariaFila = ({ largura, x, y, z, lugares = [] }) => (
   <group position={[x, y, z]}>
-    <mesh position={[0, ALTURA_SECRETARIA, 0]} castShadow receiveShadow>
-      <boxGeometry args={[largura, 0.07, 0.52]} />
-      <meshStandardMaterial color={COR_TAMPO} roughness={0.45} metalness={0.05} />
-      <Edges threshold={20} color="#2e1c10" />
-    </mesh>
+    <group position={[0, ALTURA_SECRETARIA, 0]}>
+      <TampoComPala largura={largura} profundidade={0.52} corMadeira={COR_TAMPO} corPala={COR_CADEIRA} />
+    </group>
 
-    {/* Pala de couro sobre o tampo, como nas carteiras da sala */}
-    <mesh position={[0, ALTURA_SECRETARIA + 0.037, 0.02]}>
-      <boxGeometry args={[largura - 0.18, 0.008, 0.34]} />
-      <meshStandardMaterial color={COR_CADEIRA} roughness={0.55} />
-    </mesh>
+    <group position={[0, ALTURA_SECRETARIA / 2 + 0.04, -0.26]}>
+      <FrenteAlmofadada
+        largura={largura}
+        altura={ALTURA_SECRETARIA - 0.08}
+        painéis={Math.max(1, Math.round(largura / 1.2))}
+        cor={COR_MADEIRA}
+        corFundo={COR_FRENTE}
+        friso={COR_LATAO}
+      />
+    </group>
 
-    <mesh position={[0, ALTURA_SECRETARIA / 2 + 0.04, -0.22]} castShadow>
-      <boxGeometry args={[largura, ALTURA_SECRETARIA - 0.08, 0.08]} />
-      <meshStandardMaterial color={COR_FRENTE} roughness={0.6} />
-    </mesh>
-
-    {/* Friso, a apanhar a luz como o resto da talha da sala */}
-    <mesh position={[0, ALTURA_SECRETARIA - 0.12, -0.27]}>
-      <boxGeometry args={[largura, 0.04, 0.02]} />
-      <meshStandardMaterial color={COR_LATAO} roughness={0.35} metalness={0.7} />
-    </mesh>
+    {lugares.map((dx, i) => (
+      <Microfone key={`mic-${i}`} position={[dx, ALTURA_SECRETARIA + 0.05, 0.12]} escala={0.85} />
+    ))}
   </group>
 );
 
-SecretariaFila.propTypes = { largura: PropTypes.number.isRequired, x: PropTypes.number.isRequired, y: PropTypes.number.isRequired, z: PropTypes.number.isRequired };
+SecretariaFila.propTypes = { largura: PropTypes.number.isRequired, x: PropTypes.number.isRequired, y: PropTypes.number.isRequired, z: PropTypes.number.isRequired, lugares: PropTypes.array };
 
 /**
  * A bancada do Governo — na metade da sala que o hemiciclo deixa vazia, de
@@ -211,15 +211,22 @@ const BancadaGovernoComponent = () => {
               <meshStandardMaterial color={COR_DEGRAU} roughness={0.85} />
             </mesh>
 
-            {troços.map((t, i) => (
-              <SecretariaFila
-                key={`secretaria-${fila}-${i}`}
-                largura={t.ate - t.de + 0.95}
-                x={(t.de + t.ate) / 2}
-                y={alturaDegrau}
-                z={zFila - RECUO_SECRETARIA}
-              />
-            ))}
+            {troços.map((t, i) => {
+              const centro = (t.de + t.ate) / 2;
+              // Um microfone à frente de cada lugar do troço.
+              const lugares = [];
+              for (let x = t.de; x <= t.ate + 0.01; x += ESPACO_LUGAR) lugares.push(x - centro);
+              return (
+                <SecretariaFila
+                  key={`secretaria-${fila}-${i}`}
+                  largura={t.ate - t.de + 0.95}
+                  x={centro}
+                  y={alturaDegrau}
+                  z={zFila - RECUO_SECRETARIA}
+                  lugares={lugares}
+                />
+              );
+            })}
           </group>
         );
       })}

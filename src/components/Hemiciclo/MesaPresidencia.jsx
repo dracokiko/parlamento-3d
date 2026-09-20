@@ -1,6 +1,7 @@
 import { memo, Suspense } from 'react';
 import { useTexture, Edges } from '@react-three/drei';
 import { useParlamento } from '../../context/ParlamentoContext';
+import { FrenteAlmofadada, TampoComPala, Microfone, CadeiraEstofada, BORDEAUX_FUNDO } from './Mobiliario';
 
 /**
  * A Mesa da Assembleia — o estrado da presidência, ao fundo da sala, virado
@@ -17,9 +18,6 @@ import { useParlamento } from '../../context/ParlamentoContext';
 
 const COR_CARVALHO       = '#8a6236';
 const COR_CARVALHO_FUNDO = '#6d4d29';
-const COR_TAMPO          = '#9c7643';
-const COR_LATAO          = '#b08d3f';
-const COR_ESTOFO         = '#3b2f2a';
 
 const Z_ESTRADO = 7.2;
 const ALTURA_ESTRADO = 1.8;
@@ -86,21 +84,14 @@ const LugaresDaMesa = () => {
           }}
           onPointerOut={(e) => { e.stopPropagation(); setDeputadoHover(null); document.body.style.cursor = 'default'; }}
         >
-          <mesh position={[0, 0.45, 0]} castShadow>
-            <boxGeometry args={[0.6, 0.1, 0.55]} />
-            <meshStandardMaterial color={COR_ESTOFO} roughness={0.5} />
-          </mesh>
-          <mesh position={[0, 0.9 + (presidencial ? 0.18 : 0), 0.26]} castShadow>
-            <boxGeometry args={[0.6, presidencial ? 1.15 : 0.8, 0.1]} />
-            <meshStandardMaterial color={COR_ESTOFO} roughness={0.5} />
-          </mesh>
-          {presidencial && (
-            /* Remate dourado no espaldar do Presidente */
-            <mesh position={[0, 1.52, 0.26]}>
-              <boxGeometry args={[0.62, 0.06, 0.12]} />
-              <meshStandardMaterial color={COR_LATAO} roughness={0.3} metalness={0.75} />
-            </mesh>
-          )}
+          {/* Bordeaux, como o estofo da sala; o Presidente com espaldar mais
+              alto e remate dourado. Viradas para os deputados (+Z é a
+              bancada, por isso rodam meia volta). */}
+          <CadeiraEstofada
+            rotation={[0, Math.PI, 0]}
+            altura={presidencial ? 1.15 : 0.82}
+            coroa={presidencial}
+          />
         </group>
       ))}
     </group>
@@ -124,22 +115,20 @@ const MesaPresidenciaComponent = () => (
       </mesh>
     ))}
 
-    {/* Frente da Mesa, com friso dourado */}
-    <mesh position={[0, ALTURA_ESTRADO + 0.52, Z_ESTRADO - 1.2]} castShadow>
-      <boxGeometry args={[LARGURA_MESA, 1.04, 0.22]} />
-      <meshStandardMaterial color={COR_CARVALHO} roughness={0.55} />
-      <Edges threshold={20} color="#4a3721" />
-    </mesh>
-    <mesh position={[0, ALTURA_ESTRADO + 0.86, Z_ESTRADO - 1.33]}>
-      <boxGeometry args={[LARGURA_MESA, 0.06, 0.03]} />
-      <meshStandardMaterial color={COR_LATAO} roughness={0.3} metalness={0.75} />
-    </mesh>
+    {/* Frente da Mesa, almofadada */}
+    <group position={[0, ALTURA_ESTRADO + 0.54, Z_ESTRADO - 1.24]}>
+      <FrenteAlmofadada largura={LARGURA_MESA} altura={1.08} painéis={5} />
+    </group>
 
-    {/* Tampo */}
-    <mesh position={[0, ALTURA_ESTRADO + 1.07, Z_ESTRADO - 0.75]} castShadow receiveShadow>
-      <boxGeometry args={[LARGURA_MESA, 0.09, 1.2]} />
-      <meshStandardMaterial color={COR_TAMPO} roughness={0.45} />
-    </mesh>
+    {/* Tampo com pala de couro */}
+    <group position={[0, ALTURA_ESTRADO + 1.07, Z_ESTRADO - 0.75]}>
+      <TampoComPala largura={LARGURA_MESA} profundidade={1.2} corPala={BORDEAUX_FUNDO} />
+    </group>
+
+    {/* Um microfone por lugar da Mesa */}
+    {[-3.5, -1.75, 0, 1.75, 3.5].map((x) => (
+      <Microfone key={`mic-mesa-${x}`} position={[x, ALTURA_ESTRADO + 1.12, Z_ESTRADO - 1.05]} rotation={[0, Math.PI, 0]} />
+    ))}
 
     {/* Presidente ao centro, Secretários de cada lado — ver LugaresDaMesa */}
     <LugaresDaMesa />
@@ -151,12 +140,14 @@ const MesaPresidenciaComponent = () => (
         <mesh position={[0, 0.36, 0]} castShadow receiveShadow>
           <boxGeometry args={[1.7, 0.72, 0.6]} />
           <meshStandardMaterial color={COR_CARVALHO_FUNDO} roughness={0.65} />
-          <Edges threshold={20} color="#4a3721" />
         </mesh>
-        <mesh position={[0, 0.75, 0]} castShadow>
-          <boxGeometry args={[1.8, 0.06, 0.7]} />
-          <meshStandardMaterial color={COR_TAMPO} roughness={0.45} />
-        </mesh>
+        <group position={[0, 0.4, -0.32]}>
+          <FrenteAlmofadada largura={1.7} altura={0.62} painéis={2} />
+        </group>
+        <group position={[0, 0.75, 0]}>
+          <TampoComPala largura={1.8} profundidade={0.7} />
+        </group>
+        <Microfone position={[0, 0.8, -0.18]} rotation={[0, Math.PI, 0]} escala={0.85} />
       </group>
     ))}
 
@@ -166,10 +157,16 @@ const MesaPresidenciaComponent = () => (
       <meshStandardMaterial color={COR_CARVALHO} roughness={0.55} />
       <Edges threshold={20} color="#4a3721" />
     </mesh>
-    <mesh position={[0, 1.28, Z_PULPITO]} castShadow>
-      <boxGeometry args={[1.66, 0.08, 1.02]} />
-      <meshStandardMaterial color={COR_TAMPO} roughness={0.45} />
-    </mesh>
+    {/* As quatro faces almofadadas, para o púlpito não ser um caixote */}
+    {[[0, -0.46, 0], [0, 0.46, Math.PI], [-0.76, 0, -Math.PI / 2], [0.76, 0, Math.PI / 2]].map(([dx, dz, ry], i) => (
+      <group key={`face-pulpito-${i}`} position={[dx, 0.66, Z_PULPITO + dz]} rotation={[0, ry, 0]}>
+        <FrenteAlmofadada largura={i < 2 ? 1.44 : 0.84} altura={1.06} painéis={i < 2 ? 2 : 1} />
+      </group>
+    ))}
+    <group position={[0, 1.28, Z_PULPITO]}>
+      <TampoComPala largura={1.66} profundidade={1.02} corPala={BORDEAUX_FUNDO} />
+    </group>
+    <Microfone position={[0, 1.33, Z_PULPITO - 0.26]} />
 
     {/* Pano de fundo da presidência, contra a parede */}
     <mesh position={[0, ALTURA_ESTRADO + 1.8, Z_ESTRADO + 1.7]} rotation={[0, Math.PI, 0]}>
