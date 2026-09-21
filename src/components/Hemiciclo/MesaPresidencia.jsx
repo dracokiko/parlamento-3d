@@ -1,6 +1,7 @@
 import { memo, Suspense } from 'react';
 import { useTexture, Edges } from '@react-three/drei';
 import { useParlamento } from '../../context/ParlamentoContext';
+import { useIsTouch } from '../../hooks/useIsMobile';
 import { EstatuaRepublica } from './EstatuaRepublica';
 import { FrenteAlmofadada, TampoComPala, Microfone, CadeiraEstofada, BORDEAUX_FUNDO } from './Mobiliario';
 
@@ -69,7 +70,8 @@ const ArmasDaRepublica = () => {
  * Clicar num lugar abre o perfil do deputado, porque é isso que eles são.
  */
 const LugaresDaMesa = () => {
-  const { mesaAR, deputados, selecionarDeputado, setMesaHover } = useParlamento();
+  const { mesaAR, deputados, selecionarDeputado, mesaHover, setMesaHover } = useParlamento();
+  const isTouch = useIsTouch();
 
   const presidente = mesaAR?.presidente;
   const secretarios = mesaAR?.secretarios ?? [];
@@ -87,7 +89,17 @@ const LugaresDaMesa = () => {
 
   const abrirPerfil = (membro) => {
     const dep = deputadoDe(membro);
+    setMesaHover(null);
     if (dep) selecionarDeputado(dep);
+  };
+
+  // Em ecrã de toque não há passagem do rato: o primeiro toque mostra o
+  // cartão e o segundo abre o perfil. Sem isto, tocar num lugar abria de
+  // imediato o painel, que em telemóvel é o ecrã inteiro — não se chegava a
+  // ver de quem era o lugar.
+  const tocar = (membro) => {
+    if (isTouch && mesaHover?.nome !== membro.nome) setMesaHover({ ...membro, deputado: deputadoDe(membro) });
+    else abrirPerfil(membro);
   };
 
   return (
@@ -96,17 +108,19 @@ const LugaresDaMesa = () => {
         <group
           key={`lugar-mesa-${membro.nome}`}
           position={[x, ALTURA_ESTRADO, Z_ESTRADO + 0.15]}
-          onClick={(e) => { e.stopPropagation(); abrirPerfil(membro); }}
+          onClick={(e) => { e.stopPropagation(); tocar(membro); }}
           /* Cartão próprio, pequeno e encostado ao canto (ver CartaoMesa):
              o cartão dos deputados abre ao centro do ecrã, que é onde a
              Mesa está — bastava passar por cima para tapar a vista. */
           onPointerOver={(e) => {
             e.stopPropagation();
+            if (isTouch) return;
             setMesaHover({ ...membro, deputado: deputadoDe(membro) });
             document.body.style.cursor = 'pointer';
           }}
           onPointerOut={(e) => {
             e.stopPropagation();
+            if (isTouch) return;
             setMesaHover(null);
             document.body.style.cursor = 'default';
           }}
@@ -119,6 +133,17 @@ const LugaresDaMesa = () => {
             altura={presidencial ? 1.15 : 0.82}
             coroa={presidencial}
           />
+
+          {/* Alvo de toque invisível à volta da cadeira. A Mesa está ao fundo
+              da sala: num telemóvel cada lugar ocupa poucos píxeis, e acertar
+              no espaldar com o dedo era sorte. Transparente e não invisible,
+              porque o raycaster salta o que está invisible. */}
+          {isTouch && (
+            <mesh position={[0, 0.7, -0.1]}>
+              <boxGeometry args={[1.45, 1.7, 1.1]} />
+              <meshBasicMaterial transparent opacity={0} depthWrite={false} />
+            </mesh>
+          )}
         </group>
       ))}
     </group>

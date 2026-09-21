@@ -88,15 +88,15 @@ const TelaCarregamento = () => {
 
   return (
     <div
-      className="fixed inset-0 z-[9999] flex items-center justify-center bg-[#1a1a2e] transition-opacity duration-700 overflow-y-auto"
+      className="fixed inset-0 z-[9999] flex justify-center bg-[#1a1a2e] transition-opacity duration-700 overflow-y-auto"
       style={{ opacity: tudoCarregado ? 0 : 1, pointerEvents: tudoCarregado ? 'none' : 'all' }}
     >
-      <div className="w-full max-w-lg px-8 py-10 text-center">
+      <div className="m-auto w-full max-w-lg px-6 sm:px-8 py-10 text-center">
         <img
           src="/logo_com_nome.png"
           alt="Parlamento 3D"
           className="mx-auto mb-6"
-          style={{ width: '240px', height: 'auto', opacity: 0.92 }}
+          style={{ width: 'min(240px, 70vw)', height: 'auto', opacity: 0.92 }}
         />
 
         {/*

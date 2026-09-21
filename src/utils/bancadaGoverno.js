@@ -1,3 +1,5 @@
+import { RAIO_INTERNO, ESPACAMENTO_FILA, NUM_FILAS, ALTURA_DEGRAU } from './posicoes3D';
+
 /**
  * Geometria da bancada do Governo.
  *
@@ -47,7 +49,7 @@ export const CORREDOR = 1.7;
  * Fixa, e não "o que lá estiver rodado 180°": rodar a câmara onde o
  * utilizador a tivesse deixado dava vistas de cima, que é tudo menos olhar
  * alguém de frente. Em unidades de cena — em ecrãs pequenos a cena é
- * ampliada e estes valores acompanham (ver escalaDaVista).
+ * ampliada e a vista acompanha (ver vistaDaBancada).
  */
 export const VISTA_GOVERNO = {
   // Dentro da sala: a parede (raio 17) é opaca dos dois lados, e a câmara
@@ -56,11 +58,36 @@ export const VISTA_GOVERNO = {
   alvo:   [0, 1.4, 2.6],
 };
 
-/** A cena é ampliada em ecrãs estreitos; a vista tem de crescer com ela. */
-export const escalaDaVista = (vista, escala) => ({
-  camera: vista.camera.map(v => v * escala),
-  alvo:   vista.alvo.map(v => v * escala),
-});
+/**
+ * A sala, para a câmara não sair dela.
+ *
+ * Os mesmos números de EstruturaHemiciclo: a parede fica uma unidade para lá
+ * da última fila, e é opaca dos dois lados — uma câmara do lado de fora vê o
+ * reverso do estuque em vez do plenário.
+ */
+const RAIO_PAREDE   = RAIO_INTERNO + NUM_FILAS * ESPACAMENTO_FILA + 1.0;
+const ALTURA_PAREDE = (NUM_FILAS - 1) * ALTURA_DEGRAU + 4.2;
+
+/**
+ * Até onde a câmara pode recuar numa direção sem atravessar a parede ou o
+ * tecto, a partir do alvo.
+ */
+function recuoMaximo(alvo, direcao, escala) {
+  const raio   = RAIO_PAREDE * escala * 0.94;
+  const altura = ALTURA_PAREDE * escala - 0.6 * escala;
+
+  // Parede: raiz positiva de |alvo + direção·t| = raio, no plano horizontal.
+  const a = direcao[0] ** 2 + direcao[2] ** 2;
+  const b = 2 * (alvo[0] * direcao[0] + alvo[2] * direcao[2]);
+  const c = alvo[0] ** 2 + alvo[2] ** 2 - raio ** 2;
+  const disc = b * b - 4 * a * c;
+  const ateParede = (a > 1e-6 && disc > 0) ? (-b + Math.sqrt(disc)) / (2 * a) : Infinity;
+
+  // Tecto: a vista sobe à medida que recua.
+  const ateTecto = direcao[1] > 1e-6 ? (altura - alvo[1]) / direcao[1] : Infinity;
+
+  return Math.max(0, Math.min(ateParede, ateTecto));
+}
 
 /**
  * Distribui `total` lugares por filas: a da frente é a primeira a encher,
@@ -121,6 +148,61 @@ export function calcularLugaresGoverno(total) {
   });
 
   return lugares;
+}
+
+/**
+ * A vista de frente para a bancada, enquadrada para o ecrã que a vai mostrar.
+ *
+ * A vista fixa acima foi medida em ecrã largo (campo de visão de 48°,
+ * paisagem). Em telemóvel a câmara abre 90° na vertical mas o ecrã é
+ * estreito, o que deixa *menos* campo na horizontal — e a bancada é larga.
+ * Multiplicar a vista pela escala da cena, que era o que se fazia, mantinha
+ * o tamanho angular do desktop e cortava as pontas das filas.
+ *
+ * Aqui a direção do olhar é a mesma; só a distância é calculada a partir do
+ * campo de visão real, e nunca encurta a vista de origem.
+ *
+ * @param {number} total   lugares na bancada (define a largura a enquadrar)
+ * @param {number} escala  escala da cena (1 em desktop, maior em ecrã estreito)
+ * @param {number} fov     campo de visão vertical da câmara, em graus
+ * @param {number} aspect  largura/altura do canvas
+ * @param {number} limite  distância máxima permitida pelos controlos
+ */
+export function vistaDaBancada({ total, escala = 1, fov = 48, aspect = 1.6, limite = Infinity }) {
+  const alvo = VISTA_GOVERNO.alvo.map(v => v * escala);
+  const camaraBase = VISTA_GOVERNO.camera.map(v => v * escala);
+
+  const vetor = camaraBase.map((v, i) => v - alvo[i]);
+  const distanciaBase = Math.hypot(...vetor);
+  if (!distanciaBase) return { camera: camaraBase, alvo };
+  const direcao = vetor.map(v => v / distanciaBase);
+
+  const filas = distribuirPorFilas(total);
+  const porFila = filas.length ? Math.max(...filas) : MAX_POR_FILA;
+  // Meia largura da fila maior, com o corredor e uma margem para as pontas
+  // não ficarem coladas à borda.
+  const meiaLargura = ((porFila / 2) * ESPACO_LUGAR + CORREDOR / 2 + 1.4) * escala;
+  // Da base do estrado ao topo dos espaldares da última fila.
+  const meiaAltura = (ALTURA_ESTRADO + filas.length * SUBIDA_FILA + 1.5) * escala;
+
+  const vertical = (fov * Math.PI) / 180;
+  const horizontal = 2 * Math.atan(Math.tan(vertical / 2) * aspect);
+  const precisa = Math.max(
+    meiaLargura / Math.tan(horizontal / 2),
+    meiaAltura / Math.tan(vertical / 2),
+  );
+
+  // Nunca mais perto do que a vista de origem, nem para lá do que os
+  // controlos deixam — nem, sobretudo, fora da sala: num ecrã muito estreito
+  // a largura pedida passa a profundidade que a sala tem, e o que se ganhava
+  // em enquadramento perdia-se a ver o hemiciclo por detrás da parede.
+  const distancia = Math.min(
+    Math.max(distanciaBase, precisa),
+    limite,
+    recuoMaximo(alvo, direcao, escala),
+  );
+
+  return { camera: alvo.map((v, i) => v + direcao[i] * distancia), alvo };
 }
 
 /** Centro da bancada — para a câmara poder focá-la. */

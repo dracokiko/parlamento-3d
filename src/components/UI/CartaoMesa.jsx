@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { MapPin } from 'lucide-react';
 import { useParlamento } from '../../context/ParlamentoContext';
+import { useIsMobile, useIsTouch } from '../../hooks/useIsMobile';
 import { getCorPartido } from '../../data/mockPartidos';
 import { obterIniciais } from '../../utils/formatters';
 
@@ -12,6 +13,14 @@ const TITULO = {
   'Vice-Secretário': 'Vice-Secretário da Mesa',
 };
 
+/** O mesmo, à medida de um ecrã de telemóvel — por extenso era reticências. */
+const TITULO_CURTO = {
+  'Presidente': 'Presidente da AR',
+  'Vice-Presidente': 'Vice-Presidente',
+  'Secretário': 'Secretário da Mesa',
+  'Vice-Secretário': 'Vice-Secretário',
+};
+
 /**
  * Cartão de quem está sob o rato na Mesa.
  *
@@ -21,21 +30,40 @@ const TITULO = {
  * exactamente o que se está a olhar.
  */
 export const CartaoMesa = () => {
-  const { mesaHover } = useParlamento();
+  const { mesaHover, setMesaHover, deputadoSelecionado, governanteSelecionado, selecionarDeputado } = useParlamento();
+  const isTouch = useIsTouch();
+  const isMobile = useIsMobile();
   // Guarda-se o retrato que falhou, e não um sim/não: senão a primeira
   // fotografia em falta escondia as dos lugares seguintes.
   const [fotoEmFalta, setFotoEmFalta] = useState(null);
 
-  if (!mesaHover) return null;
+  // Com um painel aberto não há cartão: em telemóvel o painel é o ecrã todo, e
+  // o cartão ficava por baixo dele à espera de um onPointerOut que não vem.
+  if (!mesaHover || deputadoSelecionado || governanteSelecionado) return null;
 
   const { nome, cargo, partido, deputado } = mesaHover;
   const sigla = deputado?.partido ?? partido;
   const cor = getCorPartido(sigla);
   const foto = deputado?.foto;
 
+  const abrir = () => {
+    if (!isTouch || !deputado) return;
+    setMesaHover(null);
+    selecionarDeputado(deputado);
+  };
+
   return (
-    <div className="absolute bottom-5 left-20 z-30 pointer-events-none max-w-[calc(100%-6rem)]">
-      <div className="relative flex items-center gap-3 bg-white/95 backdrop-blur-md rounded-2xl shadow-xl border border-gray-200/80 pl-3 pr-4 py-2 overflow-hidden">
+    /* Em ecrã largo fica ao lado dos controlos da câmara, no canto. Em
+       telemóvel esses controlos não existem, mas o botão "Ver Governo" ocupa
+       o canto oposto: aí o cartão sobe uma linha e usa a largura toda, em vez
+       de ficar espremido a meia dúzia de letras ao lado do botão. */
+    <div
+      className={`absolute z-30 bottom-16 left-3 right-3 md:bottom-5 md:left-20 md:right-auto md:max-w-[19rem]
+        ${isTouch ? '' : 'pointer-events-none'}`}
+    >
+      <div
+        onClick={abrir}
+        className="relative flex items-center gap-3 bg-white/95 backdrop-blur-md rounded-2xl shadow-xl border border-gray-200/80 pl-3 pr-4 py-2 overflow-hidden">
         <span className="absolute left-0 top-0 h-full w-1" style={{ background: cor }} />
 
         {foto && foto !== fotoEmFalta ? (
@@ -56,7 +84,9 @@ export const CartaoMesa = () => {
 
         <div className="min-w-0">
           <p className="text-[13px] font-semibold text-gray-900 leading-tight truncate">{nome}</p>
-          <p className="text-[11px] text-gray-500 leading-snug truncate">{TITULO[cargo] ?? cargo}</p>
+          <p className="text-[11px] text-gray-500 leading-snug truncate">
+            {(isMobile ? TITULO_CURTO[cargo] : TITULO[cargo]) ?? cargo}
+          </p>
           <div className="flex items-center gap-2 mt-0.5">
             {sigla && (
               <span className="text-[10px] font-semibold rounded-full px-1.5 py-px" style={{ background: `${cor}1a`, color: cor }}>
@@ -71,6 +101,10 @@ export const CartaoMesa = () => {
           </div>
         </div>
       </div>
+
+      {isTouch && deputado && (
+        <p className="text-[10px] text-gray-500 mt-1 ml-1">tocar para abrir</p>
+      )}
     </div>
   );
 };

@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { RotateCw } from 'lucide-react';
 import { useParlamento } from '../../context/ParlamentoContext';
 import { useIsMobile, useIsTabletPortrait } from '../../hooks/useIsMobile';
-import { VISTA_GOVERNO, escalaDaVista } from '../../utils/bancadaGoverno';
+import { vistaDaBancada } from '../../utils/bancadaGoverno';
 
 /** Duração da volta. Devagar o suficiente para se perceber que a sala girou. */
 const DURACAO_MS = 1400;
@@ -105,7 +105,19 @@ export const BotaoVirarParaGoverno = () => {
       alvo:   controlos.target.toArray(),
     };
     setVistaGoverno(true);
-    animarAte(escalaDaVista(VISTA_GOVERNO, escala), () => setAVerGoverno(true));
+    // A distância sai do campo de visão da câmara que está em uso: em ecrã
+    // estreito a mesma vista mostra menos largura, e a bancada é larga.
+    const camara = controlos.object;
+    animarAte(
+      vistaDaBancada({
+        total: membrosGoverno.length,
+        escala,
+        fov: camara.fov,
+        aspect: camara.aspect,
+        limite: controlos.maxDistance,
+      }),
+      () => setAVerGoverno(true),
+    );
   };
 
   // Sem ninguém na bancada não há nada para onde virar. Com um painel aberto

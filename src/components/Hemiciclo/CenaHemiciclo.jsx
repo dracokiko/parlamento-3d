@@ -24,7 +24,7 @@ const SinalPronto = () => {
 const BG = '#f0f4f8';
 
 export const CenaHemiciclo = () => {
-  const { deputados, posicoes3D, setDeputadoHover, cameraControlsRef } = useParlamento();
+  const { deputados, posicoes3D, setDeputadoHover, setMesaHover, setGovernanteHover, cameraControlsRef } = useParlamento();
   const isMobile = useIsMobile();
   const isTabletPortrait = useIsTabletPortrait();
   const isTouch = useIsTouch();
@@ -59,7 +59,13 @@ export const CenaHemiciclo = () => {
       gl={{ antialias: true, alpha: false }}
       style={{ background: BG }}
       onCreated={({ gl }) => gl.setClearColor(BG, 1)}
-      onPointerMissed={() => { if (isTouch) setDeputadoHover(null); }}
+      onPointerMissed={() => {
+        // Em toque não há onPointerOut: sem isto o cartão ficava preso no ecrã.
+        if (!isTouch) return;
+        setDeputadoHover(null);
+        setMesaHover(null);
+        setGovernanteHover(null);
+      }}
       aria-label="Visualização 3D do hemiciclo da Assembleia da República"
     >
       <Suspense fallback={null}>
