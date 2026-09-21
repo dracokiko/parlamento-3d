@@ -29,11 +29,18 @@ const COR_PANO     = '#b39466';
 const VAO_ESTATUA  = 2.3;
 const LARGURA_PANO = (9 + 1.6 - VAO_ESTATUA) / 2;
 
-const Z_ESTRADO = 7.2;
+const Z_ESTRADO = 5.6;   // encostado à bancada: a 7,2 sobravam 4 m de chão vazio pelo meio
 const ALTURA_ESTRADO = 1.8;
 const LARGURA_MESA = 9;
 /** O púlpito fica à frente de tudo, no piso do plenário e virado para os deputados. */
 const Z_PULPITO = -0.6;
+
+/** Escadaria central de acesso à Mesa, no eixo do corredor da bancada. */
+const DEGRAUS        = 4;
+const FUNDO_DEGRAU   = 0.34;
+const Z_PE_ESCADA    = Z_ESTRADO - 1.6 - DEGRAUS * FUNDO_DEGRAU;
+const COR_PASSADEIRA = '#6d2233';
+const COR_LATAO_MESA = '#b08d3f';
 
 const ArmasDaRepublica = () => {
   const armas = useTexture('/Coat_of_arms_of_the_Assembly_of_the_Portuguese_Republic.svg.png');
@@ -117,6 +124,12 @@ const MesaPresidenciaComponent = () => (
       <Edges threshold={20} color="#4a3721" />
     </mesh>
 
+    {/* Frente do estrado, almofadada como o resto da marcenaria: era uma
+        face lisa de quase dois metros, a maior mancha cega da sala. */}
+    <group position={[0, ALTURA_ESTRADO / 2, Z_ESTRADO - 1.66]}>
+      <FrenteAlmofadada largura={LARGURA_MESA + 2.4} altura={ALTURA_ESTRADO - 0.12} painéis={7} cor={COR_CARVALHO} />
+    </group>
+
     {/* Degraus laterais de acesso */}
     {[-1, 1].map((lado) => (
       <mesh key={`degrau-mesa-${lado}`} position={[lado * (LARGURA_MESA / 2 + 1.6), ALTURA_ESTRADO / 4, Z_ESTRADO - 0.4]} receiveShadow>
@@ -124,6 +137,38 @@ const MesaPresidenciaComponent = () => (
         <meshStandardMaterial color={COR_CARVALHO_FUNDO} roughness={0.75} />
       </mesh>
     ))}
+
+    {/* Escadaria central, alinhada com o corredor da bancada: é ela que liga
+        o piso do plenário à Mesa e fecha o vazio que ficava pelo meio. */}
+    {Array.from({ length: DEGRAUS }).map((_, i) => {
+      const altura = (ALTURA_ESTRADO / DEGRAUS) * (i + 1);
+      const z = Z_ESTRADO - 1.6 - (DEGRAUS - i - 0.5) * FUNDO_DEGRAU;
+      return (
+        <group key={`degrau-central-${i}`}>
+          <mesh position={[0, altura / 2, z]} receiveShadow castShadow>
+            <boxGeometry args={[2.6, altura, FUNDO_DEGRAU]} />
+            <meshStandardMaterial color={COR_CARVALHO_FUNDO} roughness={0.7} />
+            <Edges threshold={25} color="#4a3721" />
+          </mesh>
+          {/* Focinho dourado a marcar o degrau, e passadeira por cima */}
+          <mesh position={[0, altura + 0.014, z - FUNDO_DEGRAU / 2 + 0.04]}>
+            <boxGeometry args={[2.6, 0.03, 0.07]} />
+            <meshStandardMaterial color={COR_LATAO_MESA} roughness={0.35} metalness={0.7} />
+          </mesh>
+          <mesh position={[0, altura + 0.016, z]}>
+            <boxGeometry args={[1.5, 0.014, FUNDO_DEGRAU - 0.08]} />
+            <meshStandardMaterial color={COR_PASSADEIRA} roughness={0.85} />
+          </mesh>
+        </group>
+      );
+    })}
+
+    {/* Passadeira no piso, do púlpito à escadaria: é por este eixo que se
+        sobe à tribuna, e é o que dá uso ao chão que estava vazio. */}
+    <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.02, (Z_PULPITO + Z_PE_ESCADA) / 2]}>
+      <planeGeometry args={[1.5, Z_PE_ESCADA - Z_PULPITO]} />
+      <meshStandardMaterial color={COR_PASSADEIRA} roughness={0.88} />
+    </mesh>
 
     {/* Frente da Mesa, almofadada */}
     <group position={[0, ALTURA_ESTRADO + 0.54, Z_ESTRADO - 1.24]}>

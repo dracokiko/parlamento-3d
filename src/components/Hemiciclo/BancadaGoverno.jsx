@@ -197,22 +197,36 @@ const BancadaGovernoComponent = () => {
       {filas.map((nesta, fila) => {
         const alturaDegrau = ALTURA_ESTRADO + fila * SUBIDA_FILA;
         const zFila = Z_PRIMEIRA_FILA + fila * ESPACO_FILA;
-        // A secretária parte-se em duas ao corredor central, como os lugares.
+        // A secretária parte-se em duas ao corredor central, como os lugares,
+        // e cada troço vai do corredor até ao último lugar do seu lado.
         const metade = Math.ceil(nesta / 2);
-        const larguraFila = (nesta - 1) * ESPACO_LUGAR + CORREDOR;
-        const xInicio = -larguraFila / 2;
+        const extremo = (quantos) => CORREDOR / 2 + (quantos - 0.5) * ESPACO_LUGAR;
         const troços = [
-          { de: xInicio, ate: xInicio + (metade - 1) * ESPACO_LUGAR },
-          { de: xInicio + metade * ESPACO_LUGAR + CORREDOR, ate: xInicio + (nesta - 1) * ESPACO_LUGAR + CORREDOR },
+          { de: -extremo(metade), ate: -(CORREDOR / 2 + ESPACO_LUGAR / 2) },
+          { de: CORREDOR / 2 + ESPACO_LUGAR / 2, ate: extremo(nesta - metade) },
         ].filter(t => t.ate >= t.de);
 
         return (
           <group key={`fila-governo-${fila}`}>
-            {/* Degrau: nasce no chão e sobe até à fila, como as bancadas em frente */}
-            <mesh position={[0, alturaDegrau / 2, zFila - 0.25]} receiveShadow castShadow>
-              <boxGeometry args={[larguraMaior, alturaDegrau, ESPACO_FILA + 0.2]} />
-              <meshStandardMaterial color={COR_DEGRAU} roughness={0.85} />
-            </mesh>
+            {/* Degrau: nasce no chão e sobe até à fila, como as bancadas em
+                frente. Em dois blocos, para o corredor central ficar ao
+                nível do piso — é por lá que se passa, e é lá que assenta a
+                passadeira que leva à escadaria da Mesa. */}
+            {[-1, 1].map((lado) => {
+              const largura = (larguraMaior - CORREDOR) / 2;
+              return (
+                <mesh
+                  key={`degrau-${fila}-${lado}`}
+                  position={[lado * (CORREDOR / 2 + largura / 2), alturaDegrau / 2, zFila - 0.25]}
+                  receiveShadow
+                  castShadow
+                >
+                  <boxGeometry args={[largura, alturaDegrau, ESPACO_FILA + 0.2]} />
+                  <meshStandardMaterial color={COR_DEGRAU} roughness={0.85} />
+                  <Edges threshold={30} color="#5b4227" />
+                </mesh>
+              );
+            })}
 
             {troços.map((t, i) => {
               const centro = (t.de + t.ate) / 2;

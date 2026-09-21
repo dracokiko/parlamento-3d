@@ -95,15 +95,18 @@ export function calcularLugaresGoverno(total) {
   filas.forEach((nesta, fila) => {
     const z = Z_PRIMEIRA_FILA + fila * ESPACO_FILA;
     const y = ALTURA_ESTRADO + fila * SUBIDA_FILA;
-    const larguraFila = (nesta - 1) * ESPACO_LUGAR + CORREDOR;
-    const metade = Math.ceil(nesta / 2);
 
+    // Os lugares contam-se a partir do corredor para fora, e não de uma
+    // ponta à outra: só assim o corredor fica exactamente no eixo da sala
+    // mesmo em filas ímpares. Contado à antiga, a fila de nove deixava uma
+    // cadeira em cima da abertura.
     const daFila = [];
+    const metade = Math.ceil(nesta / 2);
     for (let i = 0; i < nesta; i++) {
-      // O corredor abre-se ao meio da fila; a segunda metade desloca-se.
-      const passo = i * ESPACO_LUGAR + (i >= metade ? CORREDOR : 0);
+      const lado = i < metade ? -1 : 1;
+      const ordem = i < metade ? i : i - metade;
       daFila.push({
-        position: [-larguraFila / 2 + passo, y, z],
+        position: [lado * (CORREDOR / 2 + (ordem + 0.5) * ESPACO_LUGAR), y, z],
         // Viradas para o hemiciclo, que está todo em Z negativo.
         rotation: [0, Math.PI, 0],
         fila,
