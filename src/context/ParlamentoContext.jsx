@@ -412,21 +412,6 @@ export const ParlamentoProvider = ({ children }) => {
       .filter(m => m.ehMinistro);
   }, [governoOficial, membrosGoverno, intervencoesMapa]);
 
-  /**
-   * O que já chegou, recurso a recurso. O ecrã de carregamento mostra isto:
-   * uma barra que anda porque alguma coisa aconteceu vale mais do que um
-   * anel a rodar, que tanto pode significar progresso como bloqueio.
-   */
-  const progresso = useMemo(() => ({
-    deputados:   !carregando,
-    perfis:      perfisProntos,
-    intervencoes: intervencoesProntas,
-    iniciativas: iniciativasProntas,
-    biografias:  biografiasProntas,
-    presencas:   presencasProntas,
-    cena:        cena3DPronta,
-  }), [carregando, perfisProntos, intervencoesProntas, iniciativasProntas, biografiasProntas, presencasProntas, cena3DPronta]);
-
   // Memoizar o value para evitar re-renders desnecessários
   const value = useMemo(() => ({
     // Dados
