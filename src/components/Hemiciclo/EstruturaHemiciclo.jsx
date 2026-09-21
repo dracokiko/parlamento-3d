@@ -59,7 +59,9 @@ const COR_PAREDE   = '#e7ddc9';
 const COR_CARVALHO = '#8a6236'; // lambril e mobiliário, em carvalho
 const COR_CORNIJA = '#a07830';
 const COR_TECTO   = '#f2ece0';
-const COR_VIDRO   = '#fbf7e8'; // vidro da claraboia, aceso de dia
+const COR_VIDRO    = '#fdf8ea'; // vidro da claraboia, aceso de dia
+const COR_FERRO    = '#8a7f6d'; // caixilharia
+const COR_CAIXOTAO = '#e6dfd0'; // almofadas do tecto
 const DOUBLE_SIDE = 2;
 
 // 250° centrado no fundo (cilindros): thetaStart=55°, length=250°
@@ -67,6 +69,16 @@ const WALL_THETA_START  = Math.PI / 2 - 7 * Math.PI / 36;
 const WALL_THETA_LENGTH = 25 * Math.PI / 18;
 
 // 250° equivalente para ringGeometry (após rotação [-π/2,0,0])
+const RAIO_VIDRO = RAIO_INTERNO - 1.6;
+/**
+ * A claraboia é uma abóbada de flecha baixa, não uma meia esfera: sobe 90 cm
+ * sobre um vão de 5,4 m de raio. Daí a esfera de onde se corta a calote ser
+ * tão grande — R = (r² + f²) / 2f, com a calote a acabar exactamente no aro.
+ */
+const FLECHA_CALOTE = 0.9;
+const RAIO_CALOTE   = (RAIO_VIDRO ** 2 + FLECHA_CALOTE ** 2) / (2 * FLECHA_CALOTE);
+const THETA_CALOTE  = Math.asin(RAIO_VIDRO / RAIO_CALOTE);
+
 const RING_THETA_START  = -7 * Math.PI / 36;
 const RING_THETA_LENGTH = 25 * Math.PI / 18;
 
@@ -310,30 +322,68 @@ const EstruturaHemicicloComponent = () => {
           <meshStandardMaterial color={COR_TECTO} roughness={0.9} side={THREE.FrontSide} />
         </mesh>
 
-        {/* Vidro, ligeiramente acima do plano do tecto */}
-        <mesh rotation={[Math.PI / 2, 0, 0]} position={[0, WALL_HEIGHT + 0.25, 0]}>
-          <circleGeometry args={[RAIO_INTERNO - 1.1, 64]} />
-          <meshStandardMaterial color={COR_VIDRO} emissive={COR_VIDRO} emissiveIntensity={0.55} roughness={0.2} side={THREE.FrontSide} />
+        {/* Vidro, numa calote ligeiramente abobadada em vez de um disco
+            plano: a claraboia real é uma cúpula, e uma tampa lisa lia-se
+            como um alçapão branco no tecto. */}
+        <mesh position={[0, WALL_HEIGHT - 0.12 - RAIO_CALOTE * Math.cos(THETA_CALOTE), 0]}>
+          <sphereGeometry args={[RAIO_CALOTE, 48, 16, 0, Math.PI * 2, 0, THETA_CALOTE]} />
+          <meshStandardMaterial
+            color={COR_VIDRO}
+            emissive={COR_VIDRO}
+            emissiveIntensity={0.5}
+            roughness={0.25}
+            side={THREE.BackSide}
+          />
         </mesh>
 
-        {/* Caixilharia de ferro — dois sentidos, como na sala */}
-        {Array.from({ length: 7 }).map((_, i) => {
-          const passo = (2 * (RAIO_INTERNO - 1.1)) / 8;
-          const desvio = -(RAIO_INTERNO - 1.1) + (i + 1) * passo;
-          const meia = Math.sqrt(Math.max((RAIO_INTERNO - 1.1) ** 2 - desvio ** 2, 0));
+        {/* Caixilharia radial, como um leque, e dois anéis a travá-la —
+            era uma grelha ortogonal, que num tecto redondo não assenta. */}
+        {Array.from({ length: 16 }).map((_, i) => {
+          const angulo = (i / 16) * Math.PI * 2;
           return (
-            <group key={`caixilho-${i}`}>
-              <mesh rotation={[Math.PI / 2, 0, 0]} position={[desvio, WALL_HEIGHT + 0.18, 0]}>
-                <planeGeometry args={[0.07, meia * 2]} />
-                <meshStandardMaterial color="#6b6257" roughness={0.6} metalness={0.4} side={THREE.FrontSide} />
-              </mesh>
-              <mesh rotation={[Math.PI / 2, 0, 0]} position={[0, WALL_HEIGHT + 0.18, desvio]}>
-                <planeGeometry args={[meia * 2, 0.07]} />
-                <meshStandardMaterial color="#6b6257" roughness={0.6} metalness={0.4} side={THREE.FrontSide} />
-              </mesh>
-            </group>
+            <mesh
+              key={`nervura-${i}`}
+              rotation={[Math.PI / 2, 0, -angulo]}
+              position={[Math.cos(angulo) * RAIO_VIDRO / 2, WALL_HEIGHT - 0.1, Math.sin(angulo) * RAIO_VIDRO / 2]}
+            >
+              <planeGeometry args={[RAIO_VIDRO, 0.05]} />
+              <meshStandardMaterial color={COR_FERRO} roughness={0.5} metalness={0.55} side={THREE.FrontSide} />
+            </mesh>
           );
         })}
+        {[0.42, 0.78].map((fraccao) => (
+          <mesh key={`anel-vidro-${fraccao}`} rotation={[Math.PI / 2, 0, 0]} position={[0, WALL_HEIGHT - 0.1, 0]}>
+            <ringGeometry args={[RAIO_VIDRO * fraccao - 0.025, RAIO_VIDRO * fraccao + 0.025, 64]} />
+            <meshStandardMaterial color={COR_FERRO} roughness={0.5} metalness={0.55} side={THREE.FrontSide} />
+          </mesh>
+        ))}
+
+        {/* Aro dourado a rematar a abertura, e uma moldura de estuque à volta */}
+        <mesh rotation={[Math.PI / 2, 0, 0]} position={[0, WALL_HEIGHT - 0.08, 0]}>
+          <ringGeometry args={[RAIO_VIDRO, RAIO_VIDRO + 0.22, 64]} />
+          <meshStandardMaterial color={COR_CORNIJA} roughness={0.35} metalness={0.7} side={THREE.FrontSide} />
+        </mesh>
+        <mesh rotation={[Math.PI / 2, 0, 0]} position={[0, WALL_HEIGHT - 0.07, 0]}>
+          <ringGeometry args={[RAIO_VIDRO + 0.22, RAIO_VIDRO + 0.95, 64]} />
+          <meshStandardMaterial color={COR_TECTO} roughness={0.92} side={THREE.FrontSide} />
+        </mesh>
+
+        {/* Caixotões: dois anéis de almofadas, a dar relevo ao tecto liso */}
+        {[{ raio: RAIO_VIDRO + 1.5, quantos: 24 }, { raio: RAIO_VIDRO + 3.1, quantos: 32 }].map(({ raio, quantos }) => (
+          Array.from({ length: quantos }).map((_, i) => {
+            const angulo = (i / quantos) * Math.PI * 2;
+            return (
+              <mesh
+                key={`caixotao-${raio}-${i}`}
+                rotation={[Math.PI / 2, 0, -angulo]}
+                position={[Math.cos(angulo) * raio, WALL_HEIGHT - 0.09, Math.sin(angulo) * raio]}
+              >
+                <planeGeometry args={[1.1, 0.72]} />
+                <meshStandardMaterial color={COR_CAIXOTAO} roughness={0.95} side={THREE.FrontSide} />
+              </mesh>
+            );
+          })
+        ))}
 
         {/* A luz que entra por ela */}
         <pointLight position={[0, WALL_HEIGHT - 0.6, 0]} intensity={0.9} color="#fff6e0" distance={34} decay={2} />

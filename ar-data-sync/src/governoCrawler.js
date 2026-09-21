@@ -85,6 +85,47 @@ const pareceRetrato = (ficheiro = '') =>
 const fotoDoCommons = (ficheiro) =>
   `${COMMONS}/${encodeURIComponent(ficheiro.replace(/ /g, '_'))}?width=${LARGURA_FOTO}`;
 
+/**
+ * URL real de cada retrato, perguntado à Wikipédia.
+ *
+ * Montar o endereço do Commons à mão falha sempre que o ficheiro está
+ * alojado na própria Wikipédia portuguesa e não no repositório comum — foi
+ * o caso do retrato do ministro da Educação, que dava 404 enquanto os
+ * outros dezasseis funcionavam. A API resolve os dois casos e já devolve a
+ * miniatura na largura pedida.
+ */
+async function resolverRetratos(ficheiros) {
+  const porFicheiro = new Map();
+  const lista = [...new Set(ficheiros.filter(Boolean))];
+  // O artigo escreve uns ficheiros com espaços e outros com sublinhados
+  // ("Fernando_Alexandre.jpg"), e a API devolve sempre o título com
+  // espaços. Sem uniformizar, o retrato resolvido não chegava a ser
+  // encontrado na consulta — que foi exactamente o que aconteceu.
+  const chave = (f = '') => f.replace(/_/g, ' ').trim();
+
+  for (let i = 0; i < lista.length; i += 40) {
+    const lote = lista.slice(i, i + 40);
+    const titulos = lote.map(f => `Ficheiro:${f}`).join('|');
+    const url = `${API}?action=query&titles=${encodeURIComponent(titulos)}&prop=imageinfo&iiprop=url&iiurlwidth=${LARGURA_FOTO}&format=json&formatversion=2`;
+
+    try {
+      const res = await fetch(url, {
+        headers: { 'User-Agent': 'parlamento-3d (github.com/dracokiko/parlamento-3d)' },
+        signal: AbortSignal.timeout(60_000),
+      });
+      const j = await res.json();
+      for (const pagina of j?.query?.pages ?? []) {
+        const miniatura = pagina?.imageinfo?.[0]?.thumburl ?? pagina?.imageinfo?.[0]?.url;
+        if (miniatura) porFicheiro.set(chave(pagina.title.replace(/^Ficheiro:/, '')), miniatura.split('?')[0]);
+      }
+    } catch (err) {
+      console.warn(`  ⚠ não foi possível resolver ${lote.length} retratos (${err.message}) — a usar o endereço do Commons`);
+    }
+  }
+
+  return porFicheiro;
+}
+
 /** "5 de junho de 2025 – presente" → { inicio, fim, emFuncoes } */
 function lerPeriodo(texto = '') {
   const limpo = limparWiki(texto);
@@ -180,6 +221,7 @@ export async function syncGoverno({ dry = false } = {}) {
 
   const wikitexto = await obterWikitexto(ARTIGO_GOVERNO);
   const crus = parsearTabelas(wikitexto);
+  const retratos = await resolverRetratos(crus.map(m => m.retrato));
 
   // O Primeiro-Ministro à cabeça; a ordem das tabelas é a ordem de
   // precedência do artigo, que segue a dos decretos de nomeação.
@@ -188,7 +230,7 @@ export async function syncGoverno({ dry = false } = {}) {
     nome: m.nome,
     cargo: m.cargo,
     partido: m.partido,
-    foto_url: m.retrato ? fotoDoCommons(m.retrato) : null,
+    foto_url: m.retrato ? (retratos.get(m.retrato.replace(/_/g, ' ').trim()) ?? fotoDoCommons(m.retrato)) : null,
     ordem: /primeiro-ministr/i.test(m.cargo) ? 0 : i + 1,
     inicio: m.inicio,
     fim: m.fim,
