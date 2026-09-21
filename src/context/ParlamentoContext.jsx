@@ -321,6 +321,11 @@ export const ParlamentoProvider = ({ children }) => {
   const [governanteSelecionado, setGovernanteSelecionado] = useState(null);
   const [governanteHover, setGovernanteHover]             = useState(null);
 
+  // Quem esta sob o rato na Mesa (Presidente e Secretarios). Estado proprio,
+  // e nao o deputadoHover: o cartao dos deputados abre ao centro do ecra, que
+  // e exactamente onde a Mesa fica -- tapava o que se estava a olhar.
+  const [mesaHover, setMesaHover]                         = useState(null);
+
   // Ref partilhada para o OrbitControls do hemiciclo 3D — permite que
   // componentes fora do Canvas (ex: botão de reset em ControlosCamara)
   // chamem métodos da câmara sem recorrer a window.location.reload().
@@ -437,6 +442,7 @@ export const ParlamentoProvider = ({ children }) => {
     deputadoHover,
     governanteSelecionado,
     governanteHover,
+    mesaHover,
     vistaGoverno,
     // Ações
     selecionarDeputado,
@@ -446,6 +452,7 @@ export const ParlamentoProvider = ({ children }) => {
     selecionarGovernante,
     fecharPainelGoverno,
     setGovernanteHover,
+    setMesaHover,
     setVistaGoverno,
     calcularFocoDePartido,
     cameraControlsRef,
@@ -475,6 +482,7 @@ export const ParlamentoProvider = ({ children }) => {
     deputadoHover,
     governanteSelecionado,
     governanteHover,
+    mesaHover,
     vistaGoverno,
     selecionarDeputado,
     selecionarGovernante,

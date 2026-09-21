@@ -69,7 +69,7 @@ const ArmasDaRepublica = () => {
  * Clicar num lugar abre o perfil do deputado, porque é isso que eles são.
  */
 const LugaresDaMesa = () => {
-  const { mesaAR, deputados, selecionarDeputado } = useParlamento();
+  const { mesaAR, deputados, selecionarDeputado, setMesaHover } = useParlamento();
 
   const presidente = mesaAR?.presidente;
   const secretarios = mesaAR?.secretarios ?? [];
@@ -82,8 +82,11 @@ const LugaresDaMesa = () => {
     ...secretarios.slice(0, 4).map((s, i) => ({ membro: s, x: (lados[i] ?? 0) * 1.75, presidencial: false })),
   ].filter(o => o.membro);
 
+  const deputadoDe = (membro) =>
+    deputados.find(d => d.nomeAbrev === membro.nome || d.nome === membro.nome) ?? null;
+
   const abrirPerfil = (membro) => {
-    const dep = deputados.find(d => d.nomeAbrev === membro.nome || d.nome === membro.nome);
+    const dep = deputadoDe(membro);
     if (dep) selecionarDeputado(dep);
   };
 
@@ -94,12 +97,19 @@ const LugaresDaMesa = () => {
           key={`lugar-mesa-${membro.nome}`}
           position={[x, ALTURA_ESTRADO, Z_ESTRADO + 0.15]}
           onClick={(e) => { e.stopPropagation(); abrirPerfil(membro); }}
-          /* Sem cartão ao passar o rato. A Mesa fica ao fundo da sala e o
-             cartão abre-se em cima, ao centro do ecrã: a cada passagem do
-             rato tapava metade da vista, e basta atravessar a sala para o
-             disparar. O clique continua a abrir o perfil. */
-          onPointerOver={(e) => { e.stopPropagation(); document.body.style.cursor = 'pointer'; }}
-          onPointerOut={(e) => { e.stopPropagation(); document.body.style.cursor = 'default'; }}
+          /* Cartão próprio, pequeno e encostado ao canto (ver CartaoMesa):
+             o cartão dos deputados abre ao centro do ecrã, que é onde a
+             Mesa está — bastava passar por cima para tapar a vista. */
+          onPointerOver={(e) => {
+            e.stopPropagation();
+            setMesaHover({ ...membro, deputado: deputadoDe(membro) });
+            document.body.style.cursor = 'pointer';
+          }}
+          onPointerOut={(e) => {
+            e.stopPropagation();
+            setMesaHover(null);
+            document.body.style.cursor = 'default';
+          }}
         >
           {/* Bordeaux, como o estofo da sala; o Presidente com espaldar mais
               alto e remate dourado. Viradas para os deputados (+Z é a
