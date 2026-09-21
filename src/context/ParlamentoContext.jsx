@@ -444,7 +444,6 @@ export const ParlamentoProvider = ({ children }) => {
     bancadaGoverno,
     governoOficial,
     mesaAR,
-    progresso,
     tudoCarregado: !carregando && perfisProntos && intervencoesProntas && iniciativasProntas && biografiasProntas && presencasProntas && cena3DPronta,
     setCena3DPronta,
     // UI
@@ -486,7 +485,6 @@ export const ParlamentoProvider = ({ children }) => {
     biografiasProntas,
     presencasProntas,
     cena3DPronta,
-    progresso,
     deputadoSelecionado,
     partidoDestaque,
     deputadoHover,

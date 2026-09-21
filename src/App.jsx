@@ -48,20 +48,6 @@ const MENSAGENS = [
 ];
 
 /**
- * O que se vai buscar ao arrancar, pela ordem por que costuma chegar. A
- * etiqueta é o que o utilizador reconhece, não o nome da tabela.
- */
-const ETAPAS = [
-  { chave: 'deputados',   label: 'Lugares do hemiciclo' },
-  { chave: 'perfis',      label: 'Perfis dos deputados' },
-  { chave: 'biografias',  label: 'Biografias' },
-  { chave: 'presencas',   label: 'Presenças em plenário' },
-  { chave: 'iniciativas', label: 'Iniciativas legislativas' },
-  { chave: 'intervencoes', label: 'Intervenções do Diário' },
-  { chave: 'cena',        label: 'Sala das Sessões' },
-];
-
-/**
  * Factos verdadeiros sobre a sala e sobre os dados — ao contrário das
  * mensagens de espera, que são piadas. Enchem o tempo com alguma coisa que
  * se leva dali.
@@ -80,7 +66,7 @@ const CURIOSIDADES = [
 ];
 
 const TelaCarregamento = () => {
-  const { tudoCarregado, progresso } = useParlamento();
+  const { tudoCarregado } = useParlamento();
   const [idx, setIdx] = useState(() => Math.floor(Math.random() * MENSAGENS.length));
   const [facto, setFacto] = useState(() => Math.floor(Math.random() * CURIOSIDADES.length));
 
@@ -98,8 +84,6 @@ const TelaCarregamento = () => {
     return () => { clearInterval(t); clearInterval(f); };
   }, []);
 
-  const feitas = ETAPAS.filter(e => progresso?.[e.chave]).length;
-  const percentagem = Math.round((feitas / ETAPAS.length) * 100);
 
   return (
     <div
@@ -114,39 +98,24 @@ const TelaCarregamento = () => {
           style={{ width: '240px', height: 'auto', opacity: 0.92 }}
         />
 
-        {/* Barra de progresso real: anda porque alguma coisa chegou */}
-        <div className="flex items-center gap-3 mb-2">
-          <div className="flex-1 h-1.5 bg-white/10 rounded-full overflow-hidden">
-            <div
-              className="h-full bg-blue-500 rounded-full transition-all duration-700 ease-out"
-              style={{ width: `${Math.max(percentagem, 6)}%` }}
-            />
-          </div>
-          <span className="text-[11px] text-blue-300/80 tabular-nums w-9 text-right">{percentagem}%</span>
+        {/*
+          Movimento sem medida: uma faixa que atravessa a barra sem fim.
+          Mostrar a percentagem verdadeira seria honesto e mau — parada nos
+          20% durante uns segundos, dá a quem espera uma razão concreta para
+          desistir. Aqui só se vê que a coisa está viva.
+        */}
+        <style>{`
+          @keyframes faixaCarregamento {
+            0%   { transform: translateX(-70%); }
+            100% { transform: translateX(270%); }
+          }
+        `}</style>
+        <div className="h-1.5 w-full bg-white/10 rounded-full overflow-hidden mb-6">
+          <div
+            className="h-full w-2/5 rounded-full bg-gradient-to-r from-transparent via-blue-400 to-transparent"
+            style={{ animation: 'faixaCarregamento 1.9s ease-in-out infinite' }}
+          />
         </div>
-
-        {/* O que já chegou e o que falta */}
-        <ul className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-left mt-5 mb-6">
-          {ETAPAS.map((etapa) => {
-            const pronta = !!progresso?.[etapa.chave];
-            return (
-              <li key={etapa.chave} className="flex items-center gap-2 text-[11px]">
-                <span
-                  className={`flex items-center justify-center w-3.5 h-3.5 rounded-full flex-shrink-0 transition-colors duration-500 ${
-                    pronta ? 'bg-emerald-500/90' : 'bg-white/10'
-                  }`}
-                >
-                  {pronta && (
-                    <svg viewBox="0 0 12 12" className="w-2 h-2 text-white" fill="none" stroke="currentColor" strokeWidth="2.5">
-                      <path d="M2 6.5 L4.5 9 L10 3" strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
-                  )}
-                </span>
-                <span className={pronta ? 'text-white/70' : 'text-white/35'}>{etapa.label}</span>
-              </li>
-            );
-          })}
-        </ul>
 
         <p className="text-blue-300 text-sm transition-all duration-500 min-h-[2.5rem]">{MENSAGENS[idx]}</p>
 
