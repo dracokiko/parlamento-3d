@@ -69,7 +69,7 @@ const ArmasDaRepublica = () => {
  * Clicar num lugar abre o perfil do deputado, porque é isso que eles são.
  */
 const LugaresDaMesa = () => {
-  const { mesaAR, deputados, selecionarDeputado, setDeputadoHover } = useParlamento();
+  const { mesaAR, deputados, selecionarDeputado } = useParlamento();
 
   const presidente = mesaAR?.presidente;
   const secretarios = mesaAR?.secretarios ?? [];
@@ -94,12 +94,12 @@ const LugaresDaMesa = () => {
           key={`lugar-mesa-${membro.nome}`}
           position={[x, ALTURA_ESTRADO, Z_ESTRADO + 0.15]}
           onClick={(e) => { e.stopPropagation(); abrirPerfil(membro); }}
-          onPointerOver={(e) => {
-            e.stopPropagation();
-            const dep = deputados.find(d => d.nomeAbrev === membro.nome || d.nome === membro.nome);
-            if (dep) { setDeputadoHover(dep); document.body.style.cursor = 'pointer'; }
-          }}
-          onPointerOut={(e) => { e.stopPropagation(); setDeputadoHover(null); document.body.style.cursor = 'default'; }}
+          /* Sem cartão ao passar o rato. A Mesa fica ao fundo da sala e o
+             cartão abre-se em cima, ao centro do ecrã: a cada passagem do
+             rato tapava metade da vista, e basta atravessar a sala para o
+             disparar. O clique continua a abrir o perfil. */
+          onPointerOver={(e) => { e.stopPropagation(); document.body.style.cursor = 'pointer'; }}
+          onPointerOut={(e) => { e.stopPropagation(); document.body.style.cursor = 'default'; }}
         >
           {/* Bordeaux, como o estofo da sala; o Presidente com espaldar mais
               alto e remate dourado. Viradas para os deputados (+Z é a

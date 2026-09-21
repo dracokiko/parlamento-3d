@@ -70,14 +70,6 @@ const WALL_THETA_LENGTH = 25 * Math.PI / 18;
 
 // 250° equivalente para ringGeometry (após rotação [-π/2,0,0])
 const RAIO_VIDRO = RAIO_INTERNO - 1.6;
-/**
- * A claraboia é uma abóbada de flecha baixa, não uma meia esfera: sobe 90 cm
- * sobre um vão de 5,4 m de raio. Daí a esfera de onde se corta a calote ser
- * tão grande — R = (r² + f²) / 2f, com a calote a acabar exactamente no aro.
- */
-const FLECHA_CALOTE = 0.9;
-const RAIO_CALOTE   = (RAIO_VIDRO ** 2 + FLECHA_CALOTE ** 2) / (2 * FLECHA_CALOTE);
-const THETA_CALOTE  = Math.asin(RAIO_VIDRO / RAIO_CALOTE);
 
 const RING_THETA_START  = -7 * Math.PI / 36;
 const RING_THETA_LENGTH = 25 * Math.PI / 18;
@@ -322,17 +314,18 @@ const EstruturaHemicicloComponent = () => {
           <meshStandardMaterial color={COR_TECTO} roughness={0.9} side={THREE.FrontSide} />
         </mesh>
 
-        {/* Vidro, numa calote ligeiramente abobadada em vez de um disco
-            plano: a claraboia real é uma cúpula, e uma tampa lisa lia-se
-            como um alçapão branco no tecto. */}
-        <mesh position={[0, WALL_HEIGHT - 0.12 - RAIO_CALOTE * Math.cos(THETA_CALOTE), 0]}>
-          <sphereGeometry args={[RAIO_CALOTE, 48, 16, 0, Math.PI * 2, 0, THETA_CALOTE]} />
+        {/* Vidro raso, ao nível do tecto. Chegou a ser uma calote abobadada,
+            mais fiel à claraboia real — mas vista de dentro erguia-se como um
+            balão pálido por cima de tudo, e esta sala só se vê por dentro.
+            Raso, lê-se como o que é: luz que entra pelo tecto. */}
+        <mesh rotation={[Math.PI / 2, 0, 0]} position={[0, WALL_HEIGHT - 0.12, 0]}>
+          <circleGeometry args={[RAIO_VIDRO, 64]} />
           <meshStandardMaterial
             color={COR_VIDRO}
             emissive={COR_VIDRO}
             emissiveIntensity={0.5}
             roughness={0.25}
-            side={THREE.BackSide}
+            side={THREE.FrontSide}
           />
         </mesh>
 
