@@ -15,7 +15,6 @@
   "dependencies": {
     "@supabase/supabase-js": "^2.39.0",
     "dotenv": "^16.4.1",
-    "pdf-parse": "^1.1.1",
     "stream-json": "^1.8.0"
   }
 }

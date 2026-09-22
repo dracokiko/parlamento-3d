@@ -16,11 +16,10 @@
 import { createClient } from '@supabase/supabase-js';
 import { SUPABASE_URL, SUPABASE_KEY, LEGISLATURA, LEGISLATURA_NUM, DAR_SERIE } from './config.js';
 import { extrairTextoHtml } from './scraper.js';
+import { fetchDebates } from './debatesAR.js';
 import { empurrarAmostra } from './resumoPublico.js';
 
 const BASE      = 'https://debates.parlamento.pt';
-const TIMEOUT   = 300_000;
-const DELAY     = 1200; // ms entre pedidos
 const MIN_TEXTO = 2000;
 
 let _client = null;
@@ -29,24 +28,10 @@ const db = () => {
   return _client;
 };
 
-const sleep = ms => new Promise(r => setTimeout(r, ms));
-
-async function fetchHtml(url, tentativas = 2) {
-  for (let i = 1; i <= tentativas; i++) {
-    try {
-      const res = await fetch(url, {
-        signal:  AbortSignal.timeout(TIMEOUT),
-        headers: { 'User-Agent': 'Mozilla/5.0 (compatible; ParlamentoBot/1.0)' },
-      });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      return res.text();
-    } catch (err) {
-      if (i === tentativas) throw err;
-      console.warn(`  ⚠ Tentativa ${i}/${tentativas} falhou (${err.message}) — a repetir...`);
-      await sleep(3000 * i);
-    }
-  }
-}
+// Os pedidos ao debates.parlamento.pt passam todos por debatesAR.js, que
+// trata do nome com que nos apresentamos e do intervalo de 20 segundos que
+// o robots.txt do site pede — ver o cabeçalho desse módulo.
+const fetchHtml = (url, tentativas = 2) => fetchDebates(url, { tentativas });
 
 let _sessoesCache = null;
 
@@ -257,7 +242,6 @@ export async function crawlerDebatesDAR(modo = 'new') {
 
     if (existing?.transcricao && modo !== 'all') { ignorados++; continue; }
 
-    await sleep(DELAY);
     try {
       const sessao = await fetchTextoSessao(numero, data, sessaoItem);
       if (!sessao) { ignorados++; continue; }

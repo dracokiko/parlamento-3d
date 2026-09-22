@@ -1,103 +1,23 @@
 /**
  * Scraper do DAR (Diário da Assembleia da República).
  *
- * Usa o endpoint POST /pagina/export do debates.parlamento.pt para descarregar
- * o PDF completo do artigo (debate) em UMA única operação.
+ * O texto vem do HTML da própria página da sessão, pedida com `sft=true`
+ * (show full text): uma resposta única com o debate inteiro e os números de
+ * página pelo meio, que é o que o indexador de intervenções procura.
  *
- * Estratégia:
- *   1. Fetch do HTML da página do debate (tem um <form> com os campos necessários)
- *   2. Extrair os campos hidden do form (periodo, serie, legis, pgs, limits, …)
- *   3. POST para /pagina/export → recebe PDF completo
- *   4. Parsear o PDF com pdf-parse → texto completo sem páginas em falta
- */
-
-import { createRequire } from 'module';
-const require  = createRequire(import.meta.url);
-const pdfParse = require('pdf-parse');
-
-const EXPORT_URL   = 'https://debates.parlamento.pt/pagina/export';
-const PAGE_TIMEOUT = 20_000;
-const PDF_TIMEOUT  = 90_000;
-
-// ── Extracção dos campos do formulário ────────────────────────────────────────
-
-/**
- * Extrai o valor de um campo hidden do form de exportação.
- * Aceita tanto name="x" value="y" como value="y" name="x".
- */
-function campo(html, name) {
-  const a = html.match(new RegExp(`name="${name}"[^>]*value="([^"]*)"`, 'i'));
-  const b = html.match(new RegExp(`value="([^"]*)"[^>]*name="${name}"`, 'i'));
-  return (a || b)?.[1] ?? null;
-}
-
-/**
- * Extrai todos os campos relevantes do form de exportação da página HTML.
- * Devolve null se a página não tiver o form (ex: não é uma página do DAR).
- */
-export function extrairCamposForm(html) {
-  const periodo    = campo(html, 'periodo');
-  const publicacao = campo(html, 'publicacao');
-  const serie      = campo(html, 'serie');
-  const legis      = campo(html, 'legis');
-  const sessao     = campo(html, 'sessao');
-  const numero     = campo(html, 'numero');
-  const data       = campo(html, 'data');
-  const pagina     = campo(html, 'pagina');
-  const pgs        = campo(html, 'pgs');    // ex: "3-16"
-  const limits     = campo(html, 'limits'); // ex: "0001-0062"
-
-  if (!periodo || !publicacao || !numero || !data) return null;
-
-  return { periodo, publicacao, serie, legis, sessao, numero, data, pagina, pgs, limits };
-}
-
-// ── Download do PDF via POST ──────────────────────────────────────────────────
-
-/**
- * Faz POST para /pagina/export e devolve o texto extraído do PDF.
+ * Havia aqui um segundo caminho, o `POST /pagina/export`, que devolvia o PDF
+ * da sessão e era o principal — o HTML era só o plano B. Saiu em 22/09/2026:
+ * o robots.txt do site proíbe `/pagina/export` e `/pagina/showPDFPage`.
  *
- * @param {object} campos  - campos extraídos do form (de extrairCamposForm)
- * @param {string} referer - URL da página de origem (para o header Referer)
+ * Não se perdeu nada. Comparadas três sessões já guardadas com o que o HTML
+ * devolve hoje, o texto bate quase ao carácter (106 336 contra 106 336 numa
+ * delas; 273 431 contra 273 432 noutra) e com o mesmo número de marcadores de
+ * página. E passou a ser um pedido por sessão, em vez de dois.
  */
-async function exportarPdf(campos, referer) {
-  const pgsMatch = campos.pgs?.match(/(\d+)-(\d+)/);
-  const paginaInicial = pgsMatch?.[1] ?? '1';
-  const paginaFinal   = pgsMatch?.[2] ?? (campos.limits?.match(/\d+$/)?.[0] ?? '100');
 
-  const body = new URLSearchParams({
-    exportType:    'pdf',
-    exportControl: 'paginas',
-    periodo:       campos.periodo,
-    publicacao:    campos.publicacao,
-    serie:         campos.serie    ?? '01',
-    legis:         campos.legis    ?? '17',
-    sessao:        campos.sessao   ?? '01',
-    numero:        campos.numero,
-    data:          campos.data,
-    pagina:        campos.pagina   ?? '1',
-    paginaInicial,
-    paginaFinal,
-  });
+import { fetchDebates, comTextoIntegral } from './debatesAR.js';
 
-  const res = await fetch(EXPORT_URL, {
-    method:  'POST',
-    headers: {
-      'Content-Type': 'application/x-www-form-urlencoded',
-      'User-Agent':   'Mozilla/5.0 (compatible; ParlamentoBot/1.0)',
-      'Referer':      referer,
-    },
-    body:   body.toString(),
-    signal: AbortSignal.timeout(PDF_TIMEOUT),
-  });
-
-  if (!res.ok) throw new Error(`Export HTTP ${res.status}`);
-  const buf      = Buffer.from(await res.arrayBuffer());
-  const { text } = await pdfParse(buf);
-  return text?.trim() ?? '';
-}
-
-// ── Fallback: extracção HTML ──────────────────────────────────────────────────
+// ── Extracção do texto ────────────────────────────────────────────────────────
 
 export function extrairTextoHtml(html) {
   const markerIdx = html.indexOf('id="pageTextRaw"');
@@ -135,15 +55,6 @@ export function extrairTextoHtml(html) {
 
 // ── Entrada pública ───────────────────────────────────────────────────────────
 
-async function fetchPagina(url) {
-  const res = await fetch(url, {
-    signal:  AbortSignal.timeout(PAGE_TIMEOUT),
-    headers: { 'User-Agent': 'Mozilla/5.0 (compatible; ParlamentoBot/1.0)' },
-  });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  return res.text();
-}
-
 /** Remove o parâmetro `org` do URL, ou null se não existir. */
 function semParamOrg(urlStr) {
   const u = new URL(urlStr);
@@ -163,9 +74,8 @@ export async function obterTranscricao(urlDiario) {
 
   try {
     let html;
-    let urlUsado = urlDiario;
     try {
-      html = await fetchPagina(urlDiario);
+      html = await fetchDebates(comTextoIntegral(urlDiario));
     } catch (err) {
       // debates.parlamento.pt devolve 404 para alguns URLs com `org=` (ex.: "org=PLC")
       // mesmo vindo directamente da própria API da AR — confirmado em produção: o
@@ -173,22 +83,9 @@ export async function obterTranscricao(urlDiario) {
       const semOrg = semParamOrg(urlDiario);
       if (!semOrg) throw err;
       console.warn(`    ⚠ ${err.message} — a tentar sem "org="...`);
-      urlUsado = semOrg;
-      html = await fetchPagina(semOrg);
+      html = await fetchDebates(comTextoIntegral(semOrg));
     }
 
-    // Tentar exportação PDF (abordagem principal)
-    const campos = extrairCamposForm(html);
-    if (campos?.pgs) {
-      try {
-        const texto = await exportarPdf(campos, urlUsado);
-        if (texto) return texto;
-      } catch (e) {
-        console.warn(`    ⚠ Export PDF falhou (${e.message}), a usar HTML...`);
-      }
-    }
-
-    // Fallback: texto da página HTML visível
     return extrairTextoHtml(html) || null;
 
   } catch (err) {

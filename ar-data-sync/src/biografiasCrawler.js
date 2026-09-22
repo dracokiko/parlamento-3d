@@ -11,6 +11,7 @@
 import 'dotenv/config';
 import { createClient } from '@supabase/supabase-js';
 import { empurrarAmostra } from './resumoPublico.js';
+import { USER_AGENT } from './config.js';
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY;
@@ -38,7 +39,7 @@ async function fetchHtml(url, timeout = TIMEOUT_BIO, tentativas = 3) {
       const res = await fetch(url, {
         redirect: 'follow',
         signal: AbortSignal.timeout(timeout),
-        headers: { 'User-Agent': 'Mozilla/5.0 (compatible; ParlamentoBot/1.0)' },
+        headers: { 'User-Agent': USER_AGENT },
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       return res.text();

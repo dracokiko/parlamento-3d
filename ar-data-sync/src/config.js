@@ -26,6 +26,16 @@ export const LEGISLATURA_NUM = '17';
 // Setembro, por isso é descoberta dinamicamente em catalogueCrawler.js.
 export const DAR_SERIE = '01';
 
+/**
+ * Como nos apresentamos aos sítios da AR.
+ *
+ * Diz o que é e onde nos encontrar, e não contém a palavra "bot": desde
+ * 22/09/2026 o servidor do debates.parlamento.pt devolve 403 a qualquer
+ * User-Agent que a contenha — ao do Google inclusive, o que mostra ser regra
+ * cega e não decisão sobre este projecto.
+ */
+export const USER_AGENT = 'Parlamento3D/1.0 (+https://parlamento-3d.vercel.app)';
+
 // URLs reais dos Dados Abertos da AR — XVII Legislatura
 // Fonte: https://www.parlamento.pt/Cidadania/Paginas/DadosAbertos.aspx
 //
