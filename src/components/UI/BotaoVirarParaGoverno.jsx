@@ -126,20 +126,28 @@ export const BotaoVirarParaGoverno = () => {
 
   return (
     /* Encostado à direita: ao centro tapava os lugares da frente, que é
-       justamente onde está quem estamos a tentar mostrar. */
-    <div className="absolute bottom-5 right-4 z-20 max-w-[calc(100%-2rem)]">
+       justamente onde está quem estamos a tentar mostrar.
+
+       Em telemóvel sobe para meia altura e fica de pé, na margem lateral:
+       ao fundo, deitado, assentava em cima das últimas filas do hemiciclo —
+       o ecrã é estreito e a sala ocupa-o todo de lado a lado. De pé ocupa
+       uma tira de duas dezenas de píxeis, onde não há sala nenhuma. */
+    <div className="absolute z-20 right-2 top-1/2 -translate-y-1/2 md:right-4 md:top-auto md:bottom-5 md:translate-y-0 md:max-w-[calc(100%-2rem)]">
       <button
         onClick={virar}
         disabled={aRodar}
-        className={`flex items-center justify-center gap-2 rounded-xl px-3 py-2 shadow-lg border transition-all
+        className={`flex items-center justify-center gap-2 rounded-xl shadow-lg border transition-all
           text-xs font-medium tracking-tight
+          flex-col px-2.5 py-4 md:flex-row md:px-3 md:py-2
           ${aRodar
             ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-wait'
             : 'bg-white/95 backdrop-blur text-gray-900 border-gray-200 hover:bg-white hover:shadow-2xl active:scale-[0.99]'}`}
         aria-label={aVerGoverno ? 'Rodar a sala de volta para o hemiciclo' : 'Rodar a sala para ver a bancada do Governo'}
       >
         <RotateCw size={15} className={aRodar ? 'animate-spin text-gray-400' : 'text-gray-500'} />
-        <span>{aVerGoverno ? 'Ver hemiciclo' : 'Ver Governo'}</span>
+        <span className="[writing-mode:vertical-rl] md:[writing-mode:horizontal-tb]">
+          {aVerGoverno ? 'Ver hemiciclo' : 'Ver Governo'}
+        </span>
       </button>
     </div>
   );

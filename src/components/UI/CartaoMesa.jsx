@@ -54,11 +54,11 @@ export const CartaoMesa = () => {
 
   return (
     /* Em ecrã largo fica ao lado dos controlos da câmara, no canto. Em
-       telemóvel esses controlos não existem, mas o botão "Ver Governo" ocupa
-       o canto oposto: aí o cartão sobe uma linha e usa a largura toda, em vez
-       de ficar espremido a meia dúzia de letras ao lado do botão. */
+       telemóvel não há controlos e o botão "Ver Governo" está de pé na margem
+       direita: o rodapé fica livre, e o cartão usa-o todo em vez de umas
+       letras espremidas a um canto. */
     <div
-      className={`absolute z-30 bottom-16 left-3 right-3 md:bottom-5 md:left-20 md:right-auto md:max-w-[19rem]
+      className={`absolute z-30 bottom-4 left-3 right-14 md:bottom-5 md:left-20 md:right-auto md:max-w-[19rem]
         ${isTouch ? '' : 'pointer-events-none'}`}
     >
       <div
