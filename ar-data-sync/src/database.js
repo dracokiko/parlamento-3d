@@ -15,6 +15,42 @@ const getClient = () => {
   return _client;
 };
 
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+/**
+ * O erro é da casa ou do registo?
+ *
+ * Um registo que viole uma restrição dá uma mensagem do PostgREST, com
+ * código. Uma base de dados em baixo dá outra coisa: uma página de erro do
+ * Cloudflare em HTML, um gateway que expirou, uma ligação que caiu. A
+ * diferença importa porque só a segunda se resolve esperando.
+ */
+const pareceInfraestrutura = (msg = '') =>
+  /<!DOCTYPE|<html|gateway|timeout|timed out|fetch failed|network error|socket hang up|ECONNRESET|ECONNREFUSED|ENOTFOUND|EAI_AGAIN|schema cache|error code: 5|Service Unavailable|Bad Gateway/i.test(msg);
+
+/** Esperas antes de repetir uma escrita que falhou por razões de infraestrutura. */
+const ESPERAS_ESCRITA = [5_000, 20_000];
+
+/**
+ * Quantas escritas seguidas podem falhar por infraestrutura antes de darmos
+ * a base de dados por perdida.
+ *
+ * Cada uma já insistiu com as esperas acima, portanto cinco seguidas são uns
+ * dois minutos de porta fechada. A 24/09/2026 o Supabase esteve em baixo e o
+ * trabalho ficou três horas a insistir até o GitHub o matar — desistir cedo
+ * liberta o trinco, guarda o estado e deixa o dia seguinte correr limpo.
+ */
+const LIMITE_FALHAS_SEGUIDAS = 5;
+let falhasSeguidas = 0;
+
+/** Erro que aborta o pipeline: não vale a pena continuar sem base de dados. */
+export class BaseDeDadosIndisponivel extends Error {
+  constructor(msg) {
+    super(`Base de dados indisponível (${LIMITE_FALHAS_SEGUIDAS} escritas seguidas falharam): ${msg}`);
+    this.name = 'BaseDeDadosIndisponivel';
+  }
+}
+
 export async function upsertBatch(recurso, registos) {
   if (!registos.length) return { inseridos: 0, atualizados: 0, novos: [] };
 
@@ -30,8 +66,25 @@ export async function upsertBatch(recurso, registos) {
 
   const novos = registos.filter(r => !existentesSet.has(String(r.id)));
 
-  const { error } = await db.from(tabela).upsert(registos, { onConflict: 'id' });
+  // Repetir de início se o que falhou foi a casa e não o conteúdo; partir o
+  // lote nesse caso não ajudava nada e multiplicava os pedidos por duzentos.
+  let error;
+  for (let i = 0; ; i++) {
+    ({ error } = await db.from(tabela).upsert(registos, { onConflict: 'id' }));
+    if (!error || !pareceInfraestrutura(error.message) || i >= ESPERAS_ESCRITA.length) break;
+    console.warn(`  ⚠ Escrita falhou (${error.message.slice(0, 60)}) — a repetir em ${ESPERAS_ESCRITA[i] / 1000}s...`);
+    await sleep(ESPERAS_ESCRITA[i]);
+  }
+
   if (error) {
+    if (pareceInfraestrutura(error.message)) {
+      falhasSeguidas++;
+      if (falhasSeguidas >= LIMITE_FALHAS_SEGUIDAS) throw new BaseDeDadosIndisponivel(error.message);
+      console.error(`  ✗ Escrita falhou (lote de ${registos.length}): ${error.message.slice(0, 120)}`);
+      return { inseridos: 0, atualizados: 0, novos: [] };
+    }
+
+    // Erro do conteúdo: partir o lote ao meio isola o registo que o causa.
     if (registos.length > 1) {
       const meio = Math.ceil(registos.length / 2);
       const r1 = await upsertBatch(recurso, registos.slice(0, meio));
@@ -46,6 +99,7 @@ export async function upsertBatch(recurso, registos) {
     return { inseridos: 0, atualizados: 0, novos: [] };
   }
 
+  falhasSeguidas = 0;
   return {
     inseridos:   novos.length,
     atualizados: registos.length - novos.length,

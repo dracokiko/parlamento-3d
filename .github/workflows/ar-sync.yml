@@ -13,7 +13,7 @@ on:
 jobs:
   sync:
     runs-on: ubuntu-latest
-    timeout-minutes: 180
+    timeout-minutes: 90   # antes 180: a 24/09/2026 uma corrida ficou 3h à espera da base de dados
 
     steps:
       - name: Checkout

@@ -61,13 +61,25 @@ export function comTextoIntegral(url) {
 }
 
 /**
+ * Quanto se espera antes de cada nova tentativa.
+ *
+ * A 27/09/2026 o site esteve mudo seis minutos e a sincronização desistiu ao
+ * fim de dois — não havia nada para trazer nesse dia, mas o trabalho ficou
+ * vermelho e saiu o email de falha. Um sítio que vai abaixo uns minutos é
+ * coisa de todos os dias; o trabalho corre de madrugada e não tem pressa.
+ * Ao fim destas esperas são doze minutos e meio de insistência.
+ */
+const ESPERAS = [30_000, 180_000, 480_000];
+
+/**
  * Pede uma página ao debates.parlamento.pt e devolve o HTML.
  *
  * @param {string} url
- * @param {{ tentativas?: number }} opcoes
+ * @param {{ tentativas?: number }} opcoes  tentativas=1 não espera nada — é o
+ *   que usa quem anda a adivinhar datas no catálogo e quer falhar depressa.
  * @returns {Promise<string>}
  */
-export async function fetchDebates(url, { tentativas = 2 } = {}) {
+export async function fetchDebates(url, { tentativas = ESPERAS.length + 1 } = {}) {
   let ultimoErro;
 
   for (let i = 1; i <= tentativas; i++) {
@@ -82,7 +94,9 @@ export async function fetchDebates(url, { tentativas = 2 } = {}) {
     } catch (err) {
       ultimoErro = err;
       if (i < tentativas) {
-        console.warn(`  ⚠ Tentativa ${i}/${tentativas} falhou (${err.message}) — a repetir...`);
+        const espera = ESPERAS[i - 1] ?? ESPERAS[ESPERAS.length - 1];
+        console.warn(`  ⚠ Tentativa ${i}/${tentativas} falhou (${err.message}) — nova tentativa em ${espera / 1000}s...`);
+        await sleep(espera);
       }
     }
   }

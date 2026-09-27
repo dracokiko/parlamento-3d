@@ -2,7 +2,7 @@ import fs from 'fs';
 import { AR_ENDPOINTS, BATCH_SIZE } from './config.js';
 import { downloadToTemp, streamRecords } from './downloader.js';
 import { NORMALIZADORES } from './processor.js';
-import { upsertBatch, registarLog, acquireSyncLock, releaseSyncLock, registarSyncStatus } from './database.js';
+import { upsertBatch, registarLog, acquireSyncLock, releaseSyncLock, registarSyncStatus, BaseDeDadosIndisponivel } from './database.js';
 import { resumirIniciativas, resumirDeputados, resumirDebates, resumirVotacoes, obterTranscricoesDebates, indexarIntervencoes, classificarTemas } from './summarizer.js';
 import { crawlerDebatesDAR } from './catalogueCrawler.js';
 import { syncVotacoes } from './votacoesSync.js';
@@ -125,6 +125,11 @@ async function sincronizar(recurso, log) {
     return { ok: true, inseridos };
 
   } catch (err) {
+    // Sem base de dados não há pipeline nenhum: deixa passar, para o trabalho
+    // acabar já em vez de percorrer as etapas todas a falhar uma a uma. Quem
+    // apanha lá em cima guarda o estado e larga o trinco.
+    if (err instanceof BaseDeDadosIndisponivel) throw err;
+
     console.error(`\n  ✗ Erro fatal: ${err.message}`);
     falhas.push({ motivo: `Erro fatal: ${err.message}` });
     await log(recurso, { sucesso: false, total, inseridos, atualizados, erros: erros + 1, detalhes: amostras, novos: novosPublicos, falhas });

@@ -29,9 +29,11 @@ const db = () => {
 };
 
 // Os pedidos ao debates.parlamento.pt passam todos por debatesAR.js, que
-// trata do nome com que nos apresentamos e do intervalo de 20 segundos que
-// o robots.txt do site pede — ver o cabeçalho desse módulo.
-const fetchHtml = (url, tentativas = 2) => fetchDebates(url, { tentativas });
+// trata do nome com que nos apresentamos, do intervalo de 20 segundos que o
+// robots.txt do site pede e da paciência quando o site não responde — ver o
+// cabeçalho desse módulo. Sem `tentativas` vale a paciência de lá; quem passa
+// 1 é porque anda a adivinhar datas e quer falhar depressa.
+const fetchHtml = (url, tentativas) => fetchDebates(url, { tentativas });
 
 let _sessoesCache = null;
 
