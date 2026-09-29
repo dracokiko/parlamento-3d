@@ -18,15 +18,34 @@ const getClient = () => {
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 /**
+ * A escrita foi pesada demais para o tempo que o Postgres lhe dá?
+ *
+ * "canceling statement due to statement timeout" não é a base de dados em
+ * baixo: é ela a cortar uma instrução que demorou mais do que o limite — um
+ * lote de 250 iniciativas, com o JSON de cada uma, passa-o às vezes. Partir o
+ * lote ao meio resolve, porque cada metade é mais rápida; esperar e repetir o
+ * mesmo lote não resolve nada.
+ *
+ * Até 29/09/2026 isto caía no "timeout" da regra de baixo, era tratado como
+ * avaria, repetido inteiro e abandonado: a 28/09 e a 29/09 ficaram por
+ * gravar mais de mil iniciativas, com o resumo a dizer "Erros: 0".
+ */
+const pesadaDemais = (msg = '') => /statement timeout|canceling statement/i.test(msg);
+
+/**
  * O erro é da casa ou do registo?
  *
  * Um registo que viole uma restrição dá uma mensagem do PostgREST, com
  * código. Uma base de dados em baixo dá outra coisa: uma página de erro do
  * Cloudflare em HTML, um gateway que expirou, uma ligação que caiu. A
  * diferença importa porque só a segunda se resolve esperando.
+ *
+ * Sem "timeout" solto: apanhava também o timeout de instrução, que é outra
+ * coisa (ver acima). Só os tempos esgotados de ligação contam.
  */
 const pareceInfraestrutura = (msg = '') =>
-  /<!DOCTYPE|<html|gateway|timeout|timed out|fetch failed|network error|socket hang up|ECONNRESET|ECONNREFUSED|ENOTFOUND|EAI_AGAIN|schema cache|error code: 5|Service Unavailable|Bad Gateway/i.test(msg);
+  !pesadaDemais(msg) &&
+  /<!DOCTYPE|<html|gateway|timed out|aborted due to timeout|ETIMEDOUT|fetch failed|network error|socket hang up|ECONNRESET|ECONNREFUSED|ENOTFOUND|EAI_AGAIN|schema cache|error code: 5|Service Unavailable|Bad Gateway/i.test(msg);
 
 /** Esperas antes de repetir uma escrita que falhou por razões de infraestrutura. */
 const ESPERAS_ESCRITA = [5_000, 20_000];
@@ -51,8 +70,17 @@ export class BaseDeDadosIndisponivel extends Error {
   }
 }
 
+/**
+ * Grava um lote e diz o que aconteceu a cada parte dele.
+ *
+ * `falhados` e `motivo` existem para que um registo não gravado apareça como
+ * erro no resumo. Antes só vinham `inseridos`/`atualizados`, e o que ficava
+ * por gravar simplesmente não entrava em conta nenhuma.
+ *
+ * @returns {Promise<{ inseridos: number, atualizados: number, novos: object[], falhados: number, motivo?: string }>}
+ */
 export async function upsertBatch(recurso, registos) {
-  if (!registos.length) return { inseridos: 0, atualizados: 0, novos: [] };
+  if (!registos.length) return { inseridos: 0, atualizados: 0, novos: [], falhados: 0 };
 
   const db     = getClient();
   const tabela = TABELAS[recurso];
@@ -81,10 +109,14 @@ export async function upsertBatch(recurso, registos) {
       falhasSeguidas++;
       if (falhasSeguidas >= LIMITE_FALHAS_SEGUIDAS) throw new BaseDeDadosIndisponivel(error.message);
       console.error(`  ✗ Escrita falhou (lote de ${registos.length}): ${error.message.slice(0, 120)}`);
-      return { inseridos: 0, atualizados: 0, novos: [] };
+      return { inseridos: 0, atualizados: 0, novos: [], falhados: registos.length, motivo: error.message };
     }
 
-    // Erro do conteúdo: partir o lote ao meio isola o registo que o causa.
+    // A base de dados respondeu — está viva, mesmo que a escrita tenha falhado.
+    falhasSeguidas = 0;
+
+    // Erro do conteúdo, ou lote pesado demais para o limite de tempo: partir
+    // ao meio isola o registo estragado, ou faz metades que já cabem no tempo.
     if (registos.length > 1) {
       const meio = Math.ceil(registos.length / 2);
       const r1 = await upsertBatch(recurso, registos.slice(0, meio));
@@ -93,10 +125,12 @@ export async function upsertBatch(recurso, registos) {
         inseridos:   r1.inseridos   + r2.inseridos,
         atualizados: r1.atualizados + r2.atualizados,
         novos:       [...r1.novos,  ...r2.novos],
+        falhados:    r1.falhados    + r2.falhados,
+        motivo:      r1.motivo ?? r2.motivo,
       };
     }
     console.error(`  ✗ Upsert falhou para id=${registos[0]?.id}: ${error.message}`);
-    return { inseridos: 0, atualizados: 0, novos: [] };
+    return { inseridos: 0, atualizados: 0, novos: [], falhados: 1, motivo: `id=${registos[0]?.id}: ${error.message}` };
   }
 
   falhasSeguidas = 0;
@@ -104,6 +138,7 @@ export async function upsertBatch(recurso, registos) {
     inseridos:   novos.length,
     atualizados: registos.length - novos.length,
     novos,
+    falhados:    0,
   };
 }
 

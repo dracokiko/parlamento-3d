@@ -77,6 +77,24 @@ async function sincronizar(recurso, log) {
   const novosPublicos = []; // amostra menor — vai para o summary público
   const falhas = [];
 
+  // Soma o resultado de um lote. O que não ficou gravado conta como erro, com
+  // o motivo — até 29/09/2026 desaparecia sem rasto e o resumo dizia
+  // "Erros: 0" com mais de mil iniciativas por gravar.
+  const gravar = async (lote) => {
+    const r = await upsertBatch(recurso, lote);
+    inseridos   += r.inseridos;
+    atualizados += r.atualizados;
+    if (r.falhados) {
+      erros += r.falhados;
+      falhas.push({ motivo: `${r.falhados} de ${lote.length} registos não gravados — ${r.motivo ?? 'sem motivo'}` });
+    }
+    const novosEtiquetados = r.novos.map(reg => labelItem(recurso, reg));
+    if (amostras.length < MAX_AMOSTRAS) {
+      amostras.push(...novosEtiquetados.slice(0, MAX_AMOSTRAS - amostras.length));
+    }
+    juntarAmostra(novosPublicos, novosEtiquetados);
+  };
+
   try {
     for await (const raw of streamRecords(tmpPath, nestedKey)) {
       try {
@@ -90,34 +108,22 @@ async function sincronizar(recurso, log) {
         total++;
 
         if (batch.length >= BATCH_SIZE) {
-          const r = await upsertBatch(recurso, batch);
-          inseridos   += r.inseridos;
-          atualizados += r.atualizados;
-          const novosEtiquetados = r.novos.map(reg => labelItem(recurso, reg));
-          if (amostras.length < MAX_AMOSTRAS) {
-            amostras.push(...novosEtiquetados.slice(0, MAX_AMOSTRAS - amostras.length));
-          }
-          juntarAmostra(novosPublicos, novosEtiquetados);
+          await gravar(batch);
           batch = [];
           process.stdout.write(`  … ${total} processados\r`);
         }
       } catch (err) {
+        // O disjuntor da base de dados não é um registo estragado: sobe, para
+        // o pipeline parar. A 28/09/2026 ficava aqui preso e aparecia no
+        // painel como erro de uma iniciativa qualquer.
+        if (err instanceof BaseDeDadosIndisponivel) throw err;
         erros++;
         falhas.push({ id: rawIdItem(recurso, raw), motivo: err.message });
         if (erros <= 5) console.warn(`\n  ⚠ ${err.message}`);
       }
     }
 
-    if (batch.length) {
-      const r = await upsertBatch(recurso, batch);
-      inseridos   += r.inseridos;
-      atualizados += r.atualizados;
-      const novosEtiquetados = r.novos.map(reg => labelItem(recurso, reg));
-      if (amostras.length < MAX_AMOSTRAS) {
-        amostras.push(...novosEtiquetados.slice(0, MAX_AMOSTRAS - amostras.length));
-      }
-      juntarAmostra(novosPublicos, novosEtiquetados);
-    }
+    if (batch.length) await gravar(batch);
 
     await log(recurso, { sucesso: true, total, inseridos, atualizados, erros, detalhes: amostras, novos: novosPublicos, falhas });
     const s = ((Date.now() - inicio) / 1000).toFixed(1);
