@@ -4,7 +4,7 @@ import { downloadToTemp, streamRecords } from './downloader.js';
 import { NORMALIZADORES } from './processor.js';
 import { upsertBatch, registarLog, acquireSyncLock, releaseSyncLock, registarSyncStatus, BaseDeDadosIndisponivel } from './database.js';
 import { resumirIniciativas, resumirDeputados, resumirDebates, resumirVotacoes, obterTranscricoesDebates, indexarIntervencoes, classificarTemas } from './summarizer.js';
-import { crawlerDebatesDAR } from './catalogueCrawler.js';
+import { crawlerDebatesDAR, infoSessoesPorPublicar } from './catalogueCrawler.js';
 import { syncVotacoes } from './votacoesSync.js';
 import { syncVotosMocoes } from './votosMocoesSync.js';
 import { syncAudicoes, syncAudiencias, syncDeslocacoes, syncEventos, syncOrcamento } from './atividadesSimples.js';
@@ -150,8 +150,21 @@ async function main() {
   // externos. `novos`/`falhas` só entram quando não vazios, para não inchar
   // o JSON em recursos sem nada a reportar.
   const resumo = [];
+
+  // O motivo da última falha apanhada por um `catch` de etapa, à espera de ser
+  // registado pelo `log` que se lhe segue. Sem isto o painel dizia "1 erro" e
+  // o porquê — um 403, um timeout — ficava só no log do GitHub: foi o que
+  // aconteceu com o DAR a 22/09 e a 27/09/2026.
+  let motivoPendente = null;
+  const anotarFalha = (err) => { motivoPendente = err?.message ?? String(err); };
+
   const log = async (recurso, stats) => {
-    await registarLog(recurso, stats);
+    const falhas = stats.falhas?.length
+      ? stats.falhas
+      : (!stats.sucesso && motivoPendente) ? [{ motivo: motivoPendente }] : [];
+    motivoPendente = null;
+
+    await registarLog(recurso, { ...stats, falhas });
     resumo.push({
       recurso,
       sucesso:     stats.sucesso,
@@ -162,8 +175,11 @@ async function main() {
       // Momento em que este recurso concluiu — os recursos correm sequencialmente e um
       // pipeline completo pode demorar minutos, por isso não têm todos a mesma hora.
       syncedAt:    new Date().toISOString(),
-      ...(stats.novos?.length  ? { novos:  capPublico(stats.novos)  } : {}),
-      ...(stats.falhas?.length ? { falhas: capPublico(stats.falhas) } : {}),
+      ...(stats.novos?.length ? { novos:  capPublico(stats.novos) } : {}),
+      ...(falhas.length       ? { falhas: capPublico(falhas) }      : {}),
+      // Recados para quem lê o painel: o que não é erro mas explica os números
+      // (ex.: sessões à espera de que a AR publique o Diário). { nivel, texto }.
+      ...(stats.info?.length  ? { info: stats.info }               : {}),
     });
   };
 
@@ -195,12 +211,12 @@ async function main() {
   };
 
   try { if (resultados.iniciativas?.ok) acumularAi(await resumirIniciativas()); }
-  catch (err) { console.warn(`\n  ⚠ resumirIniciativas falhou (${err.message})`); avisos.push('resumirIniciativas'); }
+  catch (err) { anotarFalha(err); console.warn(`\n  ⚠ resumirIniciativas falhou (${err.message})`); avisos.push('resumirIniciativas'); }
 
   // Classificação temática (corre após resumirIniciativas para garantir que temas novos são processados)
   let rTemas = null;
   try { rTemas = await classificarTemas(); }
-  catch (err) { console.warn(`\n  ⚠ classificarTemas falhou (${err.message})`); avisos.push('classificarTemas'); }
+  catch (err) { anotarFalha(err); console.warn(`\n  ⚠ classificarTemas falhou (${err.message})`); avisos.push('classificarTemas'); }
   const temasOk = rTemas !== null && (rTemas?.erros ?? 0) >= 0;
   await log('temas', {
     sucesso:     temasOk,
@@ -215,7 +231,7 @@ async function main() {
   if (!temasOk) avisos.push('temas');
 
   try { if (resultados.deputados?.ok) acumularAi(await resumirDeputados()); }
-  catch (err) { console.warn(`\n  ⚠ resumirDeputados falhou (${err.message})`); avisos.push('resumirDeputados'); }
+  catch (err) { anotarFalha(err); console.warn(`\n  ⚠ resumirDeputados falhou (${err.message})`); avisos.push('resumirDeputados'); }
 
   // Catálogo DAR — duas passagens:
   //   'new'     apanha as sessões publicadas desde a última corrida;
@@ -234,7 +250,17 @@ async function main() {
       falhas:       [...(rNovas.falhas ?? []),       ...(rFaltas.falhas ?? [])],
     };
   }
-  catch (err) { console.warn(`\n  ⚠ Crawler DAR falhou (${err.message})`); avisos.push('crawlerDebatesDAR'); }
+  catch (err) { anotarFalha(err); console.warn(`\n  ⚠ Crawler DAR falhou (${err.message})`); avisos.push('crawlerDebatesDAR'); }
+
+  // Só com o catálogo lido é que "falta" quer dizer "a AR ainda não publicou".
+  // Se o crawler falhou, o que falta pode ser só o que não fomos buscar — e o
+  // erro já diz isso. Nunca faz a etapa falhar: é um recado, não um passo.
+  let infoDar = [];
+  if (rDar !== null) {
+    try { infoDar = await infoSessoesPorPublicar(); }
+    catch (err) { console.warn(`\n  ⚠ Não foi possível contar as sessões por publicar (${err.message})`); }
+  }
+
   await log('dar', {
     sucesso: rDar !== null,
     total:       (rDar?.novos ?? 0) + (rDar?.actualizados ?? 0) + (rDar?.erros ?? 0),
@@ -244,6 +270,7 @@ async function main() {
     detalhes:    [],
     novos:       rDar?.amostraNovos ?? [],
     falhas:      rDar?.falhas ?? [],
+    info:        infoDar,
   });
   if (!(rDar !== null)) avisos.push('dar');
 
@@ -251,7 +278,7 @@ async function main() {
   // chave AtividadesGerais.Atividades — inclui moções de censura)
   let rVotMoc = null;
   try { rVotMoc = await syncVotosMocoes(); }
-  catch (err) { console.warn(`\n  ⚠ syncVotosMocoes falhou (${err.message})`); avisos.push('syncVotosMocoes'); }
+  catch (err) { anotarFalha(err); console.warn(`\n  ⚠ syncVotosMocoes falhou (${err.message})`); avisos.push('syncVotosMocoes'); }
   await log('votos_mocoes', {
     sucesso:     rVotMoc !== null,
     total:       rVotMoc?.total       ?? 0,
@@ -285,33 +312,33 @@ async function main() {
   // "debates", chaves de AtividadesGerais até agora ignoradas)
   let rAud = null;
   try { rAud = await syncAudicoes(); }
-  catch (err) { console.warn(`\n  ⚠ syncAudicoes falhou (${err.message})`); avisos.push('syncAudicoes'); }
+  catch (err) { anotarFalha(err); console.warn(`\n  ⚠ syncAudicoes falhou (${err.message})`); avisos.push('syncAudicoes'); }
   if (!(await logSimples('audicoes', rAud))) avisos.push('audicoes');
 
   let rAudi = null;
   try { rAudi = await syncAudiencias(); }
-  catch (err) { console.warn(`\n  ⚠ syncAudiencias falhou (${err.message})`); avisos.push('syncAudiencias'); }
+  catch (err) { anotarFalha(err); console.warn(`\n  ⚠ syncAudiencias falhou (${err.message})`); avisos.push('syncAudiencias'); }
   if (!(await logSimples('audiencias', rAudi))) avisos.push('audiencias');
 
   let rDesloc = null;
   try { rDesloc = await syncDeslocacoes(); }
-  catch (err) { console.warn(`\n  ⚠ syncDeslocacoes falhou (${err.message})`); avisos.push('syncDeslocacoes'); }
+  catch (err) { anotarFalha(err); console.warn(`\n  ⚠ syncDeslocacoes falhou (${err.message})`); avisos.push('syncDeslocacoes'); }
   if (!(await logSimples('deslocacoes', rDesloc))) avisos.push('deslocacoes');
 
   let rEvt = null;
   try { rEvt = await syncEventos(); }
-  catch (err) { console.warn(`\n  ⚠ syncEventos falhou (${err.message})`); avisos.push('syncEventos'); }
+  catch (err) { anotarFalha(err); console.warn(`\n  ⚠ syncEventos falhou (${err.message})`); avisos.push('syncEventos'); }
   if (!(await logSimples('eventos', rEvt))) avisos.push('eventos');
 
   let rOrc = null;
   try { rOrc = await syncOrcamento(); }
-  catch (err) { console.warn(`\n  ⚠ syncOrcamento falhou (${err.message})`); avisos.push('syncOrcamento'); }
+  catch (err) { anotarFalha(err); console.warn(`\n  ⚠ syncOrcamento falhou (${err.message})`); avisos.push('syncOrcamento'); }
   if (!(await logSimples('orcamento', rOrc))) avisos.push('orcamento');
 
   // Transcrições (scraping DAR PDF)
   let rTransc = null;
   try { rTransc = await obterTranscricoesDebates(); }
-  catch (err) { console.warn(`\n  ⚠ obterTranscricoesDebates falhou (${err.message})`); avisos.push('obterTranscricoesDebates'); }
+  catch (err) { anotarFalha(err); console.warn(`\n  ⚠ obterTranscricoesDebates falhou (${err.message})`); avisos.push('obterTranscricoesDebates'); }
   await log('transcricoes', {
     sucesso: rTransc !== null, total: rTransc?.total ?? 0, inseridos: rTransc?.inseridos ?? 0,
     atualizados: 0, erros: rTransc?.erros ?? (rTransc === null ? 1 : 0), detalhes: [],
@@ -321,7 +348,7 @@ async function main() {
 
   // Resumos IA debates + log combinado
   try { acumularAi(await resumirDebates()); }
-  catch (err) { console.warn(`\n  ⚠ resumirDebates falhou (${err.message})`); avisos.push('resumirDebates'); }
+  catch (err) { anotarFalha(err); console.warn(`\n  ⚠ resumirDebates falhou (${err.message})`); avisos.push('resumirDebates'); }
   await log('resumos_ia', {
     sucesso: aiErros === 0, total: aiTotal, inseridos: aiInseridos, atualizados: 0, erros: aiErros, detalhes: [],
     novos: aiNovos, falhas: aiFalhas,
@@ -331,7 +358,7 @@ async function main() {
   // Intervenções (indexação a partir do texto PDF)
   let rInt = null;
   try { rInt = await indexarIntervencoes(); }
-  catch (err) { console.warn(`\n  ⚠ indexarIntervencoes falhou (${err.message})`); avisos.push('indexarIntervencoes'); }
+  catch (err) { anotarFalha(err); console.warn(`\n  ⚠ indexarIntervencoes falhou (${err.message})`); avisos.push('indexarIntervencoes'); }
   await log('intervencoes', {
     sucesso: rInt !== null, total: rInt?.total ?? 0, inseridos: rInt?.inseridos ?? 0,
     atualizados: 0, erros: rInt?.erros ?? (rInt === null ? 1 : 0), detalhes: [],
@@ -342,7 +369,7 @@ async function main() {
   // Ligação intervenções → iniciativas (via Intervencoesdebates estruturado)
   let rIntLink = null;
   try { rIntLink = await linkIntervencoesIniciativas(); }
-  catch (err) { console.warn(`\n  ⚠ linkIntervencoesIniciativas falhou (${err.message})`); avisos.push('linkIntervencoesIniciativas'); }
+  catch (err) { anotarFalha(err); console.warn(`\n  ⚠ linkIntervencoesIniciativas falhou (${err.message})`); avisos.push('linkIntervencoesIniciativas'); }
   await log('intervencoes_links', {
     sucesso:     rIntLink !== null,
     total:       rIntLink?.total     ?? 0,
@@ -359,7 +386,7 @@ async function main() {
   // onde Intervencoesdebates ainda não foi populado pelo API da AR)
   let rIntLinkDar = null;
   try { rIntLinkDar = await linkIntervencoesViaDarLinks(); }
-  catch (err) { console.warn(`\n  ⚠ linkIntervencoesViaDarLinks falhou (${err.message})`); avisos.push('linkIntervencoesViaDarLinks'); }
+  catch (err) { anotarFalha(err); console.warn(`\n  ⚠ linkIntervencoesViaDarLinks falhou (${err.message})`); avisos.push('linkIntervencoesViaDarLinks'); }
   await log('intervencoes_links_dar', {
     sucesso:     rIntLinkDar !== null,
     total:       rIntLinkDar?.total     ?? 0,
@@ -376,7 +403,7 @@ async function main() {
   if (resultados.iniciativas?.ok) {
     let rVot = null;
     try { rVot = await syncVotacoes(); }
-    catch (err) { console.warn(`\n  ⚠ syncVotacoes falhou (${err.message})`); avisos.push('syncVotacoes'); }
+    catch (err) { anotarFalha(err); console.warn(`\n  ⚠ syncVotacoes falhou (${err.message})`); avisos.push('syncVotacoes'); }
     const votacoesSucesso = rVot?.ok ?? rVot !== null;
     await log('votacoes', {
       sucesso: votacoesSucesso, total: rVot?.total ?? 0, inseridos: rVot?.total ?? 0,
@@ -401,7 +428,7 @@ async function main() {
     // Ligação DAR ↔ Iniciativas
     let rDarLinks = null;
     try { rDarLinks = await syncDarLinks(); }
-    catch (err) { console.warn(`\n  ⚠ syncDarLinks falhou (${err.message})`); avisos.push('syncDarLinks'); }
+    catch (err) { anotarFalha(err); console.warn(`\n  ⚠ syncDarLinks falhou (${err.message})`); avisos.push('syncDarLinks'); }
     const darLinksSucesso = rDarLinks?.ok ?? rDarLinks !== null;
     await log('dar_links', {
       sucesso:     darLinksSucesso,
@@ -417,7 +444,7 @@ async function main() {
 
     let rVotAi = null;
     try { rVotAi = await resumirVotacoes(); }
-    catch (err) { console.warn(`\n  ⚠ resumirVotacoes falhou (${err.message})`); avisos.push('resumirVotacoes'); }
+    catch (err) { anotarFalha(err); console.warn(`\n  ⚠ resumirVotacoes falhou (${err.message})`); avisos.push('resumirVotacoes'); }
     acumularAi(rVotAi);
   }
 
@@ -426,26 +453,26 @@ async function main() {
   // antes das biografias e presenças, que lêem a tabela dos 230.
   let rAssentos = null;
   try { rAssentos = await syncDeputadosAtuais(); }
-  catch (err) { console.warn(`\n  ⚠ syncDeputadosAtuais falhou (${err.message})`); avisos.push('syncDeputadosAtuais'); }
+  catch (err) { anotarFalha(err); console.warn(`\n  ⚠ syncDeputadosAtuais falhou (${err.message})`); avisos.push('syncDeputadosAtuais'); }
   if (!(await logSimples('assentos', rAssentos))) avisos.push('assentos');
 
   // Governo — composição e retratos, da Wikipédia
   let rGov = null;
   try { rGov = await syncGoverno(); }
-  catch (err) { console.warn(`\n  ⚠ syncGoverno falhou (${err.message})`); avisos.push('syncGoverno'); }
+  catch (err) { anotarFalha(err); console.warn(`\n  ⚠ syncGoverno falhou (${err.message})`); avisos.push('syncGoverno'); }
   if (!(await logSimples('governo', rGov))) avisos.push('governo');
 
   // Alinhar os oradores do Governo com a composição acabada de sincronizar
   let rAlinhar = null;
   try { rAlinhar = await alinharComGoverno(); }
-  catch (err) { console.warn(`
+  catch (err) { anotarFalha(err); console.warn(`
   ⚠ alinharComGoverno falhou (${err.message})`); avisos.push("alinharComGoverno"); }
   if (!(await logSimples('governo_oradores', rAlinhar))) avisos.push('governo_oradores');
 
   // Biografias (scraping parlamento.pt)
   let rBio = null;
   try { rBio = await crawlerBiografias(); }
-  catch (err) { console.warn(`\n  ⚠ crawlerBiografias falhou (${err.message})`); avisos.push('crawlerBiografias'); }
+  catch (err) { anotarFalha(err); console.warn(`\n  ⚠ crawlerBiografias falhou (${err.message})`); avisos.push('crawlerBiografias'); }
   await log('biografias', {
     sucesso: rBio !== null, total: rBio?.total ?? 0, inseridos: rBio?.inseridos ?? 0,
     atualizados: 0, erros: rBio?.erros ?? (rBio === null ? 1 : 0), detalhes: [],
@@ -456,7 +483,7 @@ async function main() {
   // Presenças (scraping parlamento.pt)
   let rPresencas = null;
   try { rPresencas = await crawlerPresencas(); }
-  catch (err) { console.warn(`\n  ⚠ crawlerPresencas falhou (${err.message})`); avisos.push('crawlerPresencas'); }
+  catch (err) { anotarFalha(err); console.warn(`\n  ⚠ crawlerPresencas falhou (${err.message})`); avisos.push('crawlerPresencas'); }
   await log('presencas', {
     sucesso: rPresencas !== null, total: rPresencas?.total ?? 0, inseridos: rPresencas?.inseridos ?? 0,
     atualizados: 0, erros: rPresencas?.erros ?? (rPresencas === null ? 1 : 0), detalhes: [],

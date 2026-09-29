@@ -107,11 +107,35 @@ export async function upsertBatch(recurso, registos) {
   };
 }
 
+/**
+ * Guarda uma linha em ar_sync_log — a tabela que alimenta a página pública de
+ * Sincronizações do site (o calendário dia a dia).
+ *
+ * Só as colunas que a tabela tem. Até 29/09/2026 isto espalhava o objecto
+ * inteiro; quando a 10/09 os resultados passaram a levar `novos` e `falhas`
+ * (que vão para sync_status, não para aqui), o PostgREST passou a recusar
+ * todos os inserts do pipeline diário por "coluna inexistente" — e como o
+ * supabase-js devolve o erro em vez de o lançar, o catch nunca o viu. A
+ * página ficou dezanove dias parada sem ninguém dar por isso.
+ */
 export async function registarLog(recurso, stats) {
+  // Os passos mais novos só preenchem `novos`; a página lê `detalhes`, que é a
+  // mesma forma ({ label }) — usa-se o que houver.
+  const detalhes = stats.detalhes?.length ? stats.detalhes : (stats.novos ?? []);
+
   try {
-    await getClient().from('ar_sync_log').insert({ recurso, ...stats });
+    const { error } = await getClient().from('ar_sync_log').insert({
+      recurso,
+      sucesso:     stats.sucesso,
+      total:       stats.total ?? 0,
+      inseridos:   stats.inseridos ?? 0,
+      atualizados: stats.atualizados ?? 0,
+      erros:       stats.erros ?? 0,
+      detalhes,
+    });
+    if (error) console.warn(`  ⚠ Log não guardado (${recurso}): ${error.message}`);
   } catch (err) {
-    console.warn(`  ⚠ Log não guardado: ${err.message}`);
+    console.warn(`  ⚠ Log não guardado (${recurso}): ${err.message}`);
   }
 }
 

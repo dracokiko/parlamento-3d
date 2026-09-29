@@ -137,6 +137,74 @@ async function dataUltimaCrawlada() {
 }
 
 /**
+ * Quantos dias a AR leva a publicar o Diário de uma sessão plenária.
+ *
+ * Medido nos registos do próprio pipeline — o dia em que cada sessão apareceu
+ * pela primeira vez no catálogo contra o dia em que foi realizada —, em dez
+ * sessões de 17/06 a 08/09/2026: mediana de 19 dias, mínimo 10, máximo 25.
+ * Se a AR mudar de ritmo, é aqui que se acerta.
+ */
+export const ATRASO_DIARIO = { min: 10, max: 25 };
+
+const fmtDia = (iso) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}`;
+const diasDesde = (iso) => Math.floor((Date.now() - new Date(`${iso}T12:00:00Z`).getTime()) / 86_400_000);
+
+/**
+ * As sessões plenárias que a AR já realizou e cujo Diário ainda não publicou.
+ *
+ * É a explicação para "as intervenções não mexem": as intervenções saem da
+ * transcrição, a transcrição sai do Diário, e o Diário chega duas a três
+ * semanas depois da sessão. Os dias de plenário vêm do feed de atividades da
+ * AR (ar_debates sem prefixo dar_), que os anuncia logo; conta-se por dia e
+ * não por debate, porque vários debates do mesmo dia saem num só Diário.
+ *
+ * Só faz sentido quando o crawler do catálogo correu nesse dia: aí sabemos
+ * que o que nos falta é o que a AR não publicou, e não o que não conseguimos
+ * ir buscar.
+ *
+ * @returns {Promise<{ nivel: 'info'|'aviso', texto: string }[]>}
+ */
+export async function infoSessoesPorPublicar() {
+  const ultima = await dataUltimaCrawlada();
+  if (!ultima) return [];
+
+  const hoje = new Date().toISOString().slice(0, 10);
+  const { data, error } = await db()
+    .from('ar_debates')
+    .select('data_debate')
+    .not('id', 'like', 'dar_%')
+    .gt('data_debate', ultima)
+    .lte('data_debate', hoje);
+  if (error) throw error;
+
+  const dias = [...new Set((data ?? []).map(d => d.data_debate).filter(Boolean))].sort();
+
+  if (!dias.length) {
+    return [{
+      nivel: 'info',
+      texto: `Todos os Diários publicados pela AR estão na base — o último é de ${fmtDia(ultima)}.`,
+    }];
+  }
+
+  const maisAntiga = dias[0];
+  const idade = diasDesde(maisAntiga);
+  const sessoes = dias.length === 1 ? '1 sessão plenária' : `${dias.length} sessões plenárias`;
+  const intervalo = dias.length === 1 ? `de ${fmtDia(maisAntiga)}` : `de ${fmtDia(maisAntiga)} a ${fmtDia(dias[dias.length - 1])}`;
+  const atrasada = idade > ATRASO_DIARIO.max;
+
+  return [{
+    // Dentro do atraso habitual é só informação; fora dele merece atenção.
+    nivel: atrasada ? 'aviso' : 'info',
+    texto:
+      `${sessoes} à espera de que a AR publique o Diário (${intervalo}); a mais antiga tem ${idade} dias. ` +
+      (atrasada
+        ? `A AR costuma publicar entre ${ATRASO_DIARIO.min} e ${ATRASO_DIARIO.max} dias depois — esta já passou do habitual. `
+        : `A AR costuma publicar entre ${ATRASO_DIARIO.min} e ${ATRASO_DIARIO.max} dias depois. `) +
+      `As intervenções dessas sessões só entram quando o Diário sair.`,
+  }];
+}
+
+/**
  * Busca o texto completo de uma sessão via ?sft=true.
  *
  * Duas fontes de incerteza no URL, ambas tentadas aqui:
