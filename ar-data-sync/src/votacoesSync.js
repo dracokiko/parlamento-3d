@@ -166,6 +166,24 @@ function extrairVotacoes(iniciativaId, eventos) {
   return registos;
 }
 
+/**
+ * Das votações dadas, quais já estão na base.
+ *
+ * Aos bocados de 200: o PostgREST corta respostas aos 1000 registos, e uma
+ * lista de ids muito comprida no URL também tem limite.
+ */
+async function idsExistentes(ids) {
+  const existentes = new Set();
+  for (let i = 0; i < ids.length; i += 200) {
+    const { data, error } = await db.from('ar_votacoes').select('id').in('id', ids.slice(i, i + 200));
+    // Sem a resposta não se sabe quais são novas; conta-as todas como revistas
+    // em vez de as anunciar como novas — errar para o lado do "nada de novo".
+    if (error) return new Set(ids);
+    for (const r of data ?? []) existentes.add(r.id);
+  }
+  return existentes;
+}
+
 export async function syncVotacoes() {
   console.log('\n' + '='.repeat(55));
   console.log('  VOTAÇÕES — extracção de IniEventos');
@@ -177,6 +195,10 @@ export async function syncVotacoes() {
   let totalComDivergentes = 0;
   let erroFatal = false;
   let erros = 0;
+  // Novas a sério, e não todas as que se regravaram: as votações extraem-se
+  // todas outra vez a cada corrida, e o resumo contava as ~2100 como novas
+  // todos os dias — o painel dizia "+2127 novos" sem ter entrado nenhuma.
+  let inseridas = 0, atualizadas = 0, divergentesNovas = 0;
   const novos = [], falhas = [], divergentesAmostra = [];
 
   while (true) {
@@ -198,23 +220,13 @@ export async function syncVotacoes() {
     const batch = [];
     for (const ini of data) {
       totalIniciativas++;
-      const vots = extrairVotacoes(ini.id, ini.eventos);
-      batch.push(...vots);
-      for (const v of vots) {
-        const rebeldes = v.deputados_isolados?.filter(d => d.rebelde) ?? [];
-        if (rebeldes.length) {
-          totalComDivergentes++;
-          empurrarAmostra(divergentesAmostra, {
-            id: v.id,
-            label: `Iniciativa ${v.iniciativa_id} — ${rebeldes.map(d => d.nome).join(', ')}`,
-          });
-        }
-      }
+      batch.push(...extrairVotacoes(ini.id, ini.eventos));
     }
 
     totalVotacoes += batch.length;
 
     if (batch.length) {
+      const existentes = await idsExistentes(batch.map(v => v.id));
       const { error: upsertErr } = await db
         .from('ar_votacoes')
         .upsert(batch, { onConflict: 'id' });
@@ -224,7 +236,23 @@ export async function syncVotacoes() {
         erros += batch.length;
         empurrarAmostra(falhas, { motivo: `Upsert de ${batch.length} votações falhou: ${upsertErr.message}` });
       } else {
-        juntarAmostra(novos, batch.map(v => ({ id: v.id, label: `Iniciativa ${v.iniciativa_id} — ${v.resultado ?? '?'}` })));
+        const novasDoLote = batch.filter(v => !existentes.has(v.id));
+        inseridas   += novasDoLote.length;
+        atualizadas += batch.length - novasDoLote.length;
+        juntarAmostra(novos, novasDoLote.map(v => ({ id: v.id, label: `Iniciativa ${v.iniciativa_id} — ${v.resultado ?? '?'}` })));
+
+        for (const v of batch) {
+          const rebeldes = v.deputados_isolados?.filter(d => d.rebelde) ?? [];
+          if (!rebeldes.length) continue;
+          totalComDivergentes++;
+          // Só as divergências de votações que acabaram de entrar são notícia.
+          if (existentes.has(v.id)) continue;
+          divergentesNovas++;
+          empurrarAmostra(divergentesAmostra, {
+            id: v.id,
+            label: `Iniciativa ${v.iniciativa_id} — ${rebeldes.map(d => d.nome).join(', ')}`,
+          });
+        }
       }
     }
 
@@ -235,10 +263,11 @@ export async function syncVotacoes() {
   }
 
   console.log(`\n  ✓ Iniciativas processadas  : ${totalIniciativas}`);
-  console.log(`  ✓ Votações extraídas        : ${totalVotacoes}`);
-  console.log(`  ✓ Com votos divergentes     : ${totalComDivergentes}`);
+  console.log(`  ✓ Votações extraídas        : ${totalVotacoes} (${inseridas} novas)`);
+  console.log(`  ✓ Com votos divergentes     : ${totalComDivergentes} (${divergentesNovas} novas)`);
   return {
     ok: !erroFatal, total: totalVotacoes, comDivergentes: totalComDivergentes,
+    inseridas, atualizadas, divergentesNovas,
     erros, novos, falhas, divergentesAmostra,
   };
 }

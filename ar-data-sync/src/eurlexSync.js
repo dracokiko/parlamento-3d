@@ -263,16 +263,34 @@ export async function syncDiretivasUE() {
   console.log(`\n  → ${registos.length} registos prontos`);
 
   // Fase 3: Supabase
+  //
+  // Contam-se como novas só as diretivas que ainda não estavam na base. Até
+  // 29/09/2026 todas as guardadas iam para `inseridos` e o painel anunciava
+  // as ~820 como novas todas as semanas.
   console.log('\n[3/3] Supabase upsert...');
   const BATCH = 50;
-  let saved = 0;
-  let batchErros = 0;
+  let saved = 0, novas = 0, naoGravadas = 0;
+  const amostraNovas = [], falhas = [];
   for (let i = 0; i < registos.length; i += BATCH) {
-    const { error } = await db
-      .from('diretivas_ue')
-      .upsert(registos.slice(i, i + BATCH), { onConflict: 'id' });
-    if (error) { console.warn(`  ⚠ batch ${i}: ${error.message}`); batchErros++; }
-    else saved += Math.min(BATCH, registos.length - i);
+    const lote = registos.slice(i, i + BATCH);
+    const { data: jaHavia, error: erroLeitura } = await db
+      .from('diretivas_ue').select('id').in('id', lote.map((r) => r.id));
+    // Sem saber o que já havia, nada se anuncia como novo.
+    const existentes = erroLeitura ? new Set(lote.map((r) => r.id)) : new Set((jaHavia ?? []).map((r) => r.id));
+
+    const { error } = await db.from('diretivas_ue').upsert(lote, { onConflict: 'id' });
+    if (error) {
+      console.warn(`  ⚠ batch ${i}: ${error.message}`);
+      naoGravadas += lote.length;
+      if (falhas.length < 30) falhas.push({ motivo: `${lote.length} diretivas não gravadas — ${error.message}` });
+      continue;
+    }
+    saved += lote.length;
+    for (const r of lote) {
+      if (existentes.has(r.id)) continue;
+      novas++;
+      if (amostraNovas.length < 30) amostraNovas.push({ id: r.id, label: `${r.id} — ${r.titulo ?? 'sem título'}` });
+    }
   }
 
   // Só as diretivas COM prazo são relevantes para monitorizar Portugal
@@ -282,27 +300,33 @@ export async function syncDiretivasUE() {
   const porTranspor = comPrazo.filter((r) => !r.transposto_pt && !r.em_atraso).length;
   const semPrazo    = registos.filter((r) => !r.prazo_transposicao).length;
 
-  console.log(`\n  ✓ ${saved} diretivas guardadas`);
+  console.log(`\n  ✓ ${saved} diretivas guardadas (${novas} novas)`);
   console.log(`    Com prazo de transposição : ${comPrazo.length}`);
   console.log(`    Transpostas PT            : ${transpostas}`);
   console.log(`    Em atraso (multa possível): ${emAtraso}`);
   console.log(`    Por transpor (no prazo)   : ${porTranspor}`);
   console.log(`    Sem prazo (delg./execução): ${semPrazo}`);
 
+  const sucesso = naoGravadas === 0;
+  const contagens = { total: registos.length, inseridos: novas, atualizados: saved - novas, erros: naoGravadas };
+
   try {
-    await db.from('ar_sync_log').insert({
-      recurso: 'diretivas_ue', sucesso: batchErros === 0,
-      total: registos.length, inseridos: saved, atualizados: 0, erros: batchErros,
-      detalhes: [],
-    });
+    await db.from('ar_sync_log').insert({ recurso: 'diretivas_ue', sucesso, ...contagens, detalhes: amostraNovas });
   } catch {}
 
   return {
-    ok:      batchErros === 0,
-    message: batchErros ? `${batchErros} lote(s) falharam ao gravar` : null,
+    ok:      sucesso,
+    message: sucesso ? null : `${naoGravadas} diretivas não gravadas`,
     summary: [{
-      recurso: 'diretivas_ue', sucesso: batchErros === 0,
-      total: registos.length, inseridos: saved, atualizados: 0, erros: batchErros,
+      recurso: 'diretivas_ue', sucesso, ...contagens,
+      syncedAt: new Date().toISOString(),
+      ...(amostraNovas.length ? { novos: amostraNovas } : {}),
+      ...(falhas.length ? { falhas } : {}),
+      // O que interessa a quem lê: o estado de Portugal, não só os números do fetch.
+      info: [{
+        nivel: 'info',
+        texto: `${emAtraso} diretivas em atraso de transposição em Portugal (prazo passado, sem medidas nacionais) e ${porTranspor} ainda dentro do prazo, de ${comPrazo.length} com prazo.`,
+      }],
     }],
   };
 }

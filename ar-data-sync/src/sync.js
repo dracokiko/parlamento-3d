@@ -411,19 +411,23 @@ async function main() {
     try { rVot = await syncVotacoes(); }
     catch (err) { anotarFalha(err); console.warn(`\n  ⚠ syncVotacoes falhou (${err.message})`); avisos.push('syncVotacoes'); }
     const votacoesSucesso = rVot?.ok ?? rVot !== null;
+    // Novas as que não existiam; as outras foram só revistas. Até 29/09/2026
+    // o total ia inteiro para `inseridos` e o painel anunciava todas as
+    // votações como novas, todos os dias.
     await log('votacoes', {
-      sucesso: votacoesSucesso, total: rVot?.total ?? 0, inseridos: rVot?.total ?? 0,
-      atualizados: 0, erros: rVot?.erros ?? (rVot === null ? 1 : 0), detalhes: [],
+      sucesso: votacoesSucesso, total: rVot?.total ?? 0,
+      inseridos: rVot?.inseridas ?? 0, atualizados: rVot?.atualizadas ?? 0,
+      erros: rVot?.erros ?? (rVot === null ? 1 : 0), detalhes: [],
       novos: rVot?.novos ?? [], falhas: rVot?.falhas ?? [],
     });
     if (!votacoesSucesso) avisos.push('votacoes');
 
-    // Deputados divergentes — log separado com contagem
+    // Deputados divergentes — novas são as das votações que acabaram de entrar
     await log('deputados_divergentes', {
       sucesso: rVot !== null,
       total:       rVot?.comDivergentes ?? 0,
-      inseridos:   rVot?.comDivergentes ?? 0,
-      atualizados: 0,
+      inseridos:   rVot?.divergentesNovas ?? 0,
+      atualizados: (rVot?.comDivergentes ?? 0) - (rVot?.divergentesNovas ?? 0),
       erros:       rVot === null ? 1 : 0,
       detalhes:    [],
       novos:       rVot?.divergentesAmostra ?? [],
