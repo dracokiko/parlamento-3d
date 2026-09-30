@@ -95,7 +95,7 @@ export async function crawlerPresencas() {
 
   // Só os 230 deputados actuais: cruzar deputados.id com ar_deputados.id para obter cad_id (BID do site)
   const { data: activos, error: errActivos } = await db().from('deputados').select('id, nome');
-  if (errActivos) { console.error('❌', errActivos.message); process.exit(1); }
+  if (errActivos) throw new Error(`deputados: ${errActivos.message}`);
   const idsActivos = (activos ?? []).map(d => d.id);
 
   const { data: arDeps, error: errAr } = await db()
@@ -103,13 +103,23 @@ export async function crawlerPresencas() {
     .select('id, cad_id, nome_parlamentar')
     .in('id', idsActivos)
     .not('cad_id', 'is', null);
-  if (errAr) { console.error('❌', errAr.message); process.exit(1); }
+  // Lançar e não process.exit: isto corre dentro do pipeline, e sair do
+  // processo saltava o registo do estado e deixava o trinco preso.
+  if (errAr) throw new Error(`ar_deputados: ${errAr.message}`);
 
-  const porId = new Map((arDeps ?? []).map(r => [r.id, r]));
+  // Chaves em texto dos dois lados: deputados.id é um número e ar_deputados.id
+  // é texto, e num Map 15891 e "15891" são chaves diferentes. Com isto a
+  // devolver zero, as presenças ficaram meses sem ser actualizadas sem um
+  // único erro — o crawler corria e não encontrava ninguém.
+  const porId = new Map((arDeps ?? []).map(r => [String(r.id), r]));
   const deputados = (activos ?? [])
-    .map(d => { const ar = porId.get(d.id); return ar ? { cad_id: ar.cad_id, nome_parlamentar: ar.nome_parlamentar ?? d.nome } : null; })
+    .map(d => { const ar = porId.get(String(d.id)); return ar ? { cad_id: ar.cad_id, nome_parlamentar: ar.nome_parlamentar ?? d.nome } : null; })
     .filter(Boolean);
   console.log(`  → ${deputados.length} deputados activos`);
+
+  // Zero deputados não é "nada a fazer", é avaria: há sempre 230 lugares.
+  // Antes isto saía como "Concluído | OK: 0 | Erros: 0" e passava por sucesso.
+  if (!deputados.length) throw new Error(`nenhum deputado activo com cad_id (de ${activos?.length ?? 0} lugares)`);
 
   let ok = 0, erros = 0;
   const novos = [], falhas = [];

@@ -305,17 +305,24 @@ export async function classificarTemas() {
 
 export async function obterTranscricoesDebates() {
   console.log('\n  [DAR] A obter transcrições de debates...');
-  let total = 0, erros = 0, offset = 0;
+  let total = 0, erros = 0;
+  let ultimoId = null;
   const novos = [], falhas = [];
 
   while (true) {
-    // Debates com url_diario mas sem transcrição ainda
-    const { data: debates, error } = await db()
+    // Debates com url_diario mas sem transcrição ainda, 10 de cada vez, a
+    // avançar pela chave. Com OFFSET saltavam-se debates: os que ganhavam
+    // transcrição saíam do filtro, a lista encolhia por baixo, e o salto
+    // seguinte passava por cima dos que ainda não tinham sido vistos.
+    let consulta = db()
       .from('ar_debates')
       .select('id, assunto, url_diario')
       .is('transcricao', null)
       .not('url_diario', 'is', null)
-      .range(offset, offset + 9); // 10 por vez — cada um faz vários pedidos HTTP
+      .order('id')
+      .limit(10); // 10 por vez — cada um faz vários pedidos HTTP
+    if (ultimoId !== null) consulta = consulta.gt('id', ultimoId);
+    const { data: debates, error } = await consulta;
 
     if (error) { console.error('  ✗ Erro:', error.message); break; }
     if (!debates?.length) break;
@@ -334,7 +341,7 @@ export async function obterTranscricoesDebates() {
     }
 
     if (debates.length < 10) break;
-    offset += 10;
+    ultimoId = debates[debates.length - 1].id;
   }
 
   console.log(`\n  [DAR] Transcrições concluídas — ${total} obtidas, ${erros} erros`);
@@ -372,6 +379,9 @@ export async function indexarIntervencoes() {
       .from('ar_debates')
       .select('id')
       .not('transcricao', 'is', null)
+      // Ordem estável: sem ela o Postgres não garante a mesma ordem de página
+      // para página, e o OFFSET pode repetir umas linhas e saltar outras.
+      .order('id')
       .range(offset, offset + PAGE - 1);
 
     if (error) { console.error('  ✗ Erro:', error.message); break; }

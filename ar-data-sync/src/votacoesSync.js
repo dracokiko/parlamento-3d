@@ -206,6 +206,9 @@ export async function syncVotacoes() {
       .from('ar_iniciativas')
       .select('id, eventos')
       .not('eventos', 'is', null)
+      // Ordem estável: sem ela o Postgres não garante a mesma ordem de página
+      // para página, e o OFFSET pode repetir umas linhas e saltar outras.
+      .order('id')
       .range(offset, offset + PAGE - 1);
 
     if (error) {
@@ -285,6 +288,7 @@ async function diagnosticarVotacoes() {
       .from('ar_iniciativas')
       .select('id, eventos')
       .not('eventos', 'is', null)
+      .order('id')
       .range(offset, offset + 199);
 
     if (!data?.length) break;

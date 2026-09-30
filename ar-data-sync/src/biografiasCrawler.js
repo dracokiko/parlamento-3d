@@ -122,10 +122,14 @@ async function extrairBids() {
     .not('cad_id', 'is', null);
   if (error) throw new Error(error.message);
 
-  const porId = new Map((data ?? []).map(r => [r.id, r]));
+  // Chaves em texto dos dois lados: deputados.id é um número e ar_deputados.id
+  // é texto, e num Map 15891 e "15891" são chaves diferentes. Com isto a
+  // devolver zero, as biografias ficaram semanas sem ser actualizadas sem
+  // um único erro — o crawler corria e não encontrava ninguém.
+  const porId = new Map((data ?? []).map(r => [String(r.id), r]));
   return (activos ?? [])
     .map(d => {
-      const ar = porId.get(d.id);
+      const ar = porId.get(String(d.id));
       return ar ? { bid: ar.cad_id, nome: ar.nome_parlamentar ?? d.nome } : null;
     })
     .filter(Boolean);
@@ -138,6 +142,8 @@ export async function crawlerBiografias() {
 
   const deputados = await extrairBids();
   console.log(`  → ${deputados.length} BIDs encontrados no catálogo`);
+  // Ver o mesmo aviso no crawler de presenças: zero é avaria, não sossego.
+  if (!deputados.length) throw new Error('nenhum deputado activo com cad_id — o cruzamento com ar_deputados falhou');
 
   let ok = 0, erros = 0;
   const novos = [], falhas = [];

@@ -143,19 +143,64 @@ export const ParlamentoProvider = ({ children }) => {
   useEffect(() => {
     const LOTE = 1000;
 
+    // Um pedido que falhe (quase sempre um "statement timeout" passageiro do
+    // Supabase) repete-se com pausas crescentes, em vez de a leitura parar ali
+    // e o site ficar com o que calhou — às vezes nada.
+    const ESPERAS = [800, 2500, 6000];
+    const comInsistencia = async (pedido, rotulo) => {
+      for (let tentativa = 0; ; tentativa++) {
+        const { data, error } = await pedido();
+        if (!error) return data ?? [];
+        if (tentativa >= ESPERAS.length) {
+          console.error(`[paginar] ${rotulo}: desisti ao fim de ${tentativa + 1} tentativas —`, error.message);
+          return null;
+        }
+        await new Promise((r) => setTimeout(r, ESPERAS[tentativa]));
+      }
+    };
+
     const paginar = async (tabela, campos, ordenar, filtrar) => {
       const todos = [];
       for (let i = 0; ; i += LOTE) {
-        let q = supabase.from(tabela).select(campos).range(i, i + LOTE - 1);
-        if (ordenar) q = q.order(ordenar, { ascending: false });
-        if (filtrar) q = filtrar(q);
-        const { data, error } = await q;
-        if (error) {
-          console.error(`[paginar] erro em ${tabela} offset=${i}:`, error.message);
-          break;
-        }
+        let q = () => {
+          let c = supabase.from(tabela).select(campos).range(i, i + LOTE - 1);
+          // O id desempata: sem ele, linhas com a mesma data podiam aparecer
+          // em duas páginas ou em nenhuma.
+          if (ordenar) c = c.order(ordenar, { ascending: false }).order('id');
+          else c = c.order('id'); // sem ordem, o OFFSET do Postgres não garante páginas certas
+          if (filtrar) c = filtrar(c);
+          return c;
+        };
+        const data = await comInsistencia(q, `${tabela} offset=${i}`);
         if (!data?.length) break;
         todos.push(...data);
+        if (data.length < LOTE) break;
+      }
+      return todos;
+    };
+
+    /**
+     * Para tabelas grandes: pede as linhas pela ordem da chave primária, a
+     * partir da última recebida, em vez de ordenar tudo por outra coluna e
+     * saltar com OFFSET. As intervenções são 70 mil; ordenadas por data, cada
+     * página obrigava o Postgres a reordená-las todas, e a primeira chegava a
+     * passar o limite de tempo do Supabase — o site ficava sem intervenção
+     * nenhuma, sem aviso. Pela chave, cada página custa o mesmo que a primeira.
+     * Quem as mostra já as ordena por data.
+     */
+    const paginarPorId = async (tabela, campos) => {
+      const todos = [];
+      let ultimo = null;
+      for (;;) {
+        const q = () => {
+          let c = supabase.from(tabela).select(campos).order('id').limit(LOTE);
+          if (ultimo !== null) c = c.gt('id', ultimo);
+          return c;
+        };
+        const data = await comInsistencia(q, `${tabela} depois de ${ultimo ?? 'início'}`);
+        if (!data?.length) break;
+        todos.push(...data);
+        ultimo = data[data.length - 1].id;
         if (data.length < LOTE) break;
       }
       return todos;
@@ -186,7 +231,7 @@ export const ParlamentoProvider = ({ children }) => {
       });
 
     // Intervenções (sem texto — carregado em batch ao abrir painel do deputado)
-    paginar('ar_intervencoes', 'id, debate_id, nome_dep, partido, data_debate, assunto, url_diario, num_palavras, fase_debate, iniciativa_id, papel, cargo', 'data_debate')
+    paginarPorId('ar_intervencoes', 'id, debate_id, nome_dep, partido, data_debate, assunto, url_diario, num_palavras, fase_debate, iniciativa_id, papel, cargo')
       .then(todas => {
         const mapa = new Map();
         todas.forEach(iv => {

@@ -129,7 +129,8 @@ const listaPartidos = (ps) => juntar(ps.map(nomePublico));
 async function lerTudo(consulta, pagina = 1000) {
   const tudo = [];
   for (let de = 0; ; de += pagina) {
-    const { data, error } = await consulta().range(de, de + pagina - 1);
+    // O id desempata: sem ordem estável, o OFFSET pode repetir e saltar linhas.
+    const { data, error } = await consulta().order('id').range(de, de + pagina - 1);
     if (error) throw new Error(error.message);
     tudo.push(...(data ?? []));
     if (!data || data.length < pagina) return tudo;

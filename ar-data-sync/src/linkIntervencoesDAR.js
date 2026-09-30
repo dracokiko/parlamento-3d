@@ -36,6 +36,9 @@ export async function linkIntervencoesViaDarLinks(opts = {}) {
       .from('ar_iniciativas')
       .select('id, dar_links')
       .not('dar_links', 'is', null)
+      // Ordem estável: sem ela o Postgres não garante a mesma ordem de página
+      // para página, e o OFFSET pode repetir umas linhas e saltar outras.
+      .order('id')
       .range(offset, offset + PAGE - 1);
 
     if (error) { console.error('  ✗ Erro ao ler iniciativas:', error.message); break; }

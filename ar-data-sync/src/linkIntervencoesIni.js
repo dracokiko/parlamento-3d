@@ -84,6 +84,9 @@ async function construirMapa() {
       .from('ar_iniciativas')
       .select('id, eventos')
       .not('eventos', 'is', null)
+      // Ordem estável: sem ela o Postgres não garante a mesma ordem de página
+      // para página, e o OFFSET pode repetir umas linhas e saltar outras.
+      .order('id')
       .range(offset, offset + PAGE - 1);
 
     if (error) { console.error('  ✗ Erro ao ler iniciativas:', error.message); break; }
@@ -145,7 +148,7 @@ export async function linkIntervencoesIniciativas(opts = {}) {
   {
     let off = 0;
     while (true) {
-      const { data, error } = await db.from('ar_deputados').select('cad_id, partido_sigla').not('cad_id', 'is', null).range(off, off + 499);
+      const { data, error } = await db.from('ar_deputados').select('cad_id, partido_sigla').not('cad_id', 'is', null).order('id').range(off, off + 499);
       if (error) { console.warn('  ⚠ Não foi possível carregar partidos por cadastro:', error.message); break; }
       if (!data?.length) break;
       for (const d of data) partidoPorCadastro.set(String(d.cad_id), d.partido_sigla);
