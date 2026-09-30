@@ -17,6 +17,7 @@ import { alinharComGoverno } from './alinharComGoverno.js';
 import { linkIntervencoesIniciativas } from './linkIntervencoesIni.js';
 import { linkIntervencoesViaDarLinks } from './linkIntervencoesDAR.js';
 import { juntarAmostra } from './resumoPublico.js';
+import { gerarDestaques } from './destaques.js';
 
 /** Copia até ao limite público, independentemente do tamanho da lista de origem (algumas funções mantêm um cap interno maior, só para ar_sync_log). */
 function capPublico(itens) {
@@ -500,6 +501,25 @@ async function main() {
     novos: rPresencas?.novos ?? [], falhas: rPresencas?.falhas ?? [],
   });
   if (!(rPresencas !== null)) avisos.push('presencas');
+
+  // Destaques — o que a visita guiada do site mostra. Em último lugar, para
+  // escolher a partir de tudo o que acabou de entrar. Se falhar, o site fica
+  // com os de ontem: o ficheiro publicado só é substituído quando há novos.
+  let rDestaques = null;
+  try { rDestaques = await gerarDestaques(); }
+  catch (err) { anotarFalha(err); console.warn(`\n  ⚠ gerarDestaques falhou (${err.message})`); avisos.push('gerarDestaques'); }
+  await log('destaques', {
+    sucesso:     rDestaques !== null,
+    total:       rDestaques?.total ?? 0,
+    inseridos:   rDestaques?.inseridos ?? 0,
+    atualizados: 0,
+    erros:       rDestaques === null ? 1 : 0,
+    detalhes:    [],
+    novos:       rDestaques?.novos ?? [],
+    falhas:      rDestaques?.falhas ?? [],
+    info:        rDestaques?.info ?? [],
+  });
+  if (rDestaques === null) avisos.push('destaques');
 
   // 3. Resultado final
   console.log(`\n${'='.repeat(55)}`);

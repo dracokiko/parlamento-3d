@@ -7,6 +7,7 @@ import { MesaPresidencia } from './MesaPresidencia';
 import { EstruturaHemiciclo } from './EstruturaHemiciclo';
 import { useParlamento } from '../../context/ParlamentoContext';
 import { useIsMobile, useIsTabletPortrait, useIsTouch } from '../../hooks/useIsMobile';
+import { escalaDaCena, vistaInicial } from '../../utils/vistasHemiciclo';
 
 /** Sinaliza ao contexto que o Three.js renderizou pelo menos uma frame com deputados. */
 const SinalPronto = () => {
@@ -42,14 +43,17 @@ export const CenaHemiciclo = () => {
   // maxPolarAngle=π/2 em mobile permite câmara perfeitamente horizontal (dy=0).
   // Com camera Y=target Y, look-angle=0° (mais frontal possível).
   // floor_angle=atan(61/62)=44.5° → chão a ~0.6% da borda inferior.
-  const sceneScale      = isTabletPortrait ? 2.2 : (isMobile ? 2.7 : 1);
-  const cameraPos       = isMobile ? [0, 61, 62]     : [0, 12, 24];
+  // A escala e a vista inicial vivem em utils/vistasHemiciclo.js: a visita aos
+  // destaques volta a esta mesma vista quando acaba.
+  const sceneScale      = escalaDaCena({ isMobile, isTabletPortrait });
+  const vistaDeInicio   = vistaInicial({ isMobile });
+  const cameraPos       = vistaDeInicio.camera;
   const cameraFov       = isMobile ? 90               : 48;
   const minDist         = isMobile ? 30               : 10;
   const maxDist         = isMobile ? 85               : 42;
   const fogNear         = isMobile ? 72               : 30;
   const fogFar          = isMobile ? 188              : 90;
-  const orbitTarget     = isMobile ? [0, 61, -16]     : [0, 10, -16];
+  const orbitTarget     = vistaDeInicio.alvo;
   const maxPolarAngle   = isMobile ? Math.PI / 2      : Math.PI / 2.1;
 
   return (

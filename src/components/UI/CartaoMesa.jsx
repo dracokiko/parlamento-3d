@@ -30,7 +30,7 @@ const TITULO_CURTO = {
  * exactamente o que se está a olhar.
  */
 export const CartaoMesa = () => {
-  const { mesaHover, setMesaHover, deputadoSelecionado, governanteSelecionado, selecionarDeputado } = useParlamento();
+  const { mesaHover, setMesaHover, deputadoSelecionado, governanteSelecionado, selecionarDeputado, visitaAberta } = useParlamento();
   const isTouch = useIsTouch();
   const isMobile = useIsMobile();
   // Guarda-se o retrato que falhou, e não um sim/não: senão a primeira
@@ -39,7 +39,7 @@ export const CartaoMesa = () => {
 
   // Com um painel aberto não há cartão: em telemóvel o painel é o ecrã todo, e
   // o cartão ficava por baixo dele à espera de um onPointerOut que não vem.
-  if (!mesaHover || deputadoSelecionado || governanteSelecionado) return null;
+  if (!mesaHover || deputadoSelecionado || governanteSelecionado || visitaAberta) return null;
 
   const { nome, cargo, partido, deputado } = mesaHover;
   const sigla = deputado?.partido ?? partido;

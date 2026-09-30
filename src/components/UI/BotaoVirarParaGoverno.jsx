@@ -32,7 +32,7 @@ const normalizarAngulo = (a) => Math.atan2(Math.sin(a), Math.cos(a));
  * torno do eixo da sala; só o destino é que é escolhido.
  */
 export const BotaoVirarParaGoverno = () => {
-  const { cameraControlsRef, bancadaGoverno: membrosGoverno, deputadoSelecionado, governanteSelecionado, setVistaGoverno } = useParlamento();
+  const { cameraControlsRef, bancadaGoverno: membrosGoverno, deputadoSelecionado, governanteSelecionado, setVistaGoverno, visitaAberta } = useParlamento();
   const isMobile = useIsMobile();
   const isTabletPortrait = useIsTabletPortrait();
 
@@ -122,7 +122,7 @@ export const BotaoVirarParaGoverno = () => {
 
   // Sem ninguém na bancada não há nada para onde virar. Com um painel aberto
   // o botão só estorvava — em ecrã pequeno o painel sobe justamente daí.
-  if (!membrosGoverno?.length || deputadoSelecionado || governanteSelecionado) return null;
+  if (!membrosGoverno?.length || deputadoSelecionado || governanteSelecionado || visitaAberta) return null;
 
   return (
     /* Encostado à direita: ao centro tapava os lugares da frente, que é

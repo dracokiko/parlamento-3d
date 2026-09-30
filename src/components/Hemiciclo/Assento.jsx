@@ -1,4 +1,4 @@
-import { useRef, useState, memo } from 'react';
+import { useRef, useState, useMemo, memo } from 'react';
 import * as THREE from 'three';
 import { useFrame } from '@react-three/fiber';
 import { Edges } from '@react-three/drei';
@@ -6,6 +6,39 @@ import PropTypes from 'prop-types';
 import { getCorPartido } from '../../data/mockPartidos';
 import { useParlamento } from '../../context/ParlamentoContext';
 import { useIsTouch } from '../../hooks/useIsMobile';
+
+/** As cores de uma votação: universais, e por isso lêem-se sem legenda. */
+const COR_VOTO = { favor: '#16a34a', contra: '#dc2626', abstencao: '#d97706' };
+const COR_SEM_POSICAO = '#9ca3af';
+
+/**
+ * Como este lugar aparece na paragem em curso da visita aos destaques, ou
+ * null fora da visita.
+ *
+ * - votação: a cor da posição da bancada — ou a do próprio deputado, quando
+ *   votou de outra maneira. Quem está em foco (os que votaram contra a
+ *   bancada) brilha e pulsa; os outros ficam um pouco mais apagados.
+ * - deputados: só os da história acesos; a sala escurece à volta.
+ * - sala: tudo meio apagado — a história está no cartão, não num lugar.
+ */
+function visualNaCena(cena, dep) {
+  if (!cena || !dep) return null;
+  const emFoco = Array.isArray(cena.deputados) && cena.deputados.includes(dep.id);
+  const haFoco = Array.isArray(cena.deputados) && cena.deputados.length > 0;
+
+  if (cena.modo === 'votacao') {
+    const pos = cena.excecoes?.[dep.id] ?? cena.posicoes?.[dep.partido] ?? null;
+    if (!pos || !COR_VOTO[pos]) return { cor: COR_SEM_POSICAO, opacity: 0.3, brilho: 0, pulsar: false };
+    return { cor: COR_VOTO[pos], opacity: haFoco && !emFoco ? 0.5 : 1, brilho: emFoco ? 0.9 : 0.15, pulsar: emFoco };
+  }
+  if (cena.modo === 'deputados') {
+    return emFoco
+      ? { cor: null, opacity: 1, brilho: 0.9, pulsar: true }
+      : { cor: null, opacity: 0.2, brilho: 0, pulsar: false };
+  }
+  if (cena.modo === 'sala') return { cor: null, opacity: 0.45, brilho: 0, pulsar: false };
+  return null;
+}
 
 /**
  * Componente Assento — representa um deputado no hemiciclo 3D.
@@ -24,12 +57,14 @@ const AssentoComponent = ({ deputado, position, rotation, scale = 1 }) => {
     deputadoSelecionado,
     deputadoHover,
     partidoDestaque,
+    cenaDestaque,
     selecionarDeputado,
     setDeputadoHover
   } = useParlamento();
   const isTouch = useIsTouch();
 
-  const corBase = getCorPartido(deputado?.partido);
+  const visual = useMemo(() => visualNaCena(cenaDestaque, deputado), [cenaDestaque, deputado]);
+  const corBase = visual?.cor ?? getCorPartido(deputado?.partido);
   const estaSelecionado = deputadoSelecionado?.id === deputado?.id;
   const estaEmPopup = isTouch && deputadoHover?.id === deputado?.id;
   const partidoEstaDestaque = partidoDestaque === null || partidoDestaque === deputado?.partido;
@@ -37,7 +72,7 @@ const AssentoComponent = ({ deputado, position, rotation, scale = 1 }) => {
   useFrame(({ clock }) => {
     if (!meshRef.current) return;
 
-    if (estaSelecionado || estaEmPopup) {
+    if (estaSelecionado || estaEmPopup || visual?.pulsar) {
       // Touch: pulso mais amplo e escala maior para destacar bem num ecrã táctil
       const amp    = isTouch ? 0.10 : 0.05;
       const centro = isTouch ? 1.45 : 1.15;
@@ -52,10 +87,14 @@ const AssentoComponent = ({ deputado, position, rotation, scale = 1 }) => {
     }
   });
 
-  const opacity = partidoEstaDestaque ? 1 : 0.38;
+  // Na visita manda a cena; fora dela, o destaque de partido de sempre.
+  const opacity = visual ? visual.opacity : (partidoEstaDestaque ? 1 : 0.38);
   const emissiveIntensity = (estaSelecionado || estaEmPopup)
     ? (isTouch ? 1.0 : 0.8)
-    : (!isTouch && hovered) ? 0.4 : (partidoEstaDestaque ? 0.05 : 0);
+    : (!isTouch && hovered) ? 0.4
+    : visual ? visual.brilho
+    : (partidoEstaDestaque ? 0.05 : 0);
+  const comContorno = visual ? visual.opacity >= 0.5 : partidoEstaDestaque;
 
   const handlePointerOver = (e) => {
     e.stopPropagation();
@@ -108,7 +147,7 @@ const AssentoComponent = ({ deputado, position, rotation, scale = 1 }) => {
             roughness={0.45}
             metalness={0.1}
           />
-          {partidoEstaDestaque && <Edges threshold={15} color="#000000" />}
+          {comContorno && <Edges threshold={15} color="#000000" />}
         </mesh>
 
         {/* Encosto — ligeiramente inclinado para trás */}
@@ -130,7 +169,7 @@ const AssentoComponent = ({ deputado, position, rotation, scale = 1 }) => {
             roughness={0.5}
             metalness={0.08}
           />
-          {partidoEstaDestaque && <Edges threshold={15} color="#000000" />}
+          {comContorno && <Edges threshold={15} color="#000000" />}
         </mesh>
       </group>
 

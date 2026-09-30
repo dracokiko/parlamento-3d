@@ -326,6 +326,13 @@ export const ParlamentoProvider = ({ children }) => {
   // e exactamente onde a Mesa fica -- tapava o que se estava a olhar.
   const [mesaHover, setMesaHover]                         = useState(null);
 
+  // A visita guiada aos destaques. `cenaDestaque` diz à sala o que mostrar
+  // na paragem em curso — que lugares acender, ou de que cor pintar cada
+  // bancada numa votação; os assentos lêem-na. `visitaAberta` serve para os
+  // outros botões saírem da frente enquanto a visita decorre.
+  const [cenaDestaque, setCenaDestaque]                   = useState(null);
+  const [visitaAberta, setVisitaAberta]                   = useState(false);
+
   // Ref partilhada para o OrbitControls do hemiciclo 3D — permite que
   // componentes fora do Canvas (ex: botão de reset em ControlosCamara)
   // chamem métodos da câmara sem recorrer a window.location.reload().
@@ -443,6 +450,8 @@ export const ParlamentoProvider = ({ children }) => {
     governanteSelecionado,
     governanteHover,
     mesaHover,
+    cenaDestaque,
+    visitaAberta,
     vistaGoverno,
     // Ações
     selecionarDeputado,
@@ -453,6 +462,8 @@ export const ParlamentoProvider = ({ children }) => {
     fecharPainelGoverno,
     setGovernanteHover,
     setMesaHover,
+    setCenaDestaque,
+    setVisitaAberta,
     setVistaGoverno,
     calcularFocoDePartido,
     cameraControlsRef,
@@ -483,6 +494,8 @@ export const ParlamentoProvider = ({ children }) => {
     governanteSelecionado,
     governanteHover,
     mesaHover,
+    cenaDestaque,
+    visitaAberta,
     vistaGoverno,
     selecionarDeputado,
     selecionarGovernante,
