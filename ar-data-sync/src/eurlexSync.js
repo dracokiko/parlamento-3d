@@ -1,14 +1,23 @@
 /**
  * EUR-Lex sync — Diretivas UE vs Portugal
  *
- * Estratégia:
- *  1. EUR-Lex CELLAR SPARQL → lista de diretivas DIR em vigor desde ANO_INICIO
- *  2. EUR-Lex NIM pages (HTML scraping) → prazo + estado Portugal
- *     - id="PRT_transposition"   → prazo de transposição (mesmo para todos os países)
- *     - id="PRT_numOfNims"       → nº de medidas nacionais portuguesas notificadas
+ * Tudo pelo SPARQL do Serviço das Publicações da UE (CELLAR), que é a fonte
+ * aberta e feita para ser lida por máquinas:
+ *  1. lista de diretivas DIR em vigor desde ANO_INICIO
+ *  2. por lotes, para cada uma:
+ *     - cdm:directive_date_transposition → prazo de transposição
+ *     - título na expressão portuguesa
+ *     - medidas nacionais (cdm:measure_national_implementing_*) cujo país é
+ *       Portugal (PRT) → se Portugal comunicou transposição
  *  3. Upsert em Supabase (tabela diretivas_ue)
  *
- * Nota: o EUR-Lex bloqueia User-Agents não-browser — usa sempre o UA de Chrome.
+ * Até 30/09/2026 o passo 2 lia as páginas NIM do eur-lex.europa.eu. Essas
+ * páginas estão agora atrás de uma firewall (AWS WAF) que exige JavaScript:
+ * a um pedido automático respondem HTTP 202 com uma página de 2 KB, que o
+ * código tomava pela diretiva — ficavam sem prazo, sem título e "não
+ * transpostas", e isso era gravado por cima do que lá estava. 803 das 824
+ * diretivas estavam assim. Não se contorna a firewall: os mesmos dados
+ * estão no SPARQL.
  */
 
 import 'dotenv/config';
@@ -26,11 +35,9 @@ const SPARQL     = 'https://publications.europa.eu/webapi/rdf/sparql';
 const EURLEX     = 'https://eur-lex.europa.eu';
 const ANO_INICIO = 2015;
 
-// Requer User-Agent de browser real — o EUR-Lex bloqueia bots
-const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
-
-const CONCORRENCIA = 3;   // pedidos paralelos ao EUR-Lex
-const DELAY_LOTE   = 800; // ms entre lotes
+/** Diretivas por lote no passo 2 — cada lote são três perguntas curtas ao SPARQL. */
+const TAMANHO_LOTE = 100;
+const DELAY_LOTE   = 800; // ms entre lotes, para não martelar o SPARQL
 
 // Full IRIs para evitar problemas com hífens em prefixed names
 const P = (local) => `<http://publications.europa.eu/ontology/cdm#${local}>`;
@@ -65,7 +72,7 @@ async function sparqlPage(offset) {
   return j.results?.bindings ?? [];
 }
 
-async function obterDiretivas() {
+export async function obterDiretivas() {
   const hoje = new Date();
   const map  = new Map();
   let offset = 0;
@@ -77,8 +84,11 @@ async function obterDiretivas() {
       const celex = b.celex?.value;
       if (!celex) continue;
 
-      // Filtrar por ano (CELEX: 3 + YYYY + L)
-      const anoMatch = celex.match(/^3(\d{4})L/);
+      // Só a diretiva em si: 3 + AAAA + L + NNNN, e nada mais. Um CELEX com
+      // sufixo — "32019L0790R(01)" — é uma rectificação, que corrige gralhas
+      // de uma diretiva que já está na lista: não tem prazo nem se transpõe.
+      // Até 30/09/2026 entravam como diretivas, e eram 521 das 824.
+      const anoMatch = celex.match(/^3(\d{4})L\d{4}$/);
       if (!anoMatch || parseInt(anoMatch[1], 10) < ANO_INICIO) continue;
 
       // Só diretivas em vigor
@@ -96,97 +106,60 @@ async function obterDiretivas() {
   return Array.from(map.keys());
 }
 
-// ─── EUR-Lex NIM page scraping ─────────────────────────────────────────────
+// ─── SPARQL: prazo, título e medidas portuguesas, por lote ────────────────
 
-async function fetchNIM(celex) {
-  const url = `${EURLEX}/legal-content/PT/NIM/?uri=CELEX:${celex}`;
-
-  let html;
-  try {
-    const res = await comRetry(() => fetch(url, {
-      headers: {
-        Accept:           'text/html,application/xhtml+xml',
-        'Accept-Language': 'en-GB,en;q=0.9',
-        'User-Agent':      UA,
-      },
-      signal: AbortSignal.timeout(45_000),
-    }), 3, 2000);
-    if (!res.ok) return vazio();
-    html = await res.text();
-  } catch {
-    return vazio();
-  }
-
-  return {
-    prazo:        extrairPrazo(html),
-    transpostoPt: verificarPortugal(html),
-    titulo:       extrairTitulo(html),
-  };
+async function perguntarSparql(query) {
+  const url = `${SPARQL}?query=${encodeURIComponent(query)}&format=application%2Fsparql-results%2Bjson`;
+  const res = await fetch(url, {
+    headers: { Accept: 'application/sparql-results+json' },
+    signal: AbortSignal.timeout(120_000),
+  });
+  if (!res.ok) throw new Error(`SPARQL ${res.status}`);
+  const j = await res.json();
+  return j.results?.bindings ?? [];
 }
 
-function vazio() {
-  return { prazo: null, transpostoPt: false, titulo: null };
-}
+const PAIS_PT = '<http://publications.europa.eu/resource/authority/country/PRT>';
+const LINGUA_PT = '<http://publications.europa.eu/resource/authority/language/POR>';
 
-/** Extrai o prazo de transposição do div id="PRT_transposition".
- *  Fallback: primeiro país disponível (o prazo é igual para todos). */
-function extrairPrazo(html) {
-  // Tentar Portugal primeiro
-  const ptMatch = html.match(/id="PRT_transposition"[^>]*>([^<]+)/);
-  if (ptMatch) {
-    const d = parseDataEU(ptMatch[1].trim());
-    if (d) return d;
+/**
+ * Prazo de transposição, título em português e número de medidas nacionais
+ * portuguesas de um lote de diretivas.
+ *
+ * Três perguntas separadas e sem agregações, com a contagem feita aqui. Num
+ * SELECT único com vários OPTIONAL e MIN/COUNT, o motor do SPARQL trocava
+ * valores entre diretivas do mesmo lote — a 2019/790 saía com o prazo da
+ * 2023/970. O CELEX vai com o tipo (xsd:string) para ligar directamente.
+ *
+ * Lança se alguma das perguntas falhar: um lote sem resposta não pode virar
+ * "sem prazo e não transposta" — quem chama salta-o e fica o que havia.
+ */
+export async function detalhesDoLote(celexes) {
+  const valores = celexes.map((c) => `"${c}"^^<http://www.w3.org/2001/XMLSchema#string>`).join(' ');
+  const base = `VALUES ?celex { ${valores} }\n  ?work ${P('resource_legal_id_celex')} ?celex .`;
+
+  const [prazos, titulos, medidas] = await Promise.all([
+    comRetry(() => perguntarSparql(`SELECT ?celex ?p WHERE {\n  ${base}\n  ?work ${P('directive_date_transposition')} ?p .\n}`)),
+    comRetry(() => perguntarSparql(`SELECT ?celex ?t WHERE {\n  ${base}\n  ?expr ${P('expression_belongs_to_work')} ?work ;\n        ${P('expression_uses_language')} ${LINGUA_PT} ;\n        ${P('expression_title')} ?t .\n}`)),
+    comRetry(() => perguntarSparql(`SELECT DISTINCT ?celex ?nim WHERE {\n  ${base}\n  ?nim ${P('measure_national_implementing_implements_resource_legal')} ?work ;\n       ${P('measure_national_implementing_implemented_by_country')} ${PAIS_PT} .\n}`)),
+  ]);
+
+  const porCelex = new Map(celexes.map((c) => [c, { prazo: null, titulo: null, medidasPt: 0 }]));
+  for (const b of prazos) {
+    const d = porCelex.get(b.celex.value);
+    const p = b.p.value.slice(0, 10);
+    // Prazos escalonados (há diretivas com três ou quatro): conta o primeiro.
+    if (d && (!d.prazo || p < d.prazo)) d.prazo = p;
   }
-
-  // Fallback: qualquer país (BEL, BGR, CZE, …)
-  const anyMatch = html.match(/id="\w{3}_transposition"[^>]*>([^<]+)/);
-  if (anyMatch) {
-    return parseDataEU(anyMatch[1].trim());
+  for (const b of titulos) {
+    const d = porCelex.get(b.celex.value);
+    if (d && !d.titulo) d.titulo = b.t.value.replace(/\s+/g, ' ').trim().slice(0, 500);
   }
-
-  return null;
-}
-
-/** Verifica se Portugal notificou ≥1 medida nacional.
- *  Usa id="PRT_numOfNims" → <span class="VMIMore">N</span> com N > 0. */
-function verificarPortugal(html) {
-  // Secção principal: id="PRT_numOfNims"
-  const sectionMatch = html.match(/id="PRT_numOfNims"([\s\S]{0,600})/);
-  if (sectionMatch) {
-    const vmMore = sectionMatch[1].match(/<span class="VMIMore">(\d+)<\/span>/);
-    if (vmMore) return parseInt(vmMore[1], 10) > 0;
+  for (const b of medidas) {
+    const d = porCelex.get(b.celex.value);
+    if (d) d.medidasPt += 1;
   }
-
-  // Fallback: existência de pelo menos um <li class="PRT_ntm">
-  return /<li\s+class="PRT_ntm"/i.test(html);
-}
-
-/** Extrai o título da diretiva da secção da página NIM (PT ou EN). */
-function extrairTitulo(html) {
-  // Padrão PT: "Medidas nacionais de transposição ... relativas a: <strong>TÍTULO</strong>"
-  // Padrão EN: "National transposition measures communicated ... concerning: <strong>TÍTULO</strong>"
-  const m = html.match(
-    /(?:Medidas nacionais de transposição|National transposition measures communicated)[\s\S]{0,400}?<strong>([^<]{30,})<\/strong>/i,
-  );
-  if (m) return m[1].replace(/\s+/g, ' ').trim().slice(0, 500);
-
-  // Fallback: primeiro <strong> longo no painel principal
-  const painel = html.match(/class="panel-body"[^>]*>([\s\S]{0,2000})/i);
-  if (painel) {
-    const s = painel[1].match(/<strong>([^<]{30,})<\/strong>/i);
-    if (s) return s[1].replace(/\s+/g, ' ').trim().slice(0, 500);
-  }
-
-  return null;
-}
-
-function parseDataEU(str) {
-  // DD/MM/YYYY → YYYY-MM-DD
-  const m = str.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
-  if (!m) return null;
-  const [, d, mo, y] = m;
-  if (+y < 2000 || +y > 2040) return null;
-  return `${y}-${mo.padStart(2, '0')}-${d.padStart(2, '0')}`;
+  return porCelex;
 }
 
 // ─── Utilidades ────────────────────────────────────────────────────────────
@@ -206,25 +179,13 @@ async function comRetry(fn, retries = 3, delayBase = 3000) {
   }
 }
 
-async function emLotes(items, fn, n) {
-  const results = [];
-  for (let i = 0; i < items.length; i += n) {
-    const lote = items.slice(i, i + n);
-    const r    = await Promise.all(lote.map(fn));
-    results.push(...r);
-    process.stdout.write(`  … NIM ${Math.min(i + n, items.length)}/${items.length}\r`);
-    if (i + n < items.length) await delay(DELAY_LOTE);
-  }
-  return results;
-}
-
 // ─── Main ──────────────────────────────────────────────────────────────────
 
 export async function syncDiretivasUE() {
   const db = createClient(SUPABASE_URL, SUPABASE_KEY);
 
   console.log('\n' + '='.repeat(55));
-  console.log('  DIRETIVAS UE — EUR-Lex CELLAR + NIM scraping');
+  console.log('  DIRETIVAS UE — SPARQL do Serviço das Publicações (CELLAR)');
   console.log('='.repeat(55));
 
   // Fase 1: lista de diretivas
@@ -238,29 +199,45 @@ export async function syncDiretivasUE() {
   }
   console.log(`  → ${celexList.length} diretivas encontradas`);
 
-  // Fase 2: NIM pages
-  console.log(`\n[2/3] NIM — prazo + estado PT (${CONCORRENCIA} em paralelo)...`);
+  // Fase 2: prazo, título e medidas portuguesas, por lotes
+  console.log(`\n[2/3] SPARQL — prazo, título e medidas nacionais portuguesas (lotes de ${TAMANHO_LOTE})...`);
   const hoje = new Date();
+  const registos = [];
+  const lotesFalhados = [];
 
-  const registos = await emLotes(
-    celexList,
-    async (celex) => {
-      const { prazo, transpostoPt, titulo } = await fetchNIM(celex);
-      const emAtraso = !transpostoPt && !!prazo && new Date(prazo) < hoje;
-      return {
+  for (let i = 0; i < celexList.length; i += TAMANHO_LOTE) {
+    const lote = celexList.slice(i, i + TAMANHO_LOTE);
+    let detalhes;
+    try {
+      detalhes = await detalhesDoLote(lote);
+    } catch (err) {
+      // Fica o que havia na base para estas diretivas: sem resposta não se
+      // escreve "sem prazo e não transposta" por cima.
+      console.warn(`\n  ⚠ lote ${i / TAMANHO_LOTE + 1} (${lote.length} diretivas) falhou: ${err.message} — ficam os dados anteriores`);
+      lotesFalhados.push({ motivo: `${lote.length} diretivas sem resposta do SPARQL (${lote[0]}…): ${err.message}` });
+      continue;
+    }
+
+    for (const celex of lote) {
+      const { prazo, titulo, medidasPt } = detalhes.get(celex);
+      const transpostoPt = medidasPt > 0;
+      registos.push({
         id:                 celex,
         titulo,
         prazo_transposicao: prazo,
         transposto_pt:      transpostoPt,
-        em_atraso:          emAtraso,
+        em_atraso:          !transpostoPt && !!prazo && new Date(prazo) < hoje,
         link_eurlex:        `${EURLEX}/legal-content/PT/TXT/?uri=CELEX:${celex}`,
         atualizado_em:      hoje.toISOString(),
-      };
-    },
-    CONCORRENCIA,
-  );
+      });
+    }
+    process.stdout.write(`  … ${Math.min(i + TAMANHO_LOTE, celexList.length)}/${celexList.length}\r`);
+    if (i + TAMANHO_LOTE < celexList.length) await delay(DELAY_LOTE);
+  }
 
-  console.log(`\n  → ${registos.length} registos prontos`);
+  const comPrazoLidas = registos.filter((r) => r.prazo_transposicao).length;
+  const comTitulo = registos.filter((r) => r.titulo).length;
+  console.log(`\n  → ${registos.length} registos prontos (${comPrazoLidas} com prazo, ${comTitulo} com título)${lotesFalhados.length ? `, ${lotesFalhados.length} lotes saltados` : ''}`);
 
   // Fase 3: Supabase
   //
@@ -270,7 +247,8 @@ export async function syncDiretivasUE() {
   console.log('\n[3/3] Supabase upsert...');
   const BATCH = 50;
   let saved = 0, novas = 0, naoGravadas = 0;
-  const amostraNovas = [], falhas = [];
+  const amostraNovas = [], falhas = [...lotesFalhados];
+  const naoLidas = lotesFalhados.length ? celexList.length - registos.length : 0;
   for (let i = 0; i < registos.length; i += BATCH) {
     const lote = registos.slice(i, i + BATCH);
     const { data: jaHavia, error: erroLeitura } = await db
@@ -293,6 +271,31 @@ export async function syncDiretivasUE() {
     }
   }
 
+  // Fase 4: o que já não está na lista sai da tabela — as rectificações que
+  // entravam como diretivas até 30/09/2026 e, daqui para a frente, as
+  // diretivas que deixam de estar em vigor. Só com uma lista plausível: uma
+  // lista vazia ou curta por avaria do SPARQL não pode esvaziar a tabela.
+  let removidas = 0, rectificacoesRemovidas = 0;
+  if (celexList.length >= 100) {
+    const naLista = new Set(celexList);
+    const existentes = [];
+    for (let o = 0; ; o += 1000) {
+      const { data, error } = await db.from('diretivas_ue').select('id').order('id').range(o, o + 999);
+      if (error) { console.warn(`  ⚠ não foi possível ler a tabela para limpar: ${error.message}`); existentes.length = 0; break; }
+      existentes.push(...(data ?? []).map((r) => r.id));
+      if (!data || data.length < 1000) break;
+    }
+    const aRemover = existentes.filter((id) => !naLista.has(id));
+    for (let i = 0; i < aRemover.length; i += 100) {
+      const parte = aRemover.slice(i, i + 100);
+      const { error } = await db.from('diretivas_ue').delete().in('id', parte);
+      if (error) { console.warn(`  ⚠ remoção falhou: ${error.message}`); break; }
+      removidas += parte.length;
+      rectificacoesRemovidas += parte.filter((id) => /R\(\d+\)$/.test(id)).length;
+    }
+    if (removidas) console.log(`  → ${removidas} removidas da tabela (${rectificacoesRemovidas} rectificações, ${removidas - rectificacoesRemovidas} já não em vigor)`);
+  }
+
   // Só as diretivas COM prazo são relevantes para monitorizar Portugal
   const comPrazo    = registos.filter((r) => !!r.prazo_transposicao);
   const transpostas = registos.filter((r) => r.transposto_pt).length;
@@ -307,8 +310,10 @@ export async function syncDiretivasUE() {
   console.log(`    Por transpor (no prazo)   : ${porTranspor}`);
   console.log(`    Sem prazo (delg./execução): ${semPrazo}`);
 
-  const sucesso = naoGravadas === 0;
-  const contagens = { total: registos.length, inseridos: novas, atualizados: saved - novas, erros: naoGravadas };
+  // Uma diretiva que não se conseguiu ler conta como erro, tal como uma que
+  // não se conseguiu gravar — as duas ficaram com os dados da semana passada.
+  const sucesso = naoGravadas === 0 && naoLidas === 0;
+  const contagens = { total: celexList.length, inseridos: novas, atualizados: saved - novas, erros: naoGravadas + naoLidas };
 
   try {
     await db.from('ar_sync_log').insert({ recurso: 'diretivas_ue', sucesso, ...contagens, detalhes: amostraNovas });
@@ -316,17 +321,26 @@ export async function syncDiretivasUE() {
 
   return {
     ok:      sucesso,
-    message: sucesso ? null : `${naoGravadas} diretivas não gravadas`,
+    message: sucesso ? null : [
+      naoLidas ? `${naoLidas} diretivas sem resposta do SPARQL` : null,
+      naoGravadas ? `${naoGravadas} diretivas não gravadas` : null,
+    ].filter(Boolean).join('; '),
     summary: [{
       recurso: 'diretivas_ue', sucesso, ...contagens,
       syncedAt: new Date().toISOString(),
       ...(amostraNovas.length ? { novos: amostraNovas } : {}),
       ...(falhas.length ? { falhas } : {}),
       // O que interessa a quem lê: o estado de Portugal, não só os números do fetch.
-      info: [{
-        nivel: 'info',
-        texto: `${emAtraso} diretivas em atraso de transposição em Portugal (prazo passado, sem medidas nacionais) e ${porTranspor} ainda dentro do prazo, de ${comPrazo.length} com prazo.`,
-      }],
+      info: [
+        {
+          nivel: 'info',
+          texto: `${emAtraso} diretivas em atraso de transposição em Portugal (prazo passado, sem medidas nacionais comunicadas) e ${porTranspor} ainda dentro do prazo, de ${comPrazo.length} com prazo.`,
+        },
+        ...(removidas ? [{
+          nivel: 'info',
+          texto: `${removidas} registos retirados da tabela por já não estarem na lista (${rectificacoesRemovidas} eram rectificações, que não são diretivas).`,
+        }] : []),
+      ],
     }],
   };
 }
