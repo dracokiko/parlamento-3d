@@ -55,7 +55,7 @@ $saida = & cmd /c "`"$Node`" src/darLocal.js 2>&1" | Out-String
 $codigo = $LASTEXITCODE
 Pop-Location
 # As linhas de progresso usam \r; no registo só interessa a última de cada.
-$limpa = ($saida -split "`n" | ForEach-Object { ($_ -split "`r")[-1] } | Where-Object { $_.Trim() -ne '' }) -join "`n"
+$limpa = ($saida -split "`n" | ForEach-Object { ($_.TrimEnd("`r") -split "`r")[-1] } | Where-Object { $_.Trim() -ne '' }) -join "`n"
 Escrever $limpa
 Escrever "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')  fim (código $codigo)"
 
