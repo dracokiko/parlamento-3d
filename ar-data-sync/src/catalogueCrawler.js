@@ -351,6 +351,43 @@ export async function crawlerDebatesDAR(modo = 'new') {
   return { novos, actualizados, erros, amostraNovos, falhas };
 }
 
+/**
+ * O passo do catálogo, completo e pronto a registar: as duas passagens
+ * ('new' apanha o que saiu desde a última vez, 'missing' repesca os buracos)
+ * e o recado das sessões à espera de Diário.
+ *
+ * Partilhado pela corrida diária do GitHub e pela tarefa local (darLocal.js)
+ * — desde 30/09/2026 o site recusa os servidores do GitHub, e o Diário passou
+ * a ser lido a partir do computador do projecto.
+ *
+ * Lança se o catálogo não puder ser lido; quem chama regista a falha.
+ */
+export async function sincronizarCatalogoDAR() {
+  const rNovas  = await crawlerDebatesDAR('new');
+  const rFaltas = await crawlerDebatesDAR('missing');
+
+  // Só com o catálogo lido é que "falta" quer dizer "a AR ainda não publicou".
+  // Nunca faz o passo falhar: é um recado, não um passo.
+  let info = [];
+  try { info = await infoSessoesPorPublicar(); }
+  catch (err) { console.warn(`\n  ⚠ Não foi possível contar as sessões por publicar (${err.message})`); }
+
+  const novos        = (rNovas.novos ?? 0) + (rFaltas.novos ?? 0);
+  const actualizados = (rNovas.actualizados ?? 0) + (rFaltas.actualizados ?? 0);
+  const erros        = (rNovas.erros ?? 0) + (rFaltas.erros ?? 0);
+  return {
+    sucesso:     true,
+    total:       novos + actualizados + erros,
+    inseridos:   novos,
+    atualizados: actualizados,
+    erros,
+    detalhes:    [],
+    novos:       [...(rNovas.amostraNovos ?? []), ...(rFaltas.amostraNovos ?? [])],
+    falhas:      [...(rNovas.falhas ?? []), ...(rFaltas.falhas ?? [])],
+    info,
+  };
+}
+
 // Execução directa
 if (process.argv[1]?.includes('catalogueCrawler')) {
   const args = process.argv.slice(2);

@@ -36,6 +36,10 @@ jobs:
           SUPABASE_URL:         ${{ secrets.VITE_SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
           GROQ_API_KEY:         ${{ secrets.GROQ_API_KEY }}
+          # O Diário (catálogo, transcrições, ligações) é lido a partir do computador
+          # do projecto desde 05/10/2026 — o debates.parlamento.pt recusa o GitHub.
+          # Ver ar-data-sync/src/darLocal.js. Tirar quando a AR deixar passar.
+          DIARIO_FORA_DO_GITHUB: "1"
         run: |
           if [ -n "${{ github.event.inputs.recurso }}" ]; then
             node src/sync.js ${{ github.event.inputs.recurso }}

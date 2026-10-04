@@ -15,6 +15,9 @@ import { createClient } from '@supabase/supabase-js';
 const JOBS = [
   { job: 'ar-sync', label: 'Sincronização diária da AR', schedule: 'Diário · 03:00 UTC' },
   { job: 'eurlex-sync', label: 'Diretivas UE (EUR-Lex)', schedule: 'Semanal · domingos, 04:00 UTC' },
+  // Desde 05/10/2026: o Diário da AR é lido a partir do computador do projecto,
+  // porque o debates.parlamento.pt recusa os servidores do GitHub (darLocal.js).
+  { job: 'dar-local', label: 'Diário da AR (computador do projecto)', schedule: 'Diário · 11:00 de Lisboa, ou quando o computador for ligado' },
 ];
 
 const JOB_PRINCIPAL = JOBS[0].job;

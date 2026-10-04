@@ -4,7 +4,14 @@ import { downloadToTemp, streamRecords } from './downloader.js';
 import { NORMALIZADORES } from './processor.js';
 import { upsertBatch, registarLog, acquireSyncLock, releaseSyncLock, registarSyncStatus, BaseDeDadosIndisponivel } from './database.js';
 import { resumirIniciativas, resumirDeputados, resumirDebates, resumirVotacoes, obterTranscricoesDebates, indexarIntervencoes, classificarTemas } from './summarizer.js';
-import { crawlerDebatesDAR, infoSessoesPorPublicar } from './catalogueCrawler.js';
+import { sincronizarCatalogoDAR } from './catalogueCrawler.js';
+
+/**
+ * O Diário (catálogo, transcrições e ligações DAR ↔ iniciativas) é lido
+ * noutro sítio — ver darLocal.js. Ligado no workflow do GitHub desde
+ * 05/10/2026, porque o debates.parlamento.pt recusa os servidores do GitHub.
+ */
+const DIARIO_FORA_DO_GITHUB = process.env.DIARIO_FORA_DO_GITHUB === '1';
 import { syncVotacoes } from './votacoesSync.js';
 import { syncVotosMocoes } from './votosMocoesSync.js';
 import { syncAudicoes, syncAudiencias, syncDeslocacoes, syncEventos, syncOrcamento } from './atividadesSimples.js';
@@ -240,46 +247,25 @@ async function main() {
   try { if (resultados.deputados?.ok) acumularAi(await resumirDeputados()); }
   catch (err) { anotarFalha(err); console.warn(`\n  ⚠ resumirDeputados falhou (${err.message})`); avisos.push('resumirDeputados'); }
 
-  // Catálogo DAR — duas passagens:
-  //   'new'     apanha as sessões publicadas desde a última corrida;
-  //   'missing' repesca placeholders antigos ainda sem transcrição.
-  // Sem a segunda, qualquer buraco ficava permanente: 'new' só olha para
-  // sessões posteriores à mais recente já crawlada, nunca para trás.
-  let rDar = null;
-  try {
-    const rNovas   = await crawlerDebatesDAR('new');
-    const rFaltas  = await crawlerDebatesDAR('missing');
-    rDar = {
-      novos:        (rNovas.novos ?? 0)        + (rFaltas.novos ?? 0),
-      actualizados: (rNovas.actualizados ?? 0) + (rFaltas.actualizados ?? 0),
-      erros:        (rNovas.erros ?? 0)        + (rFaltas.erros ?? 0),
-      amostraNovos: [...(rNovas.amostraNovos ?? []), ...(rFaltas.amostraNovos ?? [])],
-      falhas:       [...(rNovas.falhas ?? []),       ...(rFaltas.falhas ?? [])],
-    };
+  // Catálogo DAR — as passagens 'new' e 'missing' e o recado das sessões à
+  // espera de Diário (ver sincronizarCatalogoDAR).
+  //
+  // Desde 30/09/2026 o debates.parlamento.pt recusa os servidores do GitHub,
+  // e o Diário é lido a partir do computador do projecto (darLocal.js, numa
+  // tarefa agendada). O workflow liga DIARIO_FORA_DO_GITHUB e estes passos
+  // saltam-se aqui — senão a corrida ficava vermelha todos os dias com um 403
+  // que já se sabe. Quando a AR deixar passar o GitHub, tira-se a variável.
+  if (!DIARIO_FORA_DO_GITHUB) {
+    let statsDar = null;
+    try { statsDar = await sincronizarCatalogoDAR(); }
+    catch (err) { anotarFalha(err); console.warn(`\n  ⚠ Crawler DAR falhou (${err.message})`); avisos.push('crawlerDebatesDAR'); }
+    await log('dar', statsDar ?? {
+      sucesso: false, total: 0, inseridos: 0, atualizados: 0, erros: 1, detalhes: [], novos: [], falhas: [],
+    });
+    if (!statsDar) avisos.push('dar');
+  } else {
+    console.log('\n  [DAR] Saltado — o Diário é lido a partir do computador do projecto (DIARIO_FORA_DO_GITHUB).');
   }
-  catch (err) { anotarFalha(err); console.warn(`\n  ⚠ Crawler DAR falhou (${err.message})`); avisos.push('crawlerDebatesDAR'); }
-
-  // Só com o catálogo lido é que "falta" quer dizer "a AR ainda não publicou".
-  // Se o crawler falhou, o que falta pode ser só o que não fomos buscar — e o
-  // erro já diz isso. Nunca faz a etapa falhar: é um recado, não um passo.
-  let infoDar = [];
-  if (rDar !== null) {
-    try { infoDar = await infoSessoesPorPublicar(); }
-    catch (err) { console.warn(`\n  ⚠ Não foi possível contar as sessões por publicar (${err.message})`); }
-  }
-
-  await log('dar', {
-    sucesso: rDar !== null,
-    total:       (rDar?.novos ?? 0) + (rDar?.actualizados ?? 0) + (rDar?.erros ?? 0),
-    inseridos:    rDar?.novos  ?? 0,
-    atualizados:  rDar?.actualizados ?? 0,
-    erros:        rDar?.erros  ?? (rDar === null ? 1 : 0),
-    detalhes:    [],
-    novos:       rDar?.amostraNovos ?? [],
-    falhas:      rDar?.falhas ?? [],
-    info:        infoDar,
-  });
-  if (!(rDar !== null)) avisos.push('dar');
 
   // Votos e Moções do Plenário (extraídos do mesmo ficheiro de "debates",
   // chave AtividadesGerais.Atividades — inclui moções de censura)
@@ -342,16 +328,19 @@ async function main() {
   catch (err) { anotarFalha(err); console.warn(`\n  ⚠ syncOrcamento falhou (${err.message})`); avisos.push('syncOrcamento'); }
   if (!(await logSimples('orcamento', rOrc))) avisos.push('orcamento');
 
-  // Transcrições (scraping DAR PDF)
-  let rTransc = null;
-  try { rTransc = await obterTranscricoesDebates(); }
-  catch (err) { anotarFalha(err); console.warn(`\n  ⚠ obterTranscricoesDebates falhou (${err.message})`); avisos.push('obterTranscricoesDebates'); }
-  await log('transcricoes', {
-    sucesso: rTransc !== null, total: rTransc?.total ?? 0, inseridos: rTransc?.inseridos ?? 0,
-    atualizados: 0, erros: rTransc?.erros ?? (rTransc === null ? 1 : 0), detalhes: [],
-    novos: rTransc?.novos ?? [], falhas: rTransc?.falhas ?? [],
-  });
-  if (!(rTransc !== null)) avisos.push('transcricoes');
+  // Transcrições (HTML do debates.parlamento.pt) — saltadas aqui quando o
+  // Diário é lido a partir do computador do projecto (ver o passo do DAR).
+  if (!DIARIO_FORA_DO_GITHUB) {
+    let rTransc = null;
+    try { rTransc = await obterTranscricoesDebates(); }
+    catch (err) { anotarFalha(err); console.warn(`\n  ⚠ obterTranscricoesDebates falhou (${err.message})`); avisos.push('obterTranscricoesDebates'); }
+    await log('transcricoes', {
+      sucesso: rTransc !== null, total: rTransc?.total ?? 0, inseridos: rTransc?.inseridos ?? 0,
+      atualizados: 0, erros: rTransc?.erros ?? (rTransc === null ? 1 : 0), detalhes: [],
+      novos: rTransc?.novos ?? [], falhas: rTransc?.falhas ?? [],
+    });
+    if (!(rTransc !== null)) avisos.push('transcricoes');
+  }
 
   // Resumos IA debates + log combinado
   try { acumularAi(await resumirDebates()); }
@@ -436,22 +425,25 @@ async function main() {
     });
     if (!(rVot !== null)) avisos.push('deputados_divergentes');
 
-    // Ligação DAR ↔ Iniciativas
-    let rDarLinks = null;
-    try { rDarLinks = await syncDarLinks(); }
-    catch (err) { anotarFalha(err); console.warn(`\n  ⚠ syncDarLinks falhou (${err.message})`); avisos.push('syncDarLinks'); }
-    const darLinksSucesso = rDarLinks?.ok ?? rDarLinks !== null;
-    await log('dar_links', {
-      sucesso:     darLinksSucesso,
-      total:       rDarLinks?.total       ?? 0,
-      inseridos:   rDarLinks?.inseridos   ?? 0,
-      atualizados: rDarLinks?.atualizados ?? 0,
-      erros:       rDarLinks === null ? 1 : (rDarLinks?.erros ?? 0),
-      detalhes:    rDarLinks?.detalhes ?? [],
-      novos:       rDarLinks?.detalhes ?? [],
-      falhas:      rDarLinks?.falhas   ?? [],
-    });
-    if (!darLinksSucesso) avisos.push('dar_links');
+    // Ligação DAR ↔ Iniciativas — também lê o catálogo do debates.parlamento.pt,
+    // por isso segue o passo do DAR: saltada aqui quando ele é lido noutro sítio.
+    if (!DIARIO_FORA_DO_GITHUB) {
+      let rDarLinks = null;
+      try { rDarLinks = await syncDarLinks(); }
+      catch (err) { anotarFalha(err); console.warn(`\n  ⚠ syncDarLinks falhou (${err.message})`); avisos.push('syncDarLinks'); }
+      const darLinksSucesso = rDarLinks?.ok ?? rDarLinks !== null;
+      await log('dar_links', {
+        sucesso:     darLinksSucesso,
+        total:       rDarLinks?.total       ?? 0,
+        inseridos:   rDarLinks?.inseridos   ?? 0,
+        atualizados: rDarLinks?.atualizados ?? 0,
+        erros:       rDarLinks === null ? 1 : (rDarLinks?.erros ?? 0),
+        detalhes:    rDarLinks?.detalhes ?? [],
+        novos:       rDarLinks?.detalhes ?? [],
+        falhas:      rDarLinks?.falhas   ?? [],
+      });
+      if (!darLinksSucesso) avisos.push('dar_links');
+    }
 
     let rVotAi = null;
     try { rVotAi = await resumirVotacoes(); }
