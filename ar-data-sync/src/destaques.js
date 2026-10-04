@@ -626,6 +626,7 @@ Regras obrigatórias:
 - No título, não atribuas o resultado de uma votação a um só partido: o cartão mostra ao lado a posição de todos.
 - Chama aos partidos pelo nome corrente: "Chega" e não "CH", "Livre" e não "L".
 - Não uses siglas sem as dizer por extenso quando for a primeira vez que aparecem na explicação, excepto partidos.
+- Não deduzas o género de ninguém pelo nome. Para uma pessoa, usa o nome ("Paula Santos (PCP) foi quem mais falou"), nunca "o deputado" ou "a deputada"; para grupos, "deputados" serve.
 
 Título-base (podes melhorar a clareza, não o sentido): ${facto.tituloBase}
 Porque é destaque: ${facto.porque}
@@ -649,6 +650,11 @@ ${facto.materia ? `Do que se trata: ${String(facto.materia).slice(0, 900)}` : ''
   // O Parlamento vota por bancada; os números são lugares. "70 votos" dá a
   // entender uma contagem de votos que ninguém fez.
   if (/\d+\s+votos?(?![\p{L}])/iu.test(`${titulo} ${explicacao}`)) return { ok: false, motivo: 'chamou "votos" aos lugares' };
+  // O género não está nos dados: "a deputada" seria um palpite pelo nome, e
+  // num site público um palpite errado é tratar mal uma pessoa real. No
+  // singular, só o nome; o plural "deputados" é o colectivo e fica.
+  const generoPorPalpite = `${titulo} ${explicacao}`.match(/(?<![\p{L}])(a deputada|o deputado|da deputada|do deputado|pela deputada|pelo deputado|à deputada|ao deputado)(?![\p{L}])/iu);
+  if (generoPorPalpite) return { ok: false, motivo: `género deduzido pelo nome ("${generoPorPalpite[1]}")` };
   const fonte = `${facto.materia ?? ''} ${JSON.stringify(facto.dadosParaIA)}`;
   const opiniao = palavrasDeOpiniao(`${titulo} ${explicacao}`, fonte);
   if (opiniao.length) return { ok: false, motivo: `palavra de opinião: "${opiniao.join('", "')}"` };
