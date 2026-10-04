@@ -33,12 +33,12 @@ $descricao = 'Lê o Diário da Assembleia da República para o Parlamento 3D a p
 try {
   $quem = New-ScheduledTaskPrincipal -UserId "$env:USERDOMAIN\$env:USERNAME" -LogonType S4U -RunLevel Limited
   Register-ScheduledTask -TaskName $nome -Action $acao -Trigger $quando -Settings $regras -Principal $quem `
-    -Description $descricao -Force | Out-Null
+    -Description $descricao -Force -ErrorAction Stop | Out-Null
   Write-Output "Tarefa instalada (corre mesmo sem sessão aberta): $nome"
 } catch {
   $quem = New-ScheduledTaskPrincipal -UserId "$env:USERDOMAIN\$env:USERNAME" -LogonType Interactive -RunLevel Limited
   Register-ScheduledTask -TaskName $nome -Action $acao -Trigger $quando -Settings $regras -Principal $quem `
-    -Description $descricao -Force | Out-Null
+    -Description $descricao -Force -ErrorAction Stop | Out-Null
   Write-Output "Tarefa instalada (corre com a sessão aberta): $nome"
 }
 Write-Output "node: $node"
