@@ -21,6 +21,8 @@
 import 'dotenv/config';
 import { createClient } from '@supabase/supabase-js';
 import { empurrarAmostra } from './resumoPublico.js';
+// A planta da sala é a do site: os mesmos 230 lugares, de A1 a F56.
+import { mapaLugares } from '../../src/utils/posicoes3D.js';
 
 const db = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
 
@@ -101,24 +103,84 @@ export async function syncDeputadosAtuais() {
   const novos = [], falhas = [];
   let inseridos = 0, atualizados = 0, erros = 0;
 
-  // Quem entra herda o lugar de quem sai: mesmo partido e círculo primeiro
-  // (é a substituição real), depois só o partido, e só então qualquer um.
+  // Quem sai nesta corrida deixa o lugar livre para quem entra.
   const livres = [...aSair];
-  const tirarLugar = (d) => {
-    const escolher = (teste) => {
+
+  // Lugares que já estavam vazios — alguém saiu num dia e o substituto só
+  // chegou noutro. Até 04/10/2026 estes não se viam: os livres eram só os de
+  // quem saía na mesma corrida. A 1/10 saiu um deputado do PS do E9, a 2/10
+  // entrou o seu substituto, e como o E9 já não "existia" a regra de último
+  // recurso deu-lhe o lugar do Bloco de Esquerda que ficara livre nesse dia;
+  // a 3/10 voltou o deputado do Bloco e já não havia lugar para ele. Agora os
+  // vazios contam-se pela planta da sala, a mesma que o site desenha: os 230
+  // lugares menos os ocupados.
+  const ocupados = new Map(assentos.filter(a => a.lugar).map(a => [a.lugar, a]));
+  const vazios = [...mapaLugares.keys()].filter(l => !ocupados.has(l));
+  const vizinhosDoPartido = (lugar, partido) => {
+    const fila = lugar[0], n = Number(lugar.slice(1));
+    return [-2, -1, 1, 2].filter(dd => ocupados.get(`${fila}${n + dd}`)?.partido_sigla === partido).length;
+  };
+
+  /**
+   * Onde se senta quem entra. Por esta ordem:
+   *  1. o lugar de quem sai, do mesmo partido e círculo — a substituição real;
+   *  2. o lugar de quem sai, do mesmo partido;
+   *  3. um lugar vago no meio da bancada do partido — quase sempre o lugar que
+   *     o partido perdeu noutro dia;
+   *  4. só então qualquer lugar de quem sai, ou qualquer vago.
+   * O 3 vem antes do 4 de propósito: um lugar de outro partido só se usa
+   * quando o do próprio não existe.
+   */
+  const escolherSitio = (d) => {
+    const deQuemSai = (teste) => {
       const i = livres.findIndex(teste);
-      return i >= 0 ? livres.splice(i, 1)[0] : null;
+      return i >= 0 ? { anterior: livres.splice(i, 1)[0] } : null;
     };
-    return escolher(a => a.partido_sigla === d.partido_sigla && a.circulo_eleitoral === d.circulo)
-        ?? escolher(a => a.partido_sigla === d.partido_sigla)
-        ?? escolher(() => true);
+    const vago = (minimoVizinhos) => {
+      let melhor = -1, melhorN = minimoVizinhos - 1;
+      vazios.forEach((l, i) => {
+        const nv = vizinhosDoPartido(l, d.partido_sigla);
+        if (nv > melhorN) { melhor = i; melhorN = nv; }
+      });
+      return melhor >= 0 ? { lugar: vazios.splice(melhor, 1)[0] } : null;
+    };
+    return deQuemSai(a => a.partido_sigla === d.partido_sigla && a.circulo_eleitoral === d.circulo)
+        ?? deQuemSai(a => a.partido_sigla === d.partido_sigla)
+        ?? vago(1)
+        ?? deQuemSai(() => true)
+        ?? vago(0);
   };
 
   for (const d of aEntrar) {
-    const anterior = tirarLugar(d);
-    if (!anterior) {
+    const sitio = escolherSitio(d);
+    if (!sitio) {
       erros++;
-      empurrarAmostra(falhas, { id: String(d.id), motivo: `${d.nome_parlamentar} entrou mas não há lugar livre para lhe dar` });
+      empurrarAmostra(falhas, { id: String(d.id), motivo: `${d.nome_parlamentar} entrou mas não há lugar livre para lhe dar (os 230 estão ocupados)` });
+      continue;
+    }
+    const anterior = sitio.anterior ?? null;
+    if (!anterior) {
+      const { lugar } = sitio;
+      // Num lugar que já estava vago não se sabe ao certo quem ele substitui:
+      // não se inventa, fica sem `substitui_*`.
+      const { error } = await db.from('deputados').upsert({
+        id:                d.id,
+        nome:              d.nome_parlamentar,
+        nome_completo:     d.nome_completo,
+        partido_sigla:     d.partido_sigla,
+        circulo_eleitoral: d.circulo,
+        lugar,
+        foto:              fotoDaAR(d.cad_id),
+      }, { onConflict: 'id' });
+      if (error) {
+        erros++;
+        empurrarAmostra(falhas, { id: String(d.id), motivo: `Upsert de ${d.nome_parlamentar}: ${error.message}` });
+        continue;
+      }
+      ocupados.set(lugar, { lugar, partido_sigla: d.partido_sigla });
+      inseridos++;
+      console.log(`  + ${d.nome_parlamentar} (${d.partido_sigla}) ocupa o lugar vago ${lugar}`);
+      empurrarAmostra(novos, { id: String(d.id), label: `${d.nome_parlamentar} (${d.partido_sigla}) ocupa o lugar vago ${lugar}` });
       continue;
     }
 

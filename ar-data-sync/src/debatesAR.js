@@ -93,6 +93,11 @@ export async function fetchDebates(url, { tentativas = ESPERAS.length + 1 } = {}
       return await res.text();
     } catch (err) {
       ultimoErro = err;
+      // Um 4xx não é passageiro: é o servidor a dizer que não, e não muda
+      // em doze minutos. Desde 30/09/2026 o site responde 403 aos servidores
+      // do GitHub, e repetir custava 25 minutos por corrida — o bastante para
+      // duas corridas baterem no limite e serem canceladas a meio.
+      if (/^HTTP 4\d\d$/.test(err.message)) break;
       if (i < tentativas) {
         const espera = ESPERAS[i - 1] ?? ESPERAS[ESPERAS.length - 1];
         console.warn(`  ⚠ Tentativa ${i}/${tentativas} falhou (${err.message}) — nova tentativa em ${espera / 1000}s...`);

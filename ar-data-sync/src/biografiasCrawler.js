@@ -23,6 +23,10 @@ if (!SUPABASE_URL || !SUPABASE_KEY) {
 
 const BIO_BASE  = 'https://www.parlamento.pt/DeputadoGP/Paginas/Biografia.aspx?BID=';
 const DELAY       = 800;
+/** Uma biografia com menos dias do que isto não se volta a pedir. */
+const DIAS_VALIDADE   = 7;
+/** Biografias pedidas por corrida, no máximo — as mais antigas primeiro. */
+const MAX_POR_CORRIDA = 40;
 const TIMEOUT_BIO = 15_000;
 
 let _client = null;
@@ -140,10 +144,25 @@ export async function crawlerBiografias() {
   console.log('  CRAWLER — BIOGRAFIAS DOS DEPUTADOS');
   console.log('='.repeat(55));
 
-  const deputados = await extrairBids();
-  console.log(`  → ${deputados.length} BIDs encontrados no catálogo`);
+  const todosOsDeputados = await extrairBids();
+  console.log(`  → ${todosOsDeputados.length} BIDs encontrados no catálogo`);
   // Ver o mesmo aviso no crawler de presenças: zero é avaria, não sossego.
-  if (!deputados.length) throw new Error('nenhum deputado activo com cad_id — o cruzamento com ar_deputados falhou');
+  if (!todosOsDeputados.length) throw new Error('nenhum deputado activo com cad_id — o cruzamento com ar_deputados falhou');
+
+  // Uma biografia muda poucas vezes por legislatura; as 229 todos os dias
+  // eram 13 minutos num dia bom e mais de uma hora quando o site está lento —
+  // a 2 e 3/10/2026 foi isso que empurrou as corridas para o limite de 90
+  // minutos. Actualizam-se as que faltam ou têm mais de uma semana, até 40
+  // por corrida, as mais antigas primeiro: a carga espalha-se pela semana
+  // em vez de voltar toda no mesmo dia.
+  const { data: jaHa } = await db().from('ar_biografias').select('bid, atualizado_em');
+  const quando = new Map((jaHa ?? []).map((b) => [String(b.bid), b.atualizado_em ?? '']));
+  const limite = new Date(Date.now() - DIAS_VALIDADE * 86_400_000).toISOString();
+  const deputados = todosOsDeputados
+    .filter((d) => (quando.get(String(d.bid)) ?? '') < limite)
+    .sort((a, b) => (quando.get(String(a.bid)) ?? '').localeCompare(quando.get(String(b.bid)) ?? ''))
+    .slice(0, MAX_POR_CORRIDA);
+  console.log(`  → ${deputados.length} a actualizar (sem biografia ou com mais de ${DIAS_VALIDADE} dias; máx. ${MAX_POR_CORRIDA})`);
 
   let ok = 0, erros = 0;
   const novos = [], falhas = [];
